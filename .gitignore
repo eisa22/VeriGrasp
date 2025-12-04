@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+venv/
+env/
+*.zip
+*.npy
+*.png
+*.jpg
+*.ply
+*.pcd
+.DS_Store
+.idea/
+.vscode/
