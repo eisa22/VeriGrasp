@@ -104,15 +104,28 @@ class SAM3D:
     # masks: Liste von 2D-Arrays (H,W), Werte {0,1} oder bool
     # ---------------------------------------------------------
     def process(self, masks):
+        print(f"\n{'='*60}")
+        print(f"SAM3D - 3D Segmentierung")
+        print(f"{'='*60}")
+        print(f"Eingabe: {len(masks)} 2D-Masken von SAM")
+        print(f"Ausgabe: 3D-Punktwolken für jedes Objekt")
+        print(f"")
+        
         # Vollständige Punktwolke nur EINMAL erzeugen
         full_pcd = self._create_pointcloud()
         points = np.asarray(full_pcd.points)
         colors = np.asarray(full_pcd.colors)
 
+        # Erstelle eine Zuordnungsmaske: Welcher Pixel gehört zu welchem Objekt?
+        # -1 = kein Objekt, sonst Index des Objekts
+        assignment_map = np.full((self.H, self.W), -1, dtype=np.int32)
+
         pcs = []
 
         for idx, mask in enumerate(masks):
             mask_np = np.asarray(mask)
+            non_zero = np.count_nonzero(mask_np)
+            print(f"Maske {idx}: {non_zero} Pixel → ", end="")
 
             if mask_np.shape != (self.H, self.W):
                 raise ValueError(
@@ -124,20 +137,39 @@ class SAM3D:
 
             # Leere Masken überspringen
             if len(xs) == 0:
-                if DEBUG:
-                    print(f"[SAM3D] Maske {idx} enthält keine Pixel – übersprungen.")
+                print(f"leer, übersprungen")
                 continue
 
+            # WICHTIG: Nur Pixel verwenden, die noch KEINEM anderen Objekt zugeordnet sind
+            # Dies verhindert Überlappungen (first-come-first-served)
+            unassigned_mask = assignment_map[ys, xs] == -1
+            ys_unique = ys[unassigned_mask]
+            xs_unique = xs[unassigned_mask]
+
+            if len(xs_unique) == 0:
+                print(f"alle Pixel schon zugeordnet, übersprungen")
+                continue
+
+            # Markiere diese Pixel als diesem Objekt zugehörig
+            assignment_map[ys_unique, xs_unique] = idx
+
             # Pixel (y,x) → linearer Index in der Punktwolke
-            linear_idx = ys * self.W + xs
+            linear_idx = ys_unique * self.W + xs_unique
 
             obj_points = points[linear_idx]
             obj_colors = colors[linear_idx]
 
             pcs.append((obj_points, obj_colors))
 
-            if DEBUG:
-                print(f"[SAM3D] Objekt {idx}: {obj_points.shape[0]} Punkte")
+            overlapping = len(ys) - len(ys_unique)
+            print(f"{obj_points.shape[0]} 3D-Punkte ({overlapping} überlappend)")
+
+        print(f"\n{'='*60}")
+        print(f"SAM3D Zusammenfassung")
+        print(f"{'='*60}")
+        print(f"Eingabe: {len(masks)} 2D-Masken")
+        print(f"Ausgabe: {len(pcs)} 3D-Punktwolken")
+        print(f"{'='*60}\n")
 
         # Optional 3D-Visualisierung
         if DEBUG and len(pcs) > 0:
@@ -149,7 +181,10 @@ class SAM3D:
     # Visualisierung
     # ---------------------------------------------------------
     def _visualize(self, pcs):
-        print("[SAM3D] Visualisiere vollständige Szene …")
+        print(f"{'='*60}")
+        print(f"3D-Visualisierung")
+        print(f"{'='*60}")
+        print(f"Zeige {len(pcs)} segmentierte Objekte in 3D")
 
         # --- 1) Gesamte Punktwolke erzeugen ---
         full_pcd = self._create_pointcloud()
@@ -161,19 +196,32 @@ class SAM3D:
         geoms = [full_pcd]
 
         # --- 2) Jedes Objekt farbig hervorheben ---
-        rng = np.random.default_rng()
+        # Vordefinierte, gut unterscheidbare Farben
+        distinct_colors = [
+            [1.0, 0.0, 0.0],  # Rot
+            [0.0, 1.0, 0.0],  # Grün
+            [0.0, 0.0, 1.0],  # Blau
+            [1.0, 1.0, 0.0],  # Gelb
+            [1.0, 0.0, 1.0],  # Magenta
+            [0.0, 1.0, 1.0],  # Cyan
+            [1.0, 0.5, 0.0],  # Orange
+            [0.5, 0.0, 1.0],  # Violett
+        ]
 
         for i, (pts, cols) in enumerate(pcs):
-
             pcd_obj = o3d.geometry.PointCloud()
             pcd_obj.points = o3d.utility.Vector3dVector(pts)
 
-            # zufällige Farbe für Objekt
-            random_color = rng.uniform(0.2, 1.0, size=3)
-            highlight = np.tile(random_color, (pts.shape[0], 1))
+            # Verwende vordefinierte Farben (zyklisch wiederholen wenn mehr Objekte)
+            color = distinct_colors[i % len(distinct_colors)]
+            color_names = ["Rot", "Grün", "Blau", "Gelb", "Magenta", "Cyan", "Orange", "Violett"]
+            print(f"  Objekt {i}: {pts.shape[0]} Punkte → {color_names[i % len(color_names)]}")
+            
+            highlight = np.tile(color, (pts.shape[0], 1))
             pcd_obj.colors = o3d.utility.Vector3dVector(highlight)
 
             geoms.append(pcd_obj)
 
-        print("[SAM3D] Öffne Open3D Viewer …")
+        print(f"\n→ Öffne Open3D Viewer...")
+        print(f"  (Schließen Sie das Fenster um fortzufahren)\n")
         o3d.visualization.draw_geometries(geoms)

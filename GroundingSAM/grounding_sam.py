@@ -12,7 +12,7 @@ from transformers import (
 from config import *
 from path_utils import get_rgb_path
 
-def run_grounding_sam():
+def run_grounding_sam(session_path: str):
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # Modelle laden
@@ -23,7 +23,7 @@ def run_grounding_sam():
     sam_model = SamModel.from_pretrained(SAM_MODEL_ID).to(device)
 
     # Bild laden
-    orig_image = Image.open(get_rgb_path()).convert("RGB")
+    orig_image = Image.open(get_rgb_path(session_path)).convert("RGB")
     resized_image = orig_image.resize((1024, 1024))
 
     # --- Grounding DINO ---
@@ -49,7 +49,48 @@ def run_grounding_sam():
     labels = result["text_labels"]
     scores = result["scores"]
 
+    print(f"\n{'='*60}")
+    print(f"GROUNDING DINO - Objekterkennung")
+    print(f"{'='*60}")
+    print(f"Text Prompts: {TEXT_PROMPT}")
+    print(f"BOX_THRESHOLD: {BOX_THRESHOLD} (Box Confidence)")
+    print(f"TEXT_THRESHOLD: {TEXT_THRESHOLD} (Text-Matching)")
+    print(f"Erkannte Objekte: {len(boxes)}")
+    print(f"")
+    
+    for i in range(len(boxes)):
+        score_val = scores[i].item() if torch.is_tensor(scores[i]) else scores[i]
+        label_str = labels[i] if i < len(labels) else "N/A"
+        print(f"[DINO] Box {i}: Label='{label_str}', Score={score_val:.3f}")
+
     if len(boxes) == 0:
+        return [], [], [], []
+
+    # --- Filter: Entferne Boxen ohne Label ---
+    # Wenn TEXT_THRESHOLD hoch ist, filtert DINO die Labels aber behält die Boxen
+    # Wir filtern manuell Boxen ohne gültiges Label
+    filtered_boxes = []
+    filtered_labels = []
+    filtered_scores = []
+    
+    for i in range(len(boxes)):
+        label = labels[i] if i < len(labels) else ""
+        if label and label.strip():  # Nur Boxen mit nicht-leerem Label
+            filtered_boxes.append(boxes[i])
+            filtered_labels.append(label)
+            filtered_scores.append(scores[i])
+        else:
+            score_val = scores[i].item() if torch.is_tensor(scores[i]) else scores[i]
+            print(f"[FILTER] Box {i} entfernt: Label leer (Score={score_val:.3f})")
+    
+    boxes = filtered_boxes
+    labels = filtered_labels
+    scores = filtered_scores
+    
+    print(f"\n[FILTER] Nach Label-Filter: {len(boxes)} Boxen übrig")
+    
+    if len(boxes) == 0:
+        print("[FILTER] Keine Boxen mit gültigen Labels → Abbruch")
         return [], [], [], []
 
     # --- SAM ---
@@ -75,27 +116,51 @@ def run_grounding_sam():
     else:
         masks = mask_results
 
-    if masks.dim() == 4 and masks.shape[1] == 1:
-        masks = masks.unsqueeze(0)
-
-    # SAM kann mehr Masken als Boxen liefern
-    num_objects = min(len(boxes), masks.shape[1])
+    print(f"\n{'='*60}")
+    print(f"SAM - Segmentierung")
+    print(f"{'='*60}")
+    print(f"Masken-Shape: {masks.shape}")
+    print(f"SAM erzeugt {masks.shape[1]} Masken-Vorschläge pro Box")
+    print(f"→ Wir verwenden jeweils den besten Vorschlag (Index 0)")
+    
+    # SAM gibt Masken in der Form [num_boxes, num_proposals, H, W]
+    # num_proposals ist typischerweise 3 (3 Qualitätsstufen pro Box)
+    # Wir nehmen nur den besten Vorschlag (Index 0) pro Box
+    num_boxes = masks.shape[0]
+    print(f"Verarbeite {num_boxes} Boxen von DINO\n")
 
     cleaned_masks = []
     cleaned_boxes = []
     cleaned_scores = []
     cleaned_labels = []
 
-    for i in range(num_objects):
-        m = masks[0, i].cpu().numpy().astype(np.uint8)
-
-        if m.sum() < 200:
+    for i in range(num_boxes):
+        # Nehme den besten Masken-Vorschlag (Index 0 in Dimension 1)
+        m = masks[i, 0].cpu().numpy().astype(np.uint8)
+        
+        score_val = scores[i].item() if torch.is_tensor(scores[i]) else scores[i]
+        mask_pixels = m.sum()
+        
+        print(f"[SAM] Box {i}: Label='{labels[i]}', Score={score_val:.3f}, Maske={mask_pixels} Pixel")
+        
+        if mask_pixels < 200:
+            print(f"      → Übersprungen (Maske zu klein)")
             continue
 
         cleaned_masks.append(m)
         cleaned_boxes.append(boxes[i])
         cleaned_scores.append(scores[i])
         cleaned_labels.append(labels[i])
+        print(f"      → Akzeptiert ✓")
+
+    print(f"\n{'='*60}")
+    print(f"GROUNDING SAM Zusammenfassung")
+    print(f"{'='*60}")
+    print(f"DINO erkannte: {len(boxes)} Boxen")
+    print(f"SAM segmentierte: {num_boxes} Masken")
+    print(f"Nach Filter: {len(cleaned_masks)} Masken")
+    print(f"→ Diese {len(cleaned_masks)} Masken gehen an SAM3D")
+    print(f"{'='*60}\n")
 
     # --- Debug Visualisierung ---
     if DEBUG:
