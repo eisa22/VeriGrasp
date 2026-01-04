@@ -6,7 +6,6 @@ from PIL import Image, ImageDraw
 import open3d as o3d
 import os
 from GroundingSAM.grounding_sam import run_grounding_sam
-from Sam3D.sam3d import SAM3D
 from path_utils import get_all_session_paths
 from config import DEBUG
 
