@@ -89,11 +89,40 @@ def visualize_3d(session_path, masks, labels):
     
     geoms = [full_pcd]
     
-    # Farben für Segmente
-    distinct_colors = [
-        [1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [1.0, 1.0, 0.0],
-        [1.0, 0.0, 1.0], [0.0, 1.0, 1.0], [1.0, 0.5, 0.0], [0.5, 0.0, 1.0]
-    ]
+    # Generiere einzigartige Farben für alle Pakete
+    # Verwende HSV-Farbraum für maximale Unterscheidbarkeit
+    num_objects = len(masks)
+    unique_colors = []
+    
+    for i in range(num_objects):
+        # Verteile Farben gleichmäßig über den Farbkreis (Hue: 0-360°)
+        hue = (i * 360.0 / num_objects) % 360
+        # Volle Sättigung und Helligkeit für leuchtende Farben
+        saturation = 0.9
+        value = 0.95
+        
+        # Konvertiere HSV zu RGB
+        # HSV: Hue (0-360), Saturation (0-1), Value (0-1)
+        # RGB: (0-1, 0-1, 0-1)
+        h = hue / 60.0
+        c = value * saturation
+        x = c * (1 - abs((h % 2) - 1))
+        m = value - c
+        
+        if 0 <= h < 1:
+            r, g, b = c, x, 0
+        elif 1 <= h < 2:
+            r, g, b = x, c, 0
+        elif 2 <= h < 3:
+            r, g, b = 0, c, x
+        elif 3 <= h < 4:
+            r, g, b = 0, x, c
+        elif 4 <= h < 5:
+            r, g, b = x, 0, c
+        else:
+            r, g, b = c, 0, x
+        
+        unique_colors.append([r + m, g + m, b + m])
     
     # Erstelle Zuordnungsmaske (verhindert Überlappung)
     assignment = np.full((H, W), -1, dtype=np.int32)
@@ -118,11 +147,13 @@ def visualize_3d(session_path, masks, labels):
         pcd_segment = o3d.geometry.PointCloud()
         pcd_segment.points = o3d.utility.Vector3dVector(segment_points)
         
-        color = distinct_colors[i % len(distinct_colors)]
+        # Verwende die einzigartige Farbe für dieses Paket
+        color = unique_colors[i]
         pcd_segment.colors = o3d.utility.Vector3dVector(
             np.tile(color, (len(segment_points), 1))
         )
         
         geoms.append(pcd_segment)
     
+    # Zeige 3D-Visualisierung
     o3d.visualization.draw_geometries(geoms, window_name="3D: Segmentierte Objekte")
