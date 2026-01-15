@@ -162,26 +162,4 @@ def run_grounding_sam(session_path: str):
     print(f"→ Diese {len(cleaned_masks)} Masken gehen an SAM3D")
     print(f"{'='*60}\n")
 
-    # --- Debug Visualisierung ---
-    if DEBUG:
-        img_draw = orig_image.copy()
-        draw = ImageDraw.Draw(img_draw)
-
-        rng = np.random.default_rng(seed=42)
-        colors = [tuple(rng.integers(80,255,size=3).tolist()) for _ in range(len(cleaned_masks))]
-
-        for i, mask in enumerate(cleaned_masks):
-            x0, y0, x1, y1 = cleaned_boxes[i]
-            c = colors[i]
-
-            draw.rectangle([x0,y0,x1,y1], outline=c, width=3)
-            draw.text((x0, max(0,y0-14)), f"{cleaned_labels[i]} ({cleaned_scores[i]:.2f})", fill=c)
-
-            color_layer = np.zeros((*mask.shape,3), dtype=np.uint8)
-            color_layer[...] = c
-            alpha = (mask * 120).astype(np.uint8)
-            img_draw.paste(Image.fromarray(color_layer), mask=Image.fromarray(alpha))
-
-        img_draw.show()
-
     return cleaned_boxes, cleaned_masks, cleaned_scores, cleaned_labels
