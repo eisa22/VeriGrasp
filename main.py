@@ -1,170 +1,113 @@
 """
 main.py
-Hauptpipeline für Pallet-Segmentierung mit DINO + SAM.
+Hauptpipeline für Pallet-Segmentierung mit Hybrid DINO + SAM Grid-Prompts + SAM3D.
 
 Pipeline-Phasen:
-1. Initiale Erkennung (Grounding DINO + SAM)
-2. Filterung (Duplikate/Überlappungen entfernen)
-3. Refinement (Depth-basierte Aufteilung großer Objekte)
-4. Visualisierung (2D + 3D)
+1. Grounding DINO - Grobe Regionen-Erkennung (mit Box-Filterung & NMS)
+2. SAM Grid-Prompts - Präzise Segmentierung innerhalb jeder ROI
+3. SAM3D - Selektives 3D-Splitting (nur große/mehrschichtige Masken)
+4. 3D-Visualisierung mit Farben
 """
-import numpy as np
 import os
+import torch
+from transformers import SamProcessor, SamModel
 
 # Import externe Module
-from GroundingSAM.grounding_sam import run_grounding_sam
+from GroundingSAM.grounding_sam import run_grounding_dino_only
+from GroundingSAM.sam_grid_generator import generate_sam_masks_for_all_rois
 from path_utils import get_all_session_paths
-from config import DEBUG
+from config import DEBUG, SAM_MODEL_ID
 
 # Import eigene Module
-from Segmentation.filtering import filter_overlapping_masks
-from Segmentation.refinement import split_mask_by_depth_gaps
+from Sam3D.sam3d import refine_masks_3d
 from Visualization.visualizer import visualize_3d
 
 
 def process_session(session_path):
     """
-    Verarbeitet eine einzelne Session.
+    Verarbeitet eine einzelne Session mit Hybrid-Pipeline.
     
     Args:
         session_path: Pfad zur Session (enthält rgb/ und distance_to_image_plane/)
-        
-    Returns:
-        tuple: (boxes, masks, labels, scores) - finale Segmentierungsergebnisse
     """
     session_name = os.path.basename(session_path)
     print(f"\n{'='*60}")
     print(f"[SESSION] {session_name}")
     print(f"{'='*60}")
     
-    # -------------------------------------------------------------------------
-    # Phase 1: Initiale Erkennung mit Grounding DINO + SAM
-    # -------------------------------------------------------------------------
-    boxes, masks, scores, labels = run_grounding_sam(session_path)
-    
-    if len(masks) == 0:
-        print(f"[SESSION] Keine Masken gefunden → überspringe Session.")
-        return None
+    device = "cuda" if torch.cuda.is_available() else "cpu"
     
     # -------------------------------------------------------------------------
-    # Phase 2: Filterung (Duplikate und große Überlappungen)
+    # Phase 1: Grounding DINO - Grobe Regionen
     # -------------------------------------------------------------------------
-    print(f"\n{'='*60}")
-    print("PHASE 2: FILTERUNG")
-    print(f"{'='*60}")
+    print(f"\n[PHASE 1] Grounding DINO - Regionen-Erkennung")
+    boxes, scores, labels, orig_image = run_grounding_dino_only(session_path)
     
-    original_count = len(masks)
-    boxes, masks, scores, labels = filter_overlapping_masks(boxes, masks, scores, labels)
-    filtered_count = original_count - len(masks)
-    print(f"\n→ {original_count} → {len(masks)} Masken (gefiltert: {filtered_count})")
+    if len(boxes) == 0:
+        print(f"[SESSION] Keine Regionen gefunden → überspringe Session.")
+        return
+    
+    print(f"→ {len(boxes)} ROIs von DINO (nach Filterung)")
     
     # -------------------------------------------------------------------------
-    # Phase 3: Refinement großer Masken mit Depth-Gap-Detection
+    # Phase 2: SAM Grid-Prompts in ROIs
     # -------------------------------------------------------------------------
-    print(f"\n{'='*60}")
-    print("PHASE 3: REFINEMENT (Depth-Gap Detection)")
-    print(f"{'='*60}")
+    print(f"\n[PHASE 2] SAM Grid-Prompts - Segmentierung in ROIs")
     
-    # Lade Depth Map
-    depth_path = os.path.join(session_path, "distance_to_image_plane",
-                               "distance_to_image_plane_0000.npy")
-    depth_map = np.load(depth_path)
+    # Lade SAM-Modelle einmal
+    sam_processor = SamProcessor.from_pretrained(SAM_MODEL_ID)
+    sam_model = SamModel.from_pretrained(SAM_MODEL_ID).to(device)
     
-    boxes, masks, scores, labels = refine_large_masks(
-        boxes, masks, scores, labels, depth_map
+    masks, boxes, scores, labels = generate_sam_masks_for_all_rois(
+        session_path, boxes, labels, sam_model, sam_processor
     )
     
-    print(f"\n[SESSION] {session_name}: {len(masks)} finale Objekte")
+    if len(masks) == 0:
+        print(f"[SESSION] Keine Masken von SAM Grid → überspringe Session.")
+        return
     
-    # Visualisierung direkt nach der Session (wenn DEBUG=True)
+    print(f"→ {len(masks)} Masken von SAM Grid-Prompts")
+    
+    # -------------------------------------------------------------------------
+    # Phase 3: SAM3D - Selektives 3D-Splitting
+    # -------------------------------------------------------------------------
+    print(f"\n[PHASE 3] SAM3D (Selektives 3D-Splitting)")
+    masks, boxes, scores, labels = refine_masks_3d(
+        masks, boxes, scores, labels, session_path
+    )
+    
+    if len(masks) == 0:
+        print(f"[SESSION] Keine Masken nach SAM3D → überspringe Session.")
+        return
+    
+    print(f"→ {len(masks)} finale Objekte nach SAM3D")
+    
+    # -------------------------------------------------------------------------
+    # Phase 4: 3D-Visualisierung mit Farben
+    # -------------------------------------------------------------------------
     if DEBUG:
-        print(f"\n{'='*60}")
-        print(f"3D-VISUALISIERUNG: {session_name}")
-        print(f"{'='*60}")
+        print(f"\n[PHASE 4] 3D-Visualisierung")
         visualize_3d(session_path, masks, labels)
-    
-    return boxes, masks, scores, labels, session_path
-
-
-def refine_large_masks(boxes, masks, scores, labels, depth_map):
-    """
-    Teilt große Masken (> 15% Bildgröße) anhand von Tiefengradienten.
-    
-    Args:
-        boxes, masks, scores, labels: Aktuelle Segmentierungsdaten
-        depth_map: Tiefenkarte
-        
-    Returns:
-        tuple: (neue_boxes, neue_masks, neue_scores, neue_labels)
-    """
-    total_pixels = masks[0].shape[0] * masks[0].shape[1]
-    size_threshold = 0.15 * total_pixels
-    
-    new_boxes = []
-    new_masks = []
-    new_scores = []
-    new_labels = []
-    
-    for i, (box, mask, score, label) in enumerate(zip(boxes, masks, scores, labels)):
-        mask_size = np.sum(mask)
-        
-        # Nur große Masken splitten
-        if mask_size > size_threshold:
-            print(f"\nMaske {i} '{label}': {mask_size} Pixel → versuche Split")
-            
-            split_masks = split_mask_by_depth_gaps(mask, depth_map, min_segment_size=500)
-            
-            if len(split_masks) > 1:
-                print(f"  → Aufgeteilt in {len(split_masks)} Segmente!")
-                
-                # Für jedes neue Segment: Box berechnen, Daten hinzufügen
-                for j, split_mask in enumerate(split_masks):
-                    ys, xs = np.where(split_mask > 0)
-                    if len(xs) > 0:
-                        new_box = [float(xs.min()), float(ys.min()), 
-                                   float(xs.max()), float(ys.max())]
-                        new_boxes.append(new_box)
-                        new_masks.append(split_mask)
-                        new_scores.append(score)
-                        new_labels.append(f"{label}_{j+1}")
-            else:
-                # Keine Aufteilung möglich/nötig
-                new_boxes.append(box)
-                new_masks.append(mask)
-                new_scores.append(score)
-                new_labels.append(label)
-        else:
-            # Kleine Maske: unverändert übernehmen
-            new_boxes.append(box)
-            new_masks.append(mask)
-            new_scores.append(score)
-            new_labels.append(label)
-    
-    print(f"\n→ Nach Refinement: {len(new_masks)} Masken")
-    return new_boxes, new_masks, new_scores, new_labels
 
 
 def main():
     """Hauptfunktion: Orchestriert die gesamte Pipeline."""
     print(f"{'='*60}")
-    print("PALLET SEGMENTATION PIPELINE")
+    print("PALLET SEGMENTATION PIPELINE (HYBRID)")
+    print("DINO (Regionen) → SAM Grid-Prompts → SAM3D (Selektiv) → Visualisierung")
     print(f"{'='*60}")
     
     # Alle Sessions laden
     all_sessions = get_all_session_paths()
     print(f"\n[MAIN] Gefundene Sessions: {len(all_sessions)}")
-    
-    results = []
-    
+
     # Verarbeite jede Session
     for session_path in all_sessions:
-        result = process_session(session_path)
-        if result is not None:
-            results.append(result)
-    
+        process_session(session_path)
+
     # Abschluss
     print(f"\n{'='*60}")
-    print(f"[MAIN] Pipeline abgeschlossen: {len(results)}/{len(all_sessions)} Sessions erfolgreich")
+    print(f"[MAIN] Pipeline abgeschlossen!")
     print(f"{'='*60}")
 
 

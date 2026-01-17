@@ -12,6 +12,219 @@ from transformers import (
 from config import *
 from path_utils import get_rgb_path
 
+
+def calculate_box_iou(box1, box2):
+    """Berechnet IoU zwischen zwei Boxen [x1, y1, x2, y2]."""
+    x1_1, y1_1, x2_1, y2_1 = box1
+    x1_2, y1_2, x2_2, y2_2 = box2
+    
+    # Intersection
+    x1_i = max(x1_1, x1_2)
+    y1_i = max(y1_1, y1_2)
+    x2_i = min(x2_1, x2_2)
+    y2_i = min(y2_1, y2_2)
+    
+    if x2_i <= x1_i or y2_i <= y1_i:
+        return 0.0
+    
+    intersection = (x2_i - x1_i) * (y2_i - y1_i)
+    
+    # Union
+    area1 = (x2_1 - x1_1) * (y2_1 - y1_1)
+    area2 = (x2_2 - x1_2) * (y2_2 - y1_2)
+    union = area1 + area2 - intersection
+    
+    return intersection / union if union > 0 else 0.0
+
+
+def filter_large_boxes(boxes, scores, labels, image_width, image_height, max_area_ratio):
+    """
+    Filtert Boxen die zu groß sind (wahrscheinlich Mehrfachdetektionen).
+    
+    Args:
+        boxes: Liste von Boxen [x1, y1, x2, y2]
+        scores, labels: Zugehörige Scores und Labels
+        image_width, image_height: Bildabmessungen
+        max_area_ratio: Maximaler Anteil der Bildfläche (z.B. 0.12 = 12%)
+    
+    Returns:
+        tuple: (gefilterte_boxes, scores, labels)
+    """
+    total_area = image_width * image_height
+    max_box_area = total_area * max_area_ratio
+    
+    filtered_boxes = []
+    filtered_scores = []
+    filtered_labels = []
+    
+    for i, box in enumerate(boxes):
+        x1, y1, x2, y2 = box
+        box_area = (x2 - x1) * (y2 - y1)
+        
+        if box_area <= max_box_area:
+            filtered_boxes.append(box)
+            filtered_scores.append(scores[i])
+            filtered_labels.append(labels[i])
+        else:
+            score_val = scores[i].item() if torch.is_tensor(scores[i]) else scores[i]
+            print(f"[BOX-FILTER] Box {i} '{labels[i]}' entfernt: Zu groß ({box_area/total_area*100:.1f}% der Bildfläche)")
+    
+    return filtered_boxes, filtered_scores, filtered_labels
+
+
+def apply_relative_iou_nms(boxes, scores, labels, iou_threshold=0.3):
+    """
+    Non-Maximum Suppression mit relativer IoU.
+    Behält kleine Boxen, auch wenn sie innerhalb großer liegen.
+    
+    Args:
+        boxes: Liste von Boxen [x1, y1, x2, y2]
+        scores: Liste von Scores
+        labels: Liste von Labels
+        iou_threshold: IoU-Schwelle für NMS
+    
+    Returns:
+        tuple: (gefilterte_boxes, scores, labels)
+    """
+    if len(boxes) <= 1:
+        return boxes, scores, labels
+    
+    # Konvertiere Scores zu numpy für einfacheres Sortieren
+    score_values = []
+    for s in scores:
+        score_values.append(s.item() if torch.is_tensor(s) else s)
+    
+    # Sortiere nach Score (höchste zuerst)
+    indices = sorted(range(len(boxes)), key=lambda i: score_values[i], reverse=True)
+    
+    keep = []
+    suppressed = set()
+    
+    for i in indices:
+        if i in suppressed:
+            continue
+        
+        keep.append(i)
+        box_i = boxes[i]
+        area_i = (box_i[2] - box_i[0]) * (box_i[3] - box_i[1])
+        
+        for j in indices:
+            if j == i or j in suppressed or j in keep:
+                continue
+            
+            box_j = boxes[j]
+            area_j = (box_j[2] - box_j[0]) * (box_j[3] - box_j[1])
+            
+            iou = calculate_box_iou(box_i, box_j)
+            
+            # Relative IoU: Wenn kleine Box in großer Box liegt, weniger aggressiv unterdrücken
+            if area_j < area_i:
+                # Kleine Box in großer Box: Nur unterdrücken wenn sehr hohe IoU
+                relative_threshold = iou_threshold * 1.5
+            else:
+                # Große Box überlappt kleine: Standard-Threshold
+                relative_threshold = iou_threshold
+            
+            if iou > relative_threshold:
+                suppressed.add(j)
+                print(f"[NMS] Box {j} '{labels[j]}' unterdrückt: IoU={iou:.3f} mit Box {i}")
+    
+    filtered_boxes = [boxes[i] for i in keep]
+    filtered_scores = [scores[i] for i in keep]
+    filtered_labels = [labels[i] for i in keep]
+    
+    return filtered_boxes, filtered_scores, filtered_labels
+
+
+def run_grounding_dino_only(session_path: str):
+    """
+    Führt nur Grounding DINO aus und gibt Boxen zurück (ohne SAM).
+    Für Hybrid-Pipeline: DINO liefert grobe Regionen, SAM Grid-Prompts werden separat aufgerufen.
+    
+    Returns:
+        tuple: (boxes, scores, labels, orig_image)
+    """
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    
+    # Modelle laden
+    dino_processor = DinoProcessor.from_pretrained(DINO_MODEL_ID)
+    dino_model = DinoModel.from_pretrained(DINO_MODEL_ID).to(device)
+    
+    # Bild laden
+    orig_image = Image.open(get_rgb_path(session_path)).convert("RGB")
+    resized_image = orig_image.resize((1024, 1024))
+    
+    # --- Grounding DINO ---
+    inputs = dino_processor(
+        images=resized_image,
+        text=TEXT_PROMPT,
+        return_tensors="pt"
+    ).to(device)
+    
+    with torch.no_grad():
+        outputs = dino_model(**inputs)
+    
+    results = dino_processor.post_process_grounded_object_detection(
+        outputs=outputs,
+        input_ids=inputs.input_ids,
+        threshold=BOX_THRESHOLD,
+        text_threshold=TEXT_THRESHOLD,
+        target_sizes=[(orig_image.size[1], orig_image.size[0])]
+    )
+    
+    result = results[0]
+    boxes = result["boxes"].tolist()
+    labels = result["text_labels"]
+    scores = result["scores"]
+    
+    print(f"\n{'='*60}")
+    print(f"GROUNDING DINO - Regionen-Erkennung")
+    print(f"{'='*60}")
+    print(f"Text Prompts: {TEXT_PROMPT}")
+    print(f"BOX_THRESHOLD: {BOX_THRESHOLD} (Box Confidence)")
+    print(f"TEXT_THRESHOLD: {TEXT_THRESHOLD} (Text-Matching)")
+    print(f"Erkannte Regionen: {len(boxes)}")
+    
+    # Filter: Entferne Boxen ohne Label
+    filtered_boxes = []
+    filtered_labels = []
+    filtered_scores = []
+    
+    for i in range(len(boxes)):
+        label = labels[i] if i < len(labels) else ""
+        if label and label.strip():
+            filtered_boxes.append(boxes[i])
+            filtered_labels.append(label)
+            filtered_scores.append(scores[i])
+        else:
+            score_val = scores[i].item() if torch.is_tensor(scores[i]) else scores[i]
+            print(f"[FILTER] Box {i} entfernt: Label leer (Score={score_val:.3f})")
+    
+    boxes = filtered_boxes
+    labels = filtered_labels
+    scores = filtered_scores
+    
+    print(f"[FILTER] Nach Label-Filter: {len(boxes)} Regionen übrig")
+    
+    if len(boxes) == 0:
+        return [], [], [], None
+    
+    # Box-Größen-Filter
+    image_width, image_height = orig_image.size
+    boxes, scores, labels = filter_large_boxes(
+        boxes, scores, labels, image_width, image_height, MAX_BOX_AREA_RATIO
+    )
+    print(f"[BOX-FILTER] Nach Größen-Filter: {len(boxes)} Regionen übrig")
+    
+    # Relative IoU NMS
+    boxes, scores, labels = apply_relative_iou_nms(
+        boxes, scores, labels, RELATIVE_IOU_NMS_THRESH
+    )
+    print(f"[NMS] Nach Relative IoU NMS: {len(boxes)} finale Regionen")
+    
+    return boxes, scores, labels, orig_image
+
+
 def run_grounding_sam(session_path: str):
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
