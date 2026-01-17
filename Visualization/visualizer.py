@@ -334,11 +334,26 @@ def visualize_3d_with_ids(session_path, masks, labels):
     vis.register_animation_callback(update_billboards)
     vis.run()
     vis.destroy_window()
+    
+    # Erstelle Resultat-Dictionary
+    results = {}
+    for mask_id, center, color in mask_centers:
+        # ID ist 1-basiert, mask index ist 0-basiert
+        idx = mask_id - 1
+        results[mask_id] = {
+            "mask": masks[idx],
+            "label": labels[idx] if idx < len(labels) else "unknown",
+            "center_3d": center.tolist(),
+            "color": color
+        }
+    
+    return results
 
 
 def visualize_3d(session_path, masks, labels):
     """
     Hauptfunktion: Zeigt alle 3 Visualisierungen nacheinander.
+    Git ein Dictionary mit ID-Zuordnungen zurück.
     """
     print("\n[VIZ] Starte 3-fache Visualisierung...")
     
@@ -349,6 +364,7 @@ def visualize_3d(session_path, masks, labels):
     visualize_3d_rgbd(session_path)
     
     # Visualisierung 3: Farbige Segmente mit IDs
-    visualize_3d_with_ids(session_path, masks, labels)
+    results = visualize_3d_with_ids(session_path, masks, labels)
     
     print("[VIZ] Alle 3 Visualisierungen abgeschlossen.\n")
+    return results

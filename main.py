@@ -39,8 +39,11 @@ def process_session(session_path):
     masks, boxes, scores, labels = deduplicate_masks_3d(masks, boxes, scores, labels, session_path)
     
     # Phase 5: Visualisierung
+    results = None
     if DEBUG:
-        visualize_3d(session_path, masks, labels)
+        results = visualize_3d(session_path, masks, labels)
+    
+    return results
 
 
 def main():
