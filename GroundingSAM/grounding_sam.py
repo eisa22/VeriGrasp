@@ -225,6 +225,101 @@ def run_grounding_dino_only(session_path: str):
     return boxes, scores, labels, orig_image
 
 
+def generate_sam_masks_for_boxes(session_path, boxes, labels, sam_model=None, sam_processor=None):
+    """
+    Generiert eine SAM-Maske pro DINO-Box.
+    
+    Args:
+        session_path: Pfad zur Session
+        boxes: Liste von Boxen [x1, y1, x2, y2] von DINO
+        labels: Liste von Labels
+        sam_model: Optional, SAM Modell (wird geladen falls None)
+        sam_processor: Optional, SAM Processor (wird geladen falls None)
+    
+    Returns:
+        tuple: (masks, boxes, scores, labels)
+    """
+    import torch
+    from path_utils import get_rgb_path
+    
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    
+    # Lade Modelle falls nicht übergeben
+    if sam_model is None or sam_processor is None:
+        sam_processor = SamProcessor.from_pretrained(SAM_MODEL_ID)
+        sam_model = SamModel.from_pretrained(SAM_MODEL_ID).to(device)
+    
+    # Lade Bild
+    orig_image = Image.open(get_rgb_path(session_path)).convert("RGB")
+    
+    print(f"\n{'='*60}")
+    print(f"SAM - Eine Maske pro DINO-Box")
+    print(f"{'='*60}")
+    print(f"Verarbeite {len(boxes)} Boxen...")
+    
+    if len(boxes) == 0:
+        return [], [], [], []
+    
+    # SAM mit Box-Prompts aufrufen
+    sam_inputs = sam_processor(
+        orig_image,
+        input_boxes=[boxes],
+        return_tensors="pt"
+    ).to(device)
+    
+    with torch.no_grad():
+        sam_outputs = sam_model(**sam_inputs)
+    
+    low_res_masks = sam_outputs.pred_masks
+    
+    # Handle 5D tensor (batch dimension)
+    if len(low_res_masks.shape) == 5:
+        low_res_masks = low_res_masks.squeeze(0)
+    
+    mask_results = sam_processor.post_process_masks(
+        low_res_masks.unsqueeze(0) if len(low_res_masks.shape) == 4 else low_res_masks,
+        sam_inputs["original_sizes"].to(device),
+        sam_inputs["reshaped_input_sizes"].to(device),
+    )
+    
+    if isinstance(mask_results, list):
+        masks = mask_results[0]
+    else:
+        masks = mask_results
+    
+    # Handle tensor shape
+    if len(masks.shape) == 4:
+        # [num_boxes, num_proposals, H, W] - take best proposal
+        masks = masks[:, 0, :, :]  # [num_boxes, H, W]
+    
+    print(f"SAM Masken-Shape: {masks.shape}")
+    
+    cleaned_masks = []
+    cleaned_boxes = []
+    cleaned_scores = []
+    cleaned_labels = []
+    
+    for i in range(masks.shape[0]):
+        m = masks[i].cpu().numpy().astype(np.uint8)
+        mask_pixels = m.sum()
+        
+        print(f"[SAM] Box {i}: Label='{labels[i]}', Maske={mask_pixels} Pixel")
+        
+        if mask_pixels < 200:
+            print(f"      → Übersprungen (Maske zu klein)")
+            continue
+        
+        cleaned_masks.append(m)
+        cleaned_boxes.append(boxes[i])
+        cleaned_scores.append(1.0)  # Placeholder score
+        cleaned_labels.append(labels[i])
+        print(f"      → Akzeptiert ✓")
+    
+    print(f"\n[SAM] {len(cleaned_masks)} Masken generiert aus {len(boxes)} Boxen")
+    
+    return cleaned_masks, cleaned_boxes, cleaned_scores, cleaned_labels
+
+
 def run_grounding_sam(session_path: str):
     device = "cuda" if torch.cuda.is_available() else "cpu"
 

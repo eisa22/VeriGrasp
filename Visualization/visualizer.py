@@ -149,11 +149,35 @@ def visualize_3d(session_path, masks, labels):
         
         # Verwende die einzigartige Farbe für dieses Paket
         color = unique_colors[i]
-        pcd_segment.colors = o3d.utility.Vector3dVector(
-            np.tile(color, (len(segment_points), 1))
-        )
         
-        geoms.append(pcd_segment)
+        # Nur Oberfläche anzeigen (Voxel-Downsampling für dünnere Darstellung)
+        if len(segment_points) > 100:
+            # Voxel-Downsampling um Punktdichte zu reduzieren
+            pcd_surface = pcd_segment.voxel_down_sample(voxel_size=0.01)  # 1cm Voxel
+            
+            # Entferne Outlier
+            pcd_surface, _ = pcd_surface.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)
+            
+            # Setze Farbe
+            pcd_surface.colors = o3d.utility.Vector3dVector(
+                np.tile(color, (len(pcd_surface.points), 1))
+            )
+        else:
+            pcd_surface = pcd_segment
+            pcd_surface.colors = o3d.utility.Vector3dVector(
+                np.tile(color, (len(segment_points), 1))
+            )
+        
+        # Füge Oriented Bounding Box hinzu
+        if len(pcd_surface.points) >= 4:
+            try:
+                obb = pcd_surface.get_oriented_bounding_box()
+                obb.color = color
+                geoms.append(obb)
+            except Exception:
+                pass  # Falls Box-Berechnung fehlschlägt
+        
+        geoms.append(pcd_surface)
     
     # Zeige 3D-Visualisierung
     o3d.visualization.draw_geometries(geoms, window_name="3D: Segmentierte Objekte")

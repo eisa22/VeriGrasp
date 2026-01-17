@@ -137,6 +137,10 @@ def generate_sam_masks_from_roi(sam_model, sam_processor, image, roi_box, grid_s
             batch_scores = sam_outputs.iou_scores
             
             # Nimm den besten Vorschlag pro Box (Index 0)
+            if len(batch_masks.shape) == 5:
+                batch_masks = batch_masks.squeeze(0)
+                batch_scores = batch_scores.squeeze(0)
+
             if len(batch_masks.shape) == 4:
                 batch_masks = batch_masks[:, 0, :, :]  # [num_boxes, H, W]
                 batch_scores = batch_scores[:, 0]  # [num_boxes]

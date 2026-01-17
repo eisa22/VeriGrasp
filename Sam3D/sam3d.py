@@ -240,3 +240,67 @@ def refine_masks_3d(masks, boxes, scores, labels, session_path):
         print(f"[SAM3D] Keine Sub-Objekte gefunden (alle Masken sind einzelne Objekte)")
     
     return refined_masks, refined_boxes, refined_scores, refined_labels
+
+
+def deduplicate_masks_3d(masks, boxes, scores, labels, session_path, iou_threshold=0.5):
+    """
+    Entfernt duplizierte Pakete basierend auf 2D-Masken-IoU.
+    Wird aufgerufen NACH SAM3D, um überlappende Pakete von verschiedenen DINO-Boxen zu deduplizieren.
+    
+    Args:
+        masks: Liste von binären 2D-Masken
+        boxes, scores, labels: Zugehörige Daten
+        session_path: Pfad zur Session
+        iou_threshold: IoU-Schwelle für Duplikat-Erkennung (Standard: 0.5)
+        
+    Returns:
+        tuple: (deduplizierte_masks, boxes, scores, labels)
+    """
+    if len(masks) <= 1:
+        return masks, boxes, scores, labels
+    
+    print(f"\n[DEDUP] Starte Deduplizierung von {len(masks)} Masken...")
+    
+    # Berechne paarweise IoU
+    def mask_iou(mask1, mask2):
+        mask1_np = np.asarray(mask1) > 0
+        mask2_np = np.asarray(mask2) > 0
+        intersection = np.sum(mask1_np & mask2_np)
+        union = np.sum(mask1_np | mask2_np)
+        return intersection / union if union > 0 else 0.0
+    
+    # Sortiere nach Maskengröße (größte zuerst - diese behalten wir bei Duplikaten)
+    mask_sizes = [np.sum(np.asarray(m) > 0) for m in masks]
+    indices = sorted(range(len(masks)), key=lambda i: mask_sizes[i], reverse=True)
+    
+    keep = []
+    suppressed = set()
+    
+    for i in indices:
+        if i in suppressed:
+            continue
+        
+        keep.append(i)
+        
+        for j in indices:
+            if j == i or j in suppressed or j in keep:
+                continue
+            
+            iou = mask_iou(masks[i], masks[j])
+            
+            if iou > iou_threshold:
+                suppressed.add(j)
+                print(f"[DEDUP] Maske {j} '{labels[j]}' unterdrückt: IoU={iou:.3f} mit Maske {i}")
+    
+    # Deduplizierte Listen erstellen
+    dedup_masks = [masks[i] for i in keep]
+    dedup_boxes = [boxes[i] for i in keep]
+    dedup_scores = [scores[i] for i in keep]
+    dedup_labels = [labels[i] for i in keep]
+    
+    removed = len(masks) - len(dedup_masks)
+    print(f"[DEDUP] Deduplizierung abgeschlossen: {len(masks)} → {len(dedup_masks)} Masken")
+    if removed > 0:
+        print(f"[DEDUP] ✓ {removed} Duplikate entfernt")
+    
+    return dedup_masks, dedup_boxes, dedup_scores, dedup_labels
