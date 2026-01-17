@@ -168,15 +168,6 @@ def visualize_3d(session_path, masks, labels):
                 np.tile(color, (len(segment_points), 1))
             )
         
-        # Füge Oriented Bounding Box hinzu
-        if len(pcd_surface.points) >= 4:
-            try:
-                obb = pcd_surface.get_oriented_bounding_box()
-                obb.color = color
-                geoms.append(obb)
-            except Exception:
-                pass  # Falls Box-Berechnung fehlschlägt
-        
         geoms.append(pcd_surface)
     
     # Zeige 3D-Visualisierung
