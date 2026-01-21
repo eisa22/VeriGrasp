@@ -6,7 +6,7 @@ Pipeline: DINO → SAM → SAM3D → Deduplizierung → Visualisierung
 """
 from GroundingSAM.grounding_sam import run_grounding_dino_only, generate_sam_masks_for_boxes
 from Sam3D.sam3d import refine_masks_3d, deduplicate_masks_3d
-from Visualization.visualizer import visualize_3d
+from Visualization.visualizer import visualize_3d, capture_scene_screenshots
 from path_utils import get_all_session_paths
 from config import DEBUG, SAM_MODEL_ID
 import torch
@@ -43,7 +43,10 @@ def process_session(session_path):
     if DEBUG:
         results = visualize_3d(session_path, masks, labels)
     
-    return results
+    # Phase 6: Screenshots aufnehmen
+    screenshot_results = capture_scene_screenshots(session_path, masks, labels)
+    
+    return {"visualization": results, "screenshots": screenshot_results}
 
 
 def main():

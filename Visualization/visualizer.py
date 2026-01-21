@@ -6,6 +6,8 @@ import numpy as np
 import torch
 import open3d as o3d
 import os
+import json
+from datetime import datetime
 from PIL import Image, ImageDraw
 
 
@@ -368,3 +370,193 @@ def visualize_3d(session_path, masks, labels):
     
     print("[VIZ] Alle 3 Visualisierungen abgeschlossen.\n")
     return results
+
+
+def _load_viewpoints():
+    """Lädt die kalibrierten Viewpoints aus JSON."""
+    viewpoints_path = os.path.join(os.path.dirname(__file__), "viewpoints.json")
+    
+    if not os.path.exists(viewpoints_path):
+        raise FileNotFoundError(f"Viewpoints nicht gefunden: {viewpoints_path}\n"
+                               "Bitte zuerst calibrate_viewpoints.py ausführen.")
+    
+    with open(viewpoints_path, "r") as f:
+        data = json.load(f)
+    
+    viewpoints = {}
+    for key in ["1", "2", "3"]:
+        if key in data:
+            viewpoints[key] = {
+                "extrinsic": np.array(data[key]["extrinsic"]),
+                "intrinsic": np.array(data[key]["intrinsic"]),
+                "width": data[key]["width"],
+                "height": data[key]["height"]
+            }
+    
+    return viewpoints
+
+
+def capture_scene_screenshots(session_path, masks, labels, output_dir=None):
+    """
+    Erstellt 3 Screenshots der gesamten Szene mit allen Objekten und IDs 
+    aus den kalibrierten Viewpoints.
+    
+    Args:
+        session_path: Pfad zur Session
+        masks: Liste von Masken
+        labels: Liste von Labels
+        output_dir: Ausgabeordner (optional, default: session_path/screenshots)
+    
+    Returns:
+        Liste mit Pfaden zu den 3 Screenshots
+    """
+    print("\n[SCREENSHOT] Starte Screenshot-Aufnahme der Szene...")
+    
+    # Viewpoints laden
+    viewpoints = _load_viewpoints()
+    if len(viewpoints) < 3:
+        print("[WARNUNG] Weniger als 3 Viewpoints definiert!")
+    
+    # Output-Verzeichnis
+    if output_dir is None:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_dir = os.path.join(session_path, "screenshots", timestamp)
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Punktwolke laden
+    all_points, rgb, H, W = _load_pointcloud_data(session_path)
+    
+    # Basis-Punktwolke (grau)
+    full_pcd = o3d.geometry.PointCloud()
+    full_pcd.points = o3d.utility.Vector3dVector(all_points)
+    gray = np.full((len(all_points), 3), 0.7)
+    full_pcd.colors = o3d.utility.Vector3dVector(gray)
+    
+    geoms = [full_pcd]
+    unique_colors = _generate_unique_colors(len(masks))
+    assignment = np.full((H, W), -1, dtype=np.int32)
+    mask_centers = []
+    
+    # Ziffern-Muster (identisch zu visualize_3d_with_ids)
+    digit_patterns = {
+        '1': [(1,0),(2,0),(2,1),(2,2),(2,3),(2,4),(2,5),(1,6),(2,6),(3,6),(2,0),(2,1)],
+        '2': [(0,0),(1,0),(2,0),(3,0),(4,0),(4,1),(4,2),(3,3),(2,3),(1,4),(0,5),(0,6),(1,6),(2,6),(3,6),(4,6)],
+        '3': [(0,0),(1,0),(2,0),(3,0),(4,1),(4,2),(2,3),(3,3),(4,4),(4,5),(0,6),(1,6),(2,6),(3,6)],
+        '4': [(0,0),(0,1),(0,2),(0,3),(1,3),(2,3),(3,3),(4,3),(3,0),(3,1),(3,2),(3,4),(3,5),(3,6)],
+        '5': [(0,0),(1,0),(2,0),(3,0),(4,0),(0,1),(0,2),(0,3),(1,3),(2,3),(3,3),(4,4),(4,5),(0,6),(1,6),(2,6),(3,6)],
+        '6': [(1,0),(2,0),(3,0),(0,1),(0,2),(0,3),(1,3),(2,3),(3,3),(0,4),(4,4),(0,5),(4,5),(1,6),(2,6),(3,6)],
+        '7': [(0,0),(1,0),(2,0),(3,0),(4,0),(4,1),(3,2),(3,3),(2,4),(2,5),(2,6)],
+        '8': [(1,0),(2,0),(3,0),(0,1),(4,1),(0,2),(4,2),(1,3),(2,3),(3,3),(0,4),(4,4),(0,5),(4,5),(1,6),(2,6),(3,6)],
+        '9': [(1,0),(2,0),(3,0),(0,1),(4,1),(0,2),(4,2),(1,3),(2,3),(3,3),(4,3),(4,4),(4,5),(1,6),(2,6),(3,6)],
+        '0': [(1,0),(2,0),(3,0),(0,1),(4,1),(0,2),(4,2),(0,3),(4,3),(0,4),(4,4),(0,5),(4,5),(1,6),(2,6),(3,6)],
+    }
+    
+    # Objekte mit Farben und IDs erstellen
+    for i, (mask, label) in enumerate(zip(masks, labels)):
+        mask_np = np.asarray(mask)
+        ys, xs = np.where((mask_np > 0) & (assignment == -1))
+        
+        if len(xs) == 0:
+            continue
+        
+        assignment[ys, xs] = i
+        linear_idx = ys * W + xs
+        segment_points = all_points[linear_idx]
+        
+        center_3d = segment_points.mean(axis=0)
+        mask_centers.append((i + 1, center_3d, unique_colors[i]))
+        
+        pcd_segment = o3d.geometry.PointCloud()
+        pcd_segment.points = o3d.utility.Vector3dVector(segment_points)
+        color = unique_colors[i]
+        
+        if len(segment_points) > 100:
+            pcd_surface = pcd_segment.voxel_down_sample(voxel_size=0.01)
+            pcd_surface, _ = pcd_surface.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)
+            pcd_surface.colors = o3d.utility.Vector3dVector(
+                np.tile(color, (len(pcd_surface.points), 1))
+            )
+        else:
+            pcd_surface = pcd_segment
+            pcd_surface.colors = o3d.utility.Vector3dVector(
+                np.tile(color, (len(segment_points), 1))
+            )
+        
+        geoms.append(pcd_surface)
+    
+    # ID-Scheiben und Labels erstellen
+    for mask_id, center, _ in mask_centers:
+        disc = o3d.geometry.TriangleMesh.create_cylinder(radius=0.05, height=0.002)
+        disc_offset = center.copy()
+        disc_offset[2] += 0.05
+        disc.translate(disc_offset)
+        disc.paint_uniform_color([1.0, 1.0, 1.0])
+        disc.compute_vertex_normals()
+        geoms.append(disc)
+        
+        # Label-Punkte
+        label_points = []
+        label_colors = []
+        red = [1.0, 0.0, 0.0]
+        
+        id_str = str(mask_id)
+        num_digits = len(id_str)
+        scale = 0.008
+        total_width = num_digits * 5 * scale
+        
+        offset_x = 0
+        for char in id_str:
+            if char in digit_patterns:
+                for (px, py) in digit_patterns[char]:
+                    rel_x = -((px + offset_x) * scale - total_width / 2)
+                    rel_y = (py - 3) * scale
+                    for dx in [-0.0005, 0, 0.0005]:
+                        for dy in [-0.0005, 0, 0.0005]:
+                            label_points.append([disc_offset[0] + rel_x + dx, 
+                                                disc_offset[1] + rel_y + dy, 
+                                                disc_offset[2] + 0.005])
+                            label_colors.append(red)
+            offset_x += 6
+        
+        if label_points:
+            label_pcd = o3d.geometry.PointCloud()
+            label_pcd.points = o3d.utility.Vector3dVector(np.array(label_points))
+            label_pcd.colors = o3d.utility.Vector3dVector(np.array(label_colors))
+            geoms.append(label_pcd)
+    
+    # Visualizer erstellen
+    vis = o3d.visualization.Visualizer()
+    vis.create_window(visible=False, width=1280, height=720)
+    
+    for geom in geoms:
+        vis.add_geometry(geom)
+    
+    # Render-Optionen
+    opt = vis.get_render_option()
+    opt.point_size = 2.0
+    opt.background_color = np.array([0.1, 0.1, 0.1])
+    
+    screenshot_paths = []
+    
+    # Screenshots aus allen 3 Viewpoints
+    for vp_key, vp_data in viewpoints.items():
+        ctr = vis.get_view_control()
+        cam = ctr.convert_to_pinhole_camera_parameters()
+        cam.extrinsic = vp_data["extrinsic"]
+        ctr.convert_from_pinhole_camera_parameters(cam, allow_arbitrary=True)
+        
+        vis.poll_events()
+        vis.update_renderer()
+        
+        screenshot_name = f"scene_viewpoint_{vp_key}.png"
+        screenshot_path = os.path.join(output_dir, screenshot_name)
+        vis.capture_screen_image(screenshot_path, do_render=True)
+        screenshot_paths.append(screenshot_path)
+        print(f"  [SCREENSHOT] Viewpoint {vp_key} → {screenshot_name}")
+    
+    vis.destroy_window()
+    
+    print(f"[SCREENSHOT] Fertig! 3 Screenshots gespeichert in: {output_dir}\n")
+    
+    return screenshot_paths
+
