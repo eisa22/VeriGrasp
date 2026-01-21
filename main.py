@@ -2,11 +2,12 @@
 main.py
 Hauptpipeline für Pallet-Segmentierung.
 
-Pipeline: DINO → SAM → SAM3D → Deduplizierung → Visualisierung
+Pipeline: DINO → SAM → SAM3D → Deduplizierung → Visualisierung → Screenshots → LLM
 """
 from GroundingSAM.grounding_sam import run_grounding_dino_only, generate_sam_masks_for_boxes
 from Sam3D.sam3d import refine_masks_3d, deduplicate_masks_3d
 from Visualization.visualizer import visualize_3d, capture_scene_screenshots
+from LLMOrchestrator.orchestrator import run_orchestrator
 from path_utils import get_all_session_paths
 from config import DEBUG, SAM_MODEL_ID
 import torch
@@ -44,9 +45,16 @@ def process_session(session_path):
         results = visualize_3d(session_path, masks, labels)
     
     # Phase 6: Screenshots aufnehmen
-    screenshot_results = capture_scene_screenshots(session_path, masks, labels)
+    screenshot_paths = capture_scene_screenshots(session_path, masks, labels)
     
-    return {"visualization": results, "screenshots": screenshot_results}
+    # Phase 7: LLM Orchestrator - Paket-Auswahl
+    llm_result = run_orchestrator(screenshot_paths)
+    
+    return {
+        "visualization": results, 
+        "screenshots": screenshot_paths,
+        "llm_decision": llm_result
+    }
 
 
 def main():

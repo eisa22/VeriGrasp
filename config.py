@@ -40,4 +40,5 @@ SAM3D_Z_RANGE_THRESHOLD = 0.05     # oder Z-Range > 5cm
 SAM3D_DBSCAN_EPS_LARGE = 0.03      # für sehr große Masken
 SAM3D_DBSCAN_MIN_SAMPLES_LARGE = 30  # für sehr große Masken
 
-
+# OpenAI API
+OPENAI_API_KEY = "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"  # Hier deinen API-Key eintragen
