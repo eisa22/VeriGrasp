@@ -108,9 +108,9 @@ def _load_pointcloud_data(session_path):
     return all_points, rgb, H, W
 
 
-def visualize_3d_colored(session_path, masks, labels):
+def visualize_3d_colored(session_path, masks, labels, window_name="Segmentierte Objekte"):
     """
-    3D Visualisierung 1: Farbige Segmente (Oberflächen).
+    3D Visualisierung: Farbige Segmente (Oberflächen).
     """
     all_points, rgb, H, W = _load_pointcloud_data(session_path)
     
@@ -153,7 +153,7 @@ def visualize_3d_colored(session_path, masks, labels):
         
         geoms.append(pcd_surface)
     
-    o3d.visualization.draw_geometries(geoms, window_name="1/3: Segmentierte Objekte (Farben)")
+    o3d.visualization.draw_geometries(geoms, window_name=window_name)
 
 
 def visualize_3d_rgbd(session_path):
@@ -216,21 +216,25 @@ def visualize_sobel_edges(session_path, viz_data):
     o3d.visualization.draw_geometries([pcd], window_name="3/3: Gradienten/Spalten Analyse (Blau=Flach, Rot=Steil, Grün=Erkannte Kante)")
 
 
-def visualize_3d(session_path, masks, labels, sobel_viz_data=None):
+def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=None, original_masks=None, original_labels=None):
     """
-    Hauptfunktion: Zeigt alle Visualisierungen nacheinander.
+    Hauptfunktion: Zeigt alle Visualisierungen nacheinander (4 Schritte).
     """
-    print("\n[VIZ] Starte Visualisierung...")
+    print("\n[VIZ] Starte 4-fache Visualisierung...")
     
     # Visualisierung 1: RGBD mit Original-Farben
     visualize_3d_rgbd(session_path)
     
-    # Visualisierung 2: Farbige Segmente
-    visualize_3d_colored(session_path, masks, labels)
+    # Visualisierung 2: Original SAM Masken (vor Sobel)
+    if original_masks is not None:
+        visualize_3d_colored(session_path, original_masks, original_labels, window_name="2/4: Original SAM Masken (Pre-Sobel)")
     
     # Visualisierung 3: Sobel Refinement
     if sobel_viz_data:
         visualize_sobel_edges(session_path, sobel_viz_data)
+        
+    # Visualisierung 4: Finale segmentierte Objekte (mit Sobel verfeinert)
+    visualize_3d_colored(session_path, refined_masks, refined_labels, window_name="4/4: Finale Segmente (Sobel Refined)")
     
     print("[VIZ] Alle Visualisierungen abgeschlossen.\n")
     return {}

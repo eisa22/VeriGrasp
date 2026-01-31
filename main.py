@@ -42,12 +42,15 @@ def process_session(session_path, dino_model=None, dino_processor=None, sam_mode
         return
     
     # Phase 3: Sobel Gradient Analysis & Refinement
-    masks, labels, sobel_viz_data = apply_sobel_refinement(session_path, masks, labels)
+    original_masks = [m.copy() for m in masks]
+    original_labels = labels.copy()
+    
+    refined_masks, refined_labels, sobel_viz_data = apply_sobel_refinement(session_path, masks, labels)
     
     # Phase 5: Visualisierung
     results = None
     if DEBUG:
-        results = visualize_3d(session_path, masks, labels, sobel_viz_data)
+        results = visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data, original_masks, original_labels)
     
     # Phase 6: Screenshots aufnehmen
     # screenshot_paths = capture_scene_screenshots(session_path, masks, labels)
