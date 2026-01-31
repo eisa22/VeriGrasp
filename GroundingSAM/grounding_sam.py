@@ -136,7 +136,7 @@ def apply_relative_iou_nms(boxes, scores, labels, iou_threshold=0.3):
     return filtered_boxes, filtered_scores, filtered_labels
 
 
-def run_grounding_dino_only(session_path: str):
+def run_grounding_dino_only(session_path: str, dino_model=None, dino_processor=None):
     """
     Führt nur Grounding DINO aus und gibt Boxen zurück (ohne SAM).
     Für Hybrid-Pipeline: DINO liefert grobe Regionen, SAM Grid-Prompts werden separat aufgerufen.
@@ -146,9 +146,11 @@ def run_grounding_dino_only(session_path: str):
     """
     device = "cuda" if torch.cuda.is_available() else "cpu"
     
-    # Modelle laden
-    dino_processor = DinoProcessor.from_pretrained(DINO_MODEL_ID)
-    dino_model = DinoModel.from_pretrained(DINO_MODEL_ID).to(device)
+    # Modelle laden falls nicht übergeben
+    if dino_model is None or dino_processor is None:
+        print(f"Lade Grounding DINO Modell ({DINO_MODEL_ID})...")
+        dino_processor = DinoProcessor.from_pretrained(DINO_MODEL_ID)
+        dino_model = DinoModel.from_pretrained(DINO_MODEL_ID).to(device)
     
     # Bild laden
     orig_image = Image.open(get_rgb_path(session_path)).convert("RGB")

@@ -359,14 +359,15 @@ def visualize_3d(session_path, masks, labels):
     """
     print("\n[VIZ] Starte 3-fache Visualisierung...")
     
-    # Visualisierung 1: Farbige Segmente
-    visualize_3d_colored(session_path, masks, labels)
-    
-    # Visualisierung 2: RGBD mit Original-Farben
+    # Visualisierung 1: RGBD mit Original-Farben
     visualize_3d_rgbd(session_path)
     
+    # Visualisierung 2: Farbige Segmente
+    visualize_3d_colored(session_path, masks, labels)
+    
     # Visualisierung 3: Farbige Segmente mit IDs
-    results = visualize_3d_with_ids(session_path, masks, labels)
+    # results = visualize_3d_with_ids(session_path, masks, labels)
+    results = {}
     
     print("[VIZ] Alle 3 Visualisierungen abgeschlossen.\n")
     return results

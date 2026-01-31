@@ -11,7 +11,8 @@ SESSION_PATH = BASE_PATH
 # Debug-Modus für Visualisierung
 DEBUG = True
 
-DINO_MODEL_ID = "IDEA-Research/grounding-dino-base"
+# DINO_MODEL_ID = "IDEA-Research/grounding-dino-base"
+DINO_MODEL_ID = "/home/samuel/Thesis/VisionPipeline/LocalModels/GroundingDINO"
 SAM_MODEL_ID  = "facebook/sam-vit-base"
 
 TEXT_PROMPT = [

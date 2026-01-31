@@ -289,3 +289,4 @@ Die vollständige Vision-to-Grasp Pipeline ist **implementiert und funktionsfäh
 
 Die Implementierung folgt exakt dem spezifizierten Plan und erfüllt alle Anforderungen.
 
+
