@@ -176,7 +176,47 @@ def visualize_3d_rgbd(session_path):
 
 
 
-def visualize_3d(session_path, masks, labels):
+
+def visualize_sobel_edges(session_path, viz_data):
+    """
+    3D Visualisierung 3: Gradienten/Kanten Analyse.
+    Färbt die Punktwolke basierend auf der Gradienten-Magnitude.
+    """
+    if viz_data is None:
+        print("[VIZ] Keine Sobel-Daten vorhanden.")
+        return
+
+    all_points, rgb, H, W = _load_pointcloud_data(session_path)
+    
+    gradient = viz_data["gradient_magnitude"]
+    edges = viz_data["edges"]
+    
+    # Gradienten normalisieren für Farb-Mapping (0-1)
+    # Clip bei 50mm für Kontrast
+    grad_norm = np.clip(gradient, 0, 50) / 50.0
+    
+    # Colormap: Blau (flach) -> Rot (Kante)
+    # Einfache Heatmap: R=Grad, G=0, B=1-Grad
+    colors = np.zeros((H * W, 3))
+    
+    grad_flat = grad_norm.flatten()
+    colors[:, 0] = grad_flat       # Rot
+    colors[:, 2] = 1 - grad_flat   # Blau
+    
+    # Markiere erkannte Edges (Spalten) in hellem Grün
+    edges_flat = edges.flatten()
+    colors[edges_flat, 0] = 0
+    colors[edges_flat, 1] = 1
+    colors[edges_flat, 2] = 0
+    
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(all_points)
+    pcd.colors = o3d.utility.Vector3dVector(colors)
+    
+    o3d.visualization.draw_geometries([pcd], window_name="3/3: Gradienten/Spalten Analyse (Blau=Flach, Rot=Steil, Grün=Erkannte Kante)")
+
+
+def visualize_3d(session_path, masks, labels, sobel_viz_data=None):
     """
     Hauptfunktion: Zeigt alle Visualisierungen nacheinander.
     """
@@ -187,6 +227,10 @@ def visualize_3d(session_path, masks, labels):
     
     # Visualisierung 2: Farbige Segmente
     visualize_3d_colored(session_path, masks, labels)
+    
+    # Visualisierung 3: Sobel Refinement
+    if sobel_viz_data:
+        visualize_sobel_edges(session_path, sobel_viz_data)
     
     print("[VIZ] Alle Visualisierungen abgeschlossen.\n")
     return {}

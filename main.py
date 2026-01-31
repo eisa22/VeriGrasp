@@ -5,6 +5,7 @@ Hauptpipeline für Pallet-Segmentierung.
 Pipeline: DINO → SAM → SAM3D → Deduplizierung → Visualisierung → Screenshots → LLM
 """
 from GroundingSAM.grounding_sam import run_grounding_dino_only, generate_sam_masks_for_boxes
+from Segmentation.sobel_refinement import apply_sobel_refinement
 from Visualization.visualizer import visualize_3d, capture_scene_screenshots
 from LLMOrchestrator.orchestrator import run_orchestrator
 from path_utils import get_all_session_paths
@@ -40,14 +41,13 @@ def process_session(session_path, dino_model=None, dino_processor=None, sam_mode
     if not masks:
         return
     
-    # Phase 3: SAM3D (Entfernt)
-    
-    # Phase 4: Deduplizierung (Entfernt)
+    # Phase 3: Sobel Gradient Analysis & Refinement
+    masks, labels, sobel_viz_data = apply_sobel_refinement(session_path, masks, labels)
     
     # Phase 5: Visualisierung
     results = None
     if DEBUG:
-        results = visualize_3d(session_path, masks, labels)
+        results = visualize_3d(session_path, masks, labels, sobel_viz_data)
     
     # Phase 6: Screenshots aufnehmen
     # screenshot_paths = capture_scene_screenshots(session_path, masks, labels)
