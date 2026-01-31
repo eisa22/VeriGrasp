@@ -31,24 +31,39 @@ def apply_sobel_refinement(session_path, masks, labels):
         
     depth = np.load(depth_path)
     
-    # 2. Sobel-Berechnung (Kanten erkennen)
-    # Skaliere Tiefe für bessere Gradienten-Berechnung (in mm)
+    # 2. Kanten-Erkennung (Canny statt Sobel für dünne Kanten)
+    # Skaliere Tiefe für bessere Verarbeitung (in mm)
     depth_mm = depth * 1000.0
     
-    # Noise Reduction: Gaussian Blur um "Kriseln" zu entfernen -> Glattere Kanten
-    depth_mm = cv2.GaussianBlur(depth_mm, (5, 5), 0)
+    # Leichter Blur (weniger als vorher, damit Kanten nicht verlaufen)
+    depth_mm = cv2.GaussianBlur(depth_mm, (3, 3), 0)
     
-    # Sobel X und Y
-    sobel_x = cv2.Sobel(depth_mm, cv2.CV_64F, 1, 0, ksize=3)
-    sobel_y = cv2.Sobel(depth_mm, cv2.CV_64F, 0, 1, ksize=3)
+    # Normalisieren auf 0-255 für Canny
+    norm_depth = cv2.normalize(depth_mm, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
     
-    # Gradienten-Magnitude (Kantenstärke)
-    gradient_magnitude = np.sqrt(sobel_x**2 + sobel_y**2)
+    # Canny Edge Detection
+    # Thresholds müssen auf die Depth-Dynamik angepasst sein.
+    # Wir nehmen Otsu's thresholding als Referenz oder feste Werte.
+    # Da Depth (0-255) über das ganze Bild skaliert ist, sind Kanten kontrastreich.
+    # Low=50, High=150 ist ein guter Startwert für Canny.
+    binary_edges = cv2.Canny(norm_depth, 30, 100)
     
-    # Normalisiere für Visualisierung/Thresholding
-    # Ein Gradient von > 10mm pro Pixel ist eine starke Kante (Spalte)
-    EDGE_THRESHOLD = 15.0 
-    edges = gradient_magnitude > EDGE_THRESHOLD
+    # Optional: Ein bisschen Dilation, aber viel weniger als vorher
+    # User wollte dünne Kanten. Canny ist 1px. Wir lassen es so oder maximal 1 iteration.
+    # kernel = np.ones((2,2), np.uint8)
+    # binary_edges = cv2.dilate(binary_edges, kernel, iterations=1)
+    
+    # Visualisierungs-Daten vorbereiten (Heatmap simulieren)
+    # Canny gibt nur 0/255. Wir nutzen das als rote Linien.
+    # Um die "Steilheit" (Gradient) für die Viz zu behalten, können wir Sobel trotzdem berechnen.
+    grad_x = cv2.Sobel(depth_mm, cv2.CV_64F, 1, 0, ksize=3)
+    grad_y = cv2.Sobel(depth_mm, cv2.CV_64F, 0, 1, ksize=3)
+    gradient_magnitude = np.sqrt(grad_x**2 + grad_y**2)
+    
+    sobel_viz_data = {
+        'gradient_magnitude': gradient_magnitude, # Für die Heatmap
+        'edges': binary_edges # Die dünnen Canny Kanten
+    }
     
     # 3. Analyse & Refinement der Masken
     refined_masks = []
@@ -85,14 +100,14 @@ def apply_sobel_refinement(session_path, masks, labels):
         # 2. Select: Wähle den Kern im Zentrum
         # 3. Reclaim: Füge die Kanten pixelweise wieder hinzu, die den Kern berühren
         
-        internal_edges = edges & mask_np
+        internal_edges = binary_edges & mask_np
         edge_pixel_count = np.sum(internal_edges)
         
         if edge_pixel_count > 0:
             print(f"  [REFINE] Maske {i} '{label}': {edge_pixel_count} Edge-Pixel gefunden. Optimiere Ränder...")
             
             # 1. Split: Ziehe Edge-Pixel ab
-            core_mask = mask_np & (~edges)
+            core_mask = mask_np & (~binary_edges)
             
             # Morphologie (Clean up noise)
             kernel = np.ones((3,3), np.uint8)
@@ -202,7 +217,7 @@ def apply_sobel_refinement(session_path, masks, labels):
     # Daten für Visualisierung
     viz_data = {
         "gradient_magnitude": gradient_magnitude,
-        "edges": edges,
+        "edges": binary_edges,
         "depth": depth
     }
     
