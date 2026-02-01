@@ -213,9 +213,19 @@ def create_depth_filtered_mask_parameterfree(box, depth, H, W):
     
     # Erstelle Maske: Nur Pixel innerhalb der Toleranz
     front_mask = (box_depth > 0) & (box_depth <= threshold_depth)
-    mask[y1:y2, x1:x2] = front_mask.astype(np.uint8)
     
-    front_ratio = np.sum(front_mask) / len(valid_depths) if len(valid_depths) > 0 else 0
+    # Morphologische Erosion um unsaubere Ränder zu bereinigen
+    # Das verhindert Überlappungen mit benachbarten Objekten
+    kernel = np.ones((3, 3), np.uint8)
+    front_mask_clean = cv2.erode(front_mask.astype(np.uint8), kernel, iterations=1)
+    
+    # Wenn Erosion zu viel entfernt hat, nimm Original
+    if front_mask_clean.sum() < front_mask.sum() * 0.5:
+        front_mask_clean = front_mask.astype(np.uint8)
+    
+    mask[y1:y2, x1:x2] = front_mask_clean
+    
+    front_ratio = np.sum(front_mask_clean) / len(valid_depths) if len(valid_depths) > 0 else 0
     
     return mask, {
         'method': 'iqr',
@@ -313,25 +323,7 @@ def apply_sobel_refinement(session_path, masks, labels, boxes=None):
         if mask_np.sum() == 0:
             continue
             
-        # A. Occlusion Check (nutzt globale Scene-Tiefe)
-        obj_depths = depth[mask_np]
-        valid_obj_depths = obj_depths[obj_depths > 0]
-        
-        if len(valid_obj_depths) == 0:
-            continue
-            
-        obj_mean_depth = np.mean(valid_obj_depths)
-        
-        # Dynamische Occlusion-Margin basierend auf Scene-Tiefe
-        scene_depth_range = np.percentile(valid_depths, 99) - min_scene_depth
-        occlusion_margin = scene_depth_range * 0.15  # 15% der Scene-Tiefe
-        occlusion_margin = max(occlusion_margin, 0.10)  # Mindestens 10cm
-        
-        if obj_mean_depth > (min_scene_depth + occlusion_margin):
-            print(f"  [FILTER] Maske {i} '{label}': Zu tief (Z={obj_mean_depth*1000:.0f}mm vs Top={min_scene_depth*1000:.0f}mm)")
-            continue
-        
-        # B. Maske ist bereits tiefengefiltert - einfach hinzufügen wenn groß genug
+        # Maske ist bereits tiefengefiltert - einfach hinzufügen wenn groß genug
         if mask_np.sum() > 200:
             refined_masks.append(mask_np.astype(np.uint8))
             refined_labels.append(label)
