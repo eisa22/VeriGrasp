@@ -35,6 +35,12 @@ SAM_DEDUPLICATION_IOU = 0.85    # IoU für Duplikat-Erkennung
 MAX_BOX_AREA_RATIO = 0.12       # Max 12% der Bildfläche
 RELATIVE_IOU_NMS_THRESH = 0.3   # NMS mit relativer IoU
 
+# Tiefenfilterung (Box-zu-Maske Konvertierung)
+# Strategie: "Recall over Precision" - großzügig maskieren, 3D-Stufe korrigiert
+DEPTH_BASE_TOLERANCE_MM = 80    # Basis-Toleranz für flache Objekte (mm)
+DEPTH_MAX_TOLERANCE_MM = 300    # Maximum für gewölbte Objekte wie Säcke (mm)
+DEPTH_ADAPTIVE = True           # Adaptive Toleranz basierend auf Oberflächen-Varianz
+
 # SAM3D (selektiv)
 SAM3D_CHALLENGE_THRESHOLD = 0.08   # Nur Masken > 8%
 SAM3D_Z_RANGE_THRESHOLD = 0.05     # oder Z-Range > 5cm

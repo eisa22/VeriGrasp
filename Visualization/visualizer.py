@@ -158,7 +158,7 @@ def visualize_3d_colored(session_path, masks, labels, window_name="Segmentierte 
 
 def visualize_3d_rgbd(session_path):
     """
-    3D Visualisierung 2: RGBD Punktwolke mit Original-Bildfarben.
+    3D Visualisierung 1: RGBD Punktwolke mit Original-Bildfarben.
     """
     all_points, rgb, H, W = _load_pointcloud_data(session_path)
     
@@ -169,17 +169,146 @@ def visualize_3d_rgbd(session_path):
     pcd.points = o3d.utility.Vector3dVector(all_points)
     pcd.colors = o3d.utility.Vector3dVector(rgb_colors)
     
-    o3d.visualization.draw_geometries([pcd], window_name="2/3: RGBD Punktwolke (Original-Farben)")
+    o3d.visualization.draw_geometries([pcd], window_name="1/6: RGBD Punktwolke (Original-Farben)")
 
 
-
-
-
-
-
-def visualize_sobel_edges(session_path, viz_data):
+def visualize_dino_boxes(session_path, dino_debug, stage="raw"):
     """
-    3D Visualisierung 3: Gradienten/Kanten Analyse.
+    3D Visualisierung: Grounding DINO Bounding Boxes als RAHMEN (nicht gefüllt).
+    
+    Args:
+        session_path: Pfad zur Session
+        dino_debug: Debug-Daten von run_grounding_dino_only
+        stage: "raw" für Raw-Boxes, "post_size" für nach Größenfilter, "post_iou" für nach NMS
+    """
+    if dino_debug is None:
+        print(f"[VIZ] Keine DINO Debug-Daten vorhanden für Stage: {stage}")
+        return
+    
+    all_points, rgb, H, W = _load_pointcloud_data(session_path)
+    
+    # Lade Tiefenbild für Z-Koordinaten der Box-Rahmen
+    depth_path = os.path.join(session_path, "distance_to_image_plane", 
+                               "distance_to_image_plane_0000.npy")
+    depth = np.load(depth_path)
+    
+    # Kamera-Intrinsics (identisch zu _load_pointcloud_data)
+    fx = fy = 437.04
+    cx, cy = W / 2, H / 2
+    
+    # Wähle die richtige Box-Liste
+    if stage == "raw":
+        boxes = dino_debug.get("raw_boxes", [])
+        labels = dino_debug.get("raw_labels", [])
+        window_title = "2/6: DINO Raw Boxes (vor Filterung)"
+    elif stage == "post_size":
+        boxes = dino_debug.get("post_size_filter_boxes", [])
+        labels = dino_debug.get("post_size_filter_labels", [])
+        window_title = "3/6: DINO Boxes (nach Größen-Filter)"
+    else:  # post_iou
+        boxes = dino_debug.get("post_iou_boxes", [])
+        labels = dino_debug.get("post_iou_labels", [])
+        window_title = "3/6: DINO Boxes (nach IoU-NMS)"
+    
+    if not boxes:
+        print(f"[VIZ] Keine Boxes für Stage: {stage}")
+        return
+    
+    # Basis-Punktwolke mit RGBD Farben (nicht grau!)
+    rgb_colors = rgb.reshape(-1, 3) / 255.0
+    full_pcd = o3d.geometry.PointCloud()
+    full_pcd.points = o3d.utility.Vector3dVector(all_points)
+    full_pcd.colors = o3d.utility.Vector3dVector(rgb_colors)
+    
+    geoms = [full_pcd]
+    unique_colors = _generate_unique_colors(len(boxes))
+    
+    # Jede Box als 3D-Rahmen (Linien) anzeigen
+    for i, box in enumerate(boxes):
+        x1, y1, x2, y2 = [int(c) for c in box]
+        
+        # Sichere Grenzen
+        x1, y1 = max(0, x1), max(0, y1)
+        x2, y2 = min(W-1, x2), min(H-1, y2)
+        
+        # Finde die durchschnittliche Tiefe entlang der Box-Kanten
+        # Damit der Rahmen auf der richtigen 3D-Höhe gezeichnet wird
+        edge_depths = []
+        
+        # Obere Kante
+        for px in range(x1, x2+1, 5):
+            if depth[y1, px] > 0:
+                edge_depths.append(depth[y1, px])
+        # Untere Kante
+        for px in range(x1, x2+1, 5):
+            if depth[y2, px] > 0:
+                edge_depths.append(depth[y2, px])
+        # Linke Kante
+        for py in range(y1, y2+1, 5):
+            if depth[py, x1] > 0:
+                edge_depths.append(depth[py, x1])
+        # Rechte Kante
+        for py in range(y1, y2+1, 5):
+            if depth[py, x2] > 0:
+                edge_depths.append(depth[py, x2])
+        
+        if not edge_depths:
+            continue
+        
+        # Nimm minimale Tiefe (oberste Oberfläche) für den Rahmen
+        box_z = np.percentile(edge_depths, 10)
+        
+        # Konvertiere 2D Box-Ecken zu 3D Punkten
+        def pixel_to_3d(px, py, z):
+            x_3d = (px - cx) * z / fx
+            y_3d = (py - cy) * z / fy
+            # Open3D Transformation
+            return [x_3d, -y_3d, -z]
+        
+        # 4 Ecken der Box
+        corners = [
+            pixel_to_3d(x1, y1, box_z),  # Top-left
+            pixel_to_3d(x2, y1, box_z),  # Top-right
+            pixel_to_3d(x2, y2, box_z),  # Bottom-right
+            pixel_to_3d(x1, y2, box_z),  # Bottom-left
+        ]
+        
+        # Erstelle LineSet für den Rahmen
+        lines = [
+            [0, 1],  # Top
+            [1, 2],  # Right
+            [2, 3],  # Bottom
+            [3, 0],  # Left
+        ]
+        
+        line_set = o3d.geometry.LineSet()
+        line_set.points = o3d.utility.Vector3dVector(corners)
+        line_set.lines = o3d.utility.Vector2iVector(lines)
+        
+        # Farbe für die Linien
+        color = unique_colors[i]
+        line_set.colors = o3d.utility.Vector3dVector([color for _ in range(len(lines))])
+        
+        geoms.append(line_set)
+        
+        # Optional: ID-Label als Text-Punkt in der Mitte der Box
+        center_x = (x1 + x2) // 2
+        center_y = (y1 + y2) // 2
+        center_3d = pixel_to_3d(center_x, center_y, box_z - 0.02)  # Etwas vor der Box
+        
+        # Kleine Punktwolke für das Label (ID-Nummer)
+        label_pcd = o3d.geometry.PointCloud()
+        label_pcd.points = o3d.utility.Vector3dVector([center_3d])
+        label_pcd.colors = o3d.utility.Vector3dVector([color])
+        geoms.append(label_pcd)
+    
+    print(f"[VIZ] Zeige {len(boxes)} DINO Box-Rahmen ({stage})")
+    o3d.visualization.draw_geometries(geoms, window_name=window_title)
+
+
+def visualize_sobel_edges(session_path, viz_data, window_title_suffix=""):
+    """
+    3D Visualisierung: Gradienten/Kanten Analyse.
     Färbt die Punktwolke basierend auf der Gradienten-Magnitude.
     """
     if viz_data is None:
@@ -196,7 +325,6 @@ def visualize_sobel_edges(session_path, viz_data):
     grad_norm = np.clip(gradient, 0, 50) / 50.0
     
     # Colormap: Blau (flach) -> Rot (Kante)
-    # Einfache Heatmap: R=Grad, G=0, B=1-Grad
     colors = np.zeros((H * W, 3))
     
     grad_flat = grad_norm.flatten()
@@ -205,38 +333,122 @@ def visualize_sobel_edges(session_path, viz_data):
     
     # Markiere erkannte Edges (Spalten) in hellem Grün
     edges_flat = edges.flatten()
-    colors[edges_flat, 0] = 0
-    colors[edges_flat, 1] = 1
-    colors[edges_flat, 2] = 0
+    colors[edges_flat > 0, 0] = 0
+    colors[edges_flat > 0, 1] = 1
+    colors[edges_flat > 0, 2] = 0
     
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(all_points)
     pcd.colors = o3d.utility.Vector3dVector(colors)
     
-    o3d.visualization.draw_geometries([pcd], window_name="3/3: Gradienten/Spalten Analyse (Blau=Flach, Rot=Steil, Grün=Erkannte Kante)")
+    title = f"5/6: Gradienten/Spalten Analyse{window_title_suffix} (Blau=Flach, Rot=Steil, Grün=Kante)"
+    o3d.visualization.draw_geometries([pcd], window_name=title)
 
 
-def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=None, original_masks=None, original_labels=None):
+def visualize_per_box_gradient(session_path, viz_data, dino_debug):
     """
-    Hauptfunktion: Zeigt alle Visualisierungen nacheinander (4 Schritte).
+    NEU: Zeigt die Gradienten-Analyse pro Box an.
+    Hebt hervor, wo starke Tiefensprünge innerhalb von Boxes gefunden wurden.
     """
-    print("\n[VIZ] Starte 4-fache Visualisierung...")
+    if viz_data is None or "per_box_analysis" not in viz_data:
+        print("[VIZ] Keine Per-Box Gradient-Daten vorhanden.")
+        return
     
-    # Visualisierung 1: RGBD mit Original-Farben
+    per_box = viz_data.get("per_box_analysis", [])
+    if not per_box:
+        print("[VIZ] Keine Per-Box Analyse durchgeführt.")
+        return
+    
+    all_points, rgb, H, W = _load_pointcloud_data(session_path)
+    
+    # Basis: Graue Punktwolke
+    base_colors = np.full((H, W, 3), 0.5)  # Grau
+    
+    # Für jede Box: Zeige gefundene Segmente
+    unique_colors = _generate_unique_colors(len(per_box) * 3)  # Genug Farben für alle Segmente
+    color_idx = 0
+    
+    for box_idx, analysis in enumerate(per_box):
+        if analysis is None:
+            continue
+            
+        x1, y1, x2, y2 = analysis['box_coords']
+        segment_labels = analysis['segment_labels']
+        split_mask = analysis['split_mask']
+        
+        # Färbe die Split-Linien weiß
+        box_h, box_w = split_mask.shape
+        for by in range(box_h):
+            for bx in range(box_w):
+                img_y = y1 + by
+                img_x = x1 + bx
+                if img_y < H and img_x < W:
+                    if split_mask[by, bx] > 0:
+                        base_colors[img_y, img_x] = [1.0, 1.0, 1.0]  # Weiß = Split-Linie
+                    else:
+                        seg_id = segment_labels[by, bx]
+                        if seg_id > 0:
+                            # Jedes Segment bekommt eigene Farbe
+                            c_idx = (box_idx * 3 + seg_id) % len(unique_colors)
+                            base_colors[img_y, img_x] = unique_colors[c_idx]
+    
+    # Zu 1D umformen
+    colors_flat = base_colors.reshape(-1, 3)
+    
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(all_points)
+    pcd.colors = o3d.utility.Vector3dVector(colors_flat)
+    
+    segments_found = sum(a['num_segments'] for a in per_box if a)
+    title = f"4/6: Per-Box Gradient-Analyse ({segments_found} Segmente total, Weiß=Trennlinien)"
+    o3d.visualization.draw_geometries([pcd], window_name=title)
+
+
+def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=None, 
+                 original_masks=None, original_labels=None, dino_debug=None):
+    """
+    Hauptfunktion: Zeigt alle 6 Visualisierungen nacheinander.
+    
+    Reihenfolge:
+    1. RGBD mit Original-Farben
+    2. DINO Raw Boxes (alle erkannten)
+    3. DINO Boxes nach IoU-NMS
+    4. Per-Box Gradient-Analyse (wo wurden Segmente getrennt?)
+    5. Globale Gradient/Edges Analyse
+    6. Finale segmentierte Objekte (nach Refinement)
+    """
+    print("\n[VIZ] Starte 6-fache Debug-Visualisierung...")
+    
+    # 1. RGBD mit Original-Farben
+    print("[VIZ] 1/6: RGBD Punktwolke...")
     visualize_3d_rgbd(session_path)
     
-    # Visualisierung 2: Original SAM Masken (vor Sobel)
-    if original_masks is not None:
-        visualize_3d_colored(session_path, original_masks, original_labels, window_name="2/4: Original SAM Masken (Pre-Sobel)")
+    # 2. DINO Raw Boxes
+    if dino_debug:
+        print("[VIZ] 2/6: DINO Raw Boxes...")
+        visualize_dino_boxes(session_path, dino_debug, stage="raw")
     
-    # Visualisierung 3: Sobel Refinement
+    # 3. DINO Boxes nach IoU-NMS
+    if dino_debug:
+        print("[VIZ] 3/6: DINO Boxes nach IoU-NMS...")
+        visualize_dino_boxes(session_path, dino_debug, stage="post_iou")
+    
+    # 4. Per-Box Gradient-Analyse
+    if sobel_viz_data and "per_box_analysis" in sobel_viz_data:
+        print("[VIZ] 4/6: Per-Box Gradient-Analyse...")
+        visualize_per_box_gradient(session_path, sobel_viz_data, dino_debug)
+    
+    # 5. Globale Gradient/Edges Analyse
     if sobel_viz_data:
+        print("[VIZ] 5/6: Globale Gradient-Analyse...")
         visualize_sobel_edges(session_path, sobel_viz_data)
         
-    # Visualisierung 4: Finale segmentierte Objekte (mit Sobel verfeinert)
-    visualize_3d_colored(session_path, refined_masks, refined_labels, window_name="4/4: Finale Segmente (Sobel Refined)")
+    # 6. Finale segmentierte Objekte (mit Sobel verfeinert)
+    print("[VIZ] 6/6: Finale Segmente...")
+    visualize_3d_colored(session_path, refined_masks, refined_labels, 
+                        window_name="6/6: Finale Segmente (Nach Gradient-Refinement)")
     
-    print("[VIZ] Alle Visualisierungen abgeschlossen.\n")
+    print("[VIZ] Alle 6 Visualisierungen abgeschlossen.\n")
     return {}
 
 
@@ -427,4 +639,3 @@ def capture_scene_screenshots(session_path, masks, labels, output_dir=None):
     print(f"[SCREENSHOT] Fertig! 3 Screenshots gespeichert in: {output_dir}\n")
     
     return screenshot_paths
-

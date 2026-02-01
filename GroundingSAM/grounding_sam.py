@@ -142,7 +142,8 @@ def run_grounding_dino_only(session_path: str, dino_model=None, dino_processor=N
     Für Hybrid-Pipeline: DINO liefert grobe Regionen, SAM Grid-Prompts werden separat aufgerufen.
     
     Returns:
-        tuple: (boxes, scores, labels, orig_image)
+        tuple: (boxes, scores, labels, orig_image, debug_data)
+        debug_data enthält: raw_boxes, raw_labels, post_size_filter_boxes, post_size_filter_labels
     """
     device = "cuda" if torch.cuda.is_available() else "cpu"
     
@@ -187,6 +188,11 @@ def run_grounding_dino_only(session_path: str, dino_model=None, dino_processor=N
     print(f"TEXT_THRESHOLD: {TEXT_THRESHOLD} (Text-Matching)")
     print(f"Erkannte Regionen: {len(boxes)}")
     
+    # SPEICHERE RAW BOXES für Debug-Visualisierung
+    raw_boxes = boxes.copy()
+    raw_labels = labels.copy()
+    raw_scores = [s.item() if torch.is_tensor(s) else s for s in scores]
+    
     # Filter: Entferne Boxen ohne Label
     filtered_boxes = []
     filtered_labels = []
@@ -209,7 +215,16 @@ def run_grounding_dino_only(session_path: str, dino_model=None, dino_processor=N
     print(f"[FILTER] Nach Label-Filter: {len(boxes)} Regionen übrig")
     
     if len(boxes) == 0:
-        return [], [], [], None
+        debug_data = {
+            "raw_boxes": raw_boxes,
+            "raw_labels": raw_labels,
+            "raw_scores": raw_scores,
+            "post_size_filter_boxes": [],
+            "post_size_filter_labels": [],
+            "post_iou_boxes": [],
+            "post_iou_labels": []
+        }
+        return [], [], [], None, debug_data
     
     # Box-Größen-Filter
     image_width, image_height = orig_image.size
@@ -218,13 +233,28 @@ def run_grounding_dino_only(session_path: str, dino_model=None, dino_processor=N
     )
     print(f"[BOX-FILTER] Nach Größen-Filter: {len(boxes)} Regionen übrig")
     
+    # SPEICHERE POST-SIZE-FILTER BOXES
+    post_size_boxes = [b.copy() if isinstance(b, list) else list(b) for b in boxes]
+    post_size_labels = labels.copy()
+    
     # Relative IoU NMS
     boxes, scores, labels = apply_relative_iou_nms(
         boxes, scores, labels, RELATIVE_IOU_NMS_THRESH
     )
     print(f"[NMS] Nach Relative IoU NMS: {len(boxes)} finale Regionen")
     
-    return boxes, scores, labels, orig_image
+    # Debug-Daten zusammenstellen
+    debug_data = {
+        "raw_boxes": raw_boxes,
+        "raw_labels": raw_labels,
+        "raw_scores": raw_scores,
+        "post_size_filter_boxes": post_size_boxes,
+        "post_size_filter_labels": post_size_labels,
+        "post_iou_boxes": [b.copy() if isinstance(b, list) else list(b) for b in boxes],
+        "post_iou_labels": labels.copy()
+    }
+    
+    return boxes, scores, labels, orig_image, debug_data
 
 
 def generate_sam_masks_for_boxes(session_path, boxes, labels, sam_model=None, sam_processor=None):
