@@ -876,14 +876,13 @@ def visualize_dino_boxes_with_gradient_edges(session_path, dino_debug, sobel_viz
         matched_boxes.append(match["matched_box"])
         z_planes.append(z_plane)
 
-        # Maske: nur Pixel auf Z-Ebene (Maske ist bereits z-aligniert)
+        # Maske in Box-Farbe einfärben (Kanten und Innenfläche)
         mask_ys, mask_xs = np.where(global_mask > 0)
         for gy, gx in zip(mask_ys, mask_xs):
-            idx = gy * W + gx
-            colors[idx] = box_color
+            colors[gy * W + gx] = box_color
         mask_pixels += len(mask_ys)
 
-        # Gradient-Kanten nur wenn auf derselben Z-Ebene
+        # Gradient-Kanten in derselben Box-Farbe (nicht mehr grün)
         box_h, box_w = split_mask.shape
         for by in range(box_h):
             for bx in range(box_w):
@@ -893,7 +892,7 @@ def visualize_dino_boxes_with_gradient_edges(session_path, dino_debug, sobel_viz
                     continue
                 if split_mask[by, bx] > 0 and depth[img_y, img_x] > 0:
                     if z_plane is None or abs(depth[img_y, img_x] - z_plane) <= tol:
-                        colors[img_y * W + img_x] = [0.1, 1.0, 0.2]
+                        colors[img_y * W + img_x] = box_color
                         edge_count += 1
 
     pcd = o3d.geometry.PointCloud()
@@ -901,16 +900,6 @@ def visualize_dino_boxes_with_gradient_edges(session_path, dino_debug, sobel_viz
     pcd.colors = o3d.utility.Vector3dVector(colors)
 
     geoms = [pcd]
-    # DINO-Box auf Gradient-Z-Ebene (XY von DINO, Z von Gradient – behebt „Verdrehung“)
-    dino_boxes = [m["dino_box"] for m in matches]
-    dino_colors = [np.array(c) * 0.45 for c in box_colors]
-    geoms.extend(_build_dino_box_wireframes(
-        dino_boxes, depth, H, W, dino_colors, z_planes=z_planes
-    ))
-    # Maske-BBox (enger, nach Z-Schnitt)
-    geoms.extend(_build_dino_box_wireframes(
-        matched_boxes, depth, H, W, box_colors, z_planes=z_planes
-    ))
 
     print(
         f"[VIZ] {len(matches)}/{n_total} gematcht "
