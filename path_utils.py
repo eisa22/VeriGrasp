@@ -1,5 +1,8 @@
 # path_utils.py
 import os
+
+import numpy as np
+
 from config import BASE_PATH
 
 
@@ -38,3 +41,8 @@ def get_depth_path(session_path: str = None) -> str:
         "distance_to_image_plane",
         "distance_to_image_plane_0000.npy",
     )
+
+
+def load_session_depth(session_path: str = None) -> np.ndarray:
+    """Lädt das Tiefenbild einer Session (Meter, distance_to_image_plane)."""
+    return np.load(get_depth_path(session_path))

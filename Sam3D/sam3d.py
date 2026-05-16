@@ -12,7 +12,7 @@ import os
 from config import *
 
 
-def refine_masks_3d(masks, boxes, scores, labels, session_path):
+def refine_masks_3d(masks, boxes, scores, labels, session_path, session_context=None):
     """
     Challengt ALLE Masken und sucht nach Sub-Objekten mit 3D-Clustering.
     Trennt insbesondere Pakete auf unterschiedlichen Z-Ebenen.
@@ -29,13 +29,21 @@ def refine_masks_3d(masks, boxes, scores, labels, session_path):
     print(f"[SAM3D] Strategie: Selektives Splitting (nur große/mehrschichtige Masken)")
     print(f"[SAM3D] Challenge-Threshold: {SAM3D_CHALLENGE_THRESHOLD*100:.1f}% Bildfläche oder Z-Range > {SAM3D_Z_RANGE_THRESHOLD*1000:.0f}mm")
     
-    # Lade RGB und Depth
     rgb_path = os.path.join(session_path, "rgb", "rgb_0000.png")
-    depth_path = os.path.join(session_path, "distance_to_image_plane", 
-                               "distance_to_image_plane_0000.npy")
-    
     rgb = np.array(Image.open(rgb_path))[:, :, :3]
-    depth = np.load(depth_path)
+
+    if session_context is not None:
+        from Segmentation.pallet_scene import get_working_depth
+        depth = get_working_depth(session_context)
+        depth_geom = session_context.depth_abs
+    else:
+        depth_path = os.path.join(
+            session_path,
+            "distance_to_image_plane",
+            "distance_to_image_plane_0000.npy",
+        )
+        depth = np.load(depth_path)
+        depth_geom = depth
     H, W = depth.shape
     total_pixels = H * W
     
@@ -45,7 +53,7 @@ def refine_masks_3d(masks, boxes, scores, labels, session_path):
     
     # Erstelle 3D-Punktwolke
     u, v = np.meshgrid(np.arange(W), np.arange(H))
-    z = depth
+    z = depth_geom
     x = (u - cx) * z / fx
     y = (v - cy) * z / fy
     all_points_3d = np.stack([x, y, z], axis=-1).reshape(-1, 3)

@@ -53,7 +53,21 @@ MATCH_DEDUP_Z_OCCLUDE_M = 0.02    # ab 20 mm Z-Differenz gilt als occluded
 MATCH_DEDUP_Z_DIFF_M = 0.005      # < 5 mm Z-Differenz: gleiche Ebene → beide behalten
 MATCH_DEDUP_USE_DINO_BBOX = True  # DINO-BBox zusätzlich zur matched_box prüfen
 MATCH_DEDUP_USE_BBOX = True       # Auch BBox-Überlappung prüfen
-MATCH_DEDUP_KEEP_CLOSER = True    # True = kleinere Tiefe gewinnt (vordere/obere Kante)
+# MATCH_DEDUP_KEEP_CLOSER siehe Palettenebene-Block (depth_rel)
+
+# Palettenebene (RANSAC, einmal pro Session) + Workspace
+WORKSPACE_X_MARGIN_LEFT = 0.15
+WORKSPACE_X_MARGIN_RIGHT = 0.15
+WORKSPACE_MIN_BOX_OVERLAP = 0.5
+PALLET_RANSAC_DISTANCE_M = 0.02
+PALLET_RANSAC_ITERATIONS = 1000
+PALLET_RANSAC_N = 3
+PALLET_RANSAC_STRIDE = 4
+PALLET_MIN_INLIER_RATIO = 0.25
+PALLET_MAX_NORMAL_ANGLE_DEG = 25.0
+PALLET_RANSAC_Y_MIN_RATIO = 0.5
+# depth_rel: größer = näher zur Kamera → vordere Kante hat größeren z_plane
+MATCH_DEDUP_KEEP_CLOSER = False
 
 # SAM3D (selektiv)
 SAM3D_CHALLENGE_THRESHOLD = 0.08   # Nur Masken > 8%

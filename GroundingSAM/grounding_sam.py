@@ -11,6 +11,7 @@ from transformers import (
 )
 from config import *
 from path_utils import get_rgb_path
+from Segmentation.pallet_scene import filter_boxes_by_workspace
 
 
 def calculate_box_iou(box1, box2):
@@ -136,7 +137,7 @@ def apply_relative_iou_nms(boxes, scores, labels, iou_threshold=0.3):
     return filtered_boxes, filtered_scores, filtered_labels
 
 
-def run_grounding_dino_only(session_path: str, dino_model=None, dino_processor=None):
+def run_grounding_dino_only(session_path: str, dino_model=None, dino_processor=None, session_context=None):
     """
     Führt nur Grounding DINO aus und gibt Boxen zurück (ohne SAM).
     Für Hybrid-Pipeline: DINO liefert grobe Regionen, SAM Grid-Prompts werden separat aufgerufen.
@@ -242,6 +243,12 @@ def run_grounding_dino_only(session_path: str, dino_model=None, dino_processor=N
         boxes, scores, labels, RELATIVE_IOU_NMS_THRESH
     )
     print(f"[NMS] Nach Relative IoU NMS: {len(boxes)} finale Regionen")
+
+    if session_context is not None:
+        boxes, scores, labels = filter_boxes_by_workspace(
+            boxes, scores, labels, session_context
+        )
+        print(f"[WORKSPACE] Nach Workspace-Filter: {len(boxes)} Regionen übrig")
     
     # Debug-Daten zusammenstellen
     debug_data = {

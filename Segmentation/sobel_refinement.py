@@ -81,7 +81,7 @@ def build_z_slab_mask(depth, box_coords, z_plane, tolerance):
     return slab
 
 
-def analyze_box_gradient_parameterfree(depth, box, depth_constraint_mask=None):
+def analyze_box_gradient_parameterfree(depth, box, depth_constraint_mask=None, pallet_relative=False):
     """
     PARAMETERFREI: Analysiert den Gradienten innerhalb einer Bounding Box.
     Der Schwellwert wird automatisch aus der Gradient-Statistik berechnet.
@@ -117,7 +117,9 @@ def analyze_box_gradient_parameterfree(depth, box, depth_constraint_mask=None):
         }
     
     # IQR-Vorderebene: Gradient nur auf oberster Schicht in der DINO-Box
-    front_mask_full, _ = create_depth_filtered_mask_parameterfree(box, depth, H, W)
+    front_mask_full, _ = create_depth_filtered_mask_parameterfree(
+        box, depth, H, W, pallet_relative=pallet_relative
+    )
     front_local = front_mask_full[y1:y2, x1:x2]
     box_depth_masked = box_depth.copy()
     box_depth_masked[front_local == 0] = 0
@@ -173,7 +175,7 @@ def analyze_box_gradient_parameterfree(depth, box, depth_constraint_mask=None):
     }
 
 
-def analyze_box_gradient_z_aligned(depth, box):
+def analyze_box_gradient_z_aligned(depth, box, pallet_relative=False):
     """
     Zuerst grobe Gradienten in der DINO-Box, dann Z-Ebene der Kante schätzen,
     ROI auf Tiefen-Slab legen, danach Gradienten + Segmente nur in dieser Ebene.
@@ -182,7 +184,7 @@ def analyze_box_gradient_z_aligned(depth, box):
         dict wie analyze_box_gradient_parameterfree, plus z_plane_m, z_tolerance_m,
         z_slab_mask (HxW), used_z_slab (bool)
     """
-    coarse = analyze_box_gradient_parameterfree(depth, box)
+    coarse = analyze_box_gradient_parameterfree(depth, box, pallet_relative=pallet_relative)
     x1, y1, x2, y2 = coarse["box_coords"]
     split_coarse = coarse["split_mask"]
 
@@ -204,7 +206,9 @@ def analyze_box_gradient_z_aligned(depth, box):
         coarse["used_z_slab"] = False
         return coarse
 
-    fine = analyze_box_gradient_parameterfree(depth, box, depth_constraint_mask=z_slab)
+    fine = analyze_box_gradient_parameterfree(
+        depth, box, depth_constraint_mask=z_slab, pallet_relative=pallet_relative
+    )
     fine["z_plane_m"] = z_plane
     fine["z_plane_mm"] = z_plane * 1000
     fine["z_tolerance_m"] = z_tol
@@ -315,9 +319,10 @@ def align_mask_to_depth_plane(global_mask, depth, split_mask_local, box_coords,
     return aligned, z_stats
 
 
-def select_frontmost_segment(segment_labels, depth_box):
+def select_frontmost_segment(segment_labels, depth_box, pallet_relative=False):
     """
-    PARAMETERFREI: Wählt das vorderste Segment (minimale mittlere Tiefe).
+    PARAMETERFREI: Wählt das vorderste Segment.
+    Absolut: minimale Tiefe; pallet_relative: maximale Höhe über Palette.
     
     Args:
         segment_labels: Label-Map der Segmente
@@ -334,8 +339,7 @@ def select_frontmost_segment(segment_labels, depth_box):
     if len(unique_labels) == 1:
         return unique_labels[0]
     
-    # Finde Segment mit minimaler mittlerer Tiefe
-    min_depth = float('inf')
+    best_depth = float('-inf') if pallet_relative else float('inf')
     best_label = unique_labels[0]
     
     for label in unique_labels:
@@ -344,16 +348,20 @@ def select_frontmost_segment(segment_labels, depth_box):
         valid_depths = segment_depths[segment_depths > 0]
         
         if len(valid_depths) > 0:
-            # Nimm 10. Perzentil für Robustheit
-            mean_depth = np.percentile(valid_depths, 10)
-            if mean_depth < min_depth:
-                min_depth = mean_depth
+            pct = 90 if pallet_relative else 10
+            mean_depth = np.percentile(valid_depths, pct)
+            if pallet_relative:
+                if mean_depth > best_depth:
+                    best_depth = mean_depth
+                    best_label = label
+            elif mean_depth < best_depth:
+                best_depth = mean_depth
                 best_label = label
     
     return best_label
 
 
-def create_depth_filtered_mask_parameterfree(box, depth, H, W):
+def create_depth_filtered_mask_parameterfree(box, depth, H, W, pallet_relative=False):
     """
     PARAMETERFREI: Erstellt eine Maske für NUR die oberste Ebene.
     
@@ -392,32 +400,32 @@ def create_depth_filtered_mask_parameterfree(box, depth, H, W):
         mask[y1:y2, x1:x2] = 1
         return mask, {'method': 'fallback', 'threshold': 0}
     
-    # Finde minimale Tiefe (oberste Oberfläche) - 5. Perzentil für Robustheit
-    min_depth = np.percentile(valid_depths, 5)
-    
-    # Betrachte nur die obersten 30% der Tiefenwerte für IQR-Berechnung
-    p30_depth = np.percentile(valid_depths, 30)
-    top_layer = valid_depths[valid_depths <= p30_depth]
+    if pallet_relative:
+        ref_depth = np.percentile(valid_depths, 95)
+        p70_depth = np.percentile(valid_depths, 70)
+        top_layer = valid_depths[valid_depths >= p70_depth]
+    else:
+        ref_depth = np.percentile(valid_depths, 5)
+        p30_depth = np.percentile(valid_depths, 30)
+        top_layer = valid_depths[valid_depths <= p30_depth]
     
     if len(top_layer) < 5:
-        # Fallback wenn zu wenig Daten
         top_layer = valid_depths
     
-    # IQR der obersten Schicht
     q1 = np.percentile(top_layer, 25)
     q3 = np.percentile(top_layer, 75)
     iqr = q3 - q1
     
-    # Toleranz basierend auf IQR (klassische Outlier-Regel: 1.5 * IQR)
-    # Aber mindestens 30mm und maximal 150mm für Sicherheit
     tolerance = 1.5 * iqr
-    tolerance = max(tolerance, 0.03)   # Mindestens 30mm
-    tolerance = min(tolerance, 0.15)   # Maximal 150mm
+    tolerance = max(tolerance, 0.03)
+    tolerance = min(tolerance, 0.15)
     
-    threshold_depth = min_depth + tolerance
-    
-    # Erstelle Maske: Nur Pixel innerhalb der Toleranz
-    front_mask = (box_depth > 0) & (box_depth <= threshold_depth)
+    if pallet_relative:
+        threshold_depth = ref_depth - tolerance
+        front_mask = (box_depth > 0) & (box_depth >= threshold_depth)
+    else:
+        threshold_depth = ref_depth + tolerance
+        front_mask = (box_depth > 0) & (box_depth <= threshold_depth)
     
     # Morphologische Erosion um unsaubere Ränder zu bereinigen
     # Das verhindert Überlappungen mit benachbarten Objekten
@@ -434,7 +442,7 @@ def create_depth_filtered_mask_parameterfree(box, depth, H, W):
     
     return mask, {
         'method': 'iqr',
-        'min_depth_mm': min_depth * 1000,
+        'min_depth_mm': ref_depth * 1000,
         'threshold_mm': threshold_depth * 1000,
         'tolerance_mm': tolerance * 1000,
         'iqr_mm': iqr * 1000,
@@ -442,7 +450,7 @@ def create_depth_filtered_mask_parameterfree(box, depth, H, W):
     }
 
 
-def apply_sobel_refinement(session_path, masks, labels, boxes=None):
+def apply_sobel_refinement(session_path, masks, labels, boxes=None, session_context=None):
     """
     PARAMETERFREI: Führt Gradientenanalyse mit automatischen Schwellwerten durch.
     
@@ -461,15 +469,21 @@ def apply_sobel_refinement(session_path, masks, labels, boxes=None):
         tuple: (refined_masks, refined_labels, visualization_data)
     """
     print("\n[SOBEL] Starte parameterfreie Gradientenanalyse...")
-    
-    # 1. Lade Tiefenbild
-    depth_path = os.path.join(session_path, "distance_to_image_plane", 
-                               "distance_to_image_plane_0000.npy")
-    if not os.path.exists(depth_path):
-        print("[ERROR] Depth map not found.")
-        return masks, labels, None
-        
-    depth = np.load(depth_path)
+
+    pallet_relative = session_context is not None
+    if session_context is not None:
+        from Segmentation.pallet_scene import get_working_depth
+        depth = get_working_depth(session_context)
+    else:
+        depth_path = os.path.join(
+            session_path,
+            "distance_to_image_plane",
+            "distance_to_image_plane_0000.npy",
+        )
+        if not os.path.exists(depth_path):
+            print("[ERROR] Depth map not found.")
+            return masks, labels, None
+        depth = np.load(depth_path)
     H, W = depth.shape
     
     # 2. PARAMETERFREI: Erstelle tiefengefilterte Masken mit IQR pro Box
@@ -479,7 +493,9 @@ def apply_sobel_refinement(session_path, masks, labels, boxes=None):
     
     if boxes:
         for i, box in enumerate(boxes):
-            filtered_mask, info = create_depth_filtered_mask_parameterfree(box, depth, H, W)
+            filtered_mask, info = create_depth_filtered_mask_parameterfree(
+                box, depth, H, W, pallet_relative=pallet_relative
+            )
             depth_filtered_masks.append(filtered_mask)
             depth_filter_info.append(info)
             
@@ -540,7 +556,8 @@ def apply_sobel_refinement(session_path, masks, labels, boxes=None):
         "gradient_magnitude": gradient_magnitude,
         "edges": binary_edges,
         "depth": depth,
-        "depth_filter_info": depth_filter_info if boxes else []
+        "depth_filter_info": depth_filter_info if boxes else [],
+        "session_context": session_context,
     }
     
     return refined_masks, refined_labels, viz_data

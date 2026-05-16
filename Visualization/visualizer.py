@@ -102,14 +102,29 @@ def _generate_unique_colors(num_objects):
     return unique_colors
 
 
-def _load_pointcloud_data(session_path):
+def _dim_colors_outside_workspace(colors, workspace_mask):
+    """Außerhalb des Workspace: Punkte abdunkeln."""
+    if workspace_mask is None:
+        return colors
+    outside = ~workspace_mask.reshape(-1)
+    colors = colors.copy()
+    colors[outside] *= 0.25
+    return colors
+
+
+def _load_pointcloud_data(session_path, session_context=None):
     """Lädt RGB, Depth und erstellt die 3D-Punktwolke."""
     rgb_path = os.path.join(session_path, "rgb", "rgb_0000.png")
-    depth_path = os.path.join(session_path, "distance_to_image_plane", 
-                               "distance_to_image_plane_0000.npy")
-    
     rgb = np.array(Image.open(rgb_path))[:, :, :3]
-    depth = np.load(depth_path)
+    if session_context is not None:
+        depth = session_context.depth_abs
+    else:
+        depth_path = os.path.join(
+            session_path,
+            "distance_to_image_plane",
+            "distance_to_image_plane_0000.npy",
+        )
+        depth = np.load(depth_path)
     H, W = depth.shape
     
     # Kamera-Intrinsics
@@ -128,20 +143,218 @@ def _load_pointcloud_data(session_path):
     all_points[:, 1] *= -1
     all_points[:, 2] *= -1
     
-    return all_points, rgb, H, W
+    workspace_mask = session_context.workspace_mask if session_context is not None else None
+    return all_points, rgb, H, W, workspace_mask
 
 
-def visualize_3d_colored(session_path, masks, labels, window_name="Segmentierte Objekte"):
+def _load_pcd_for_viz(session_path, session_context=None):
+    """Punktwolke + Basisfarben (Workspace-Ränder abgedunkelt)."""
+    all_points, rgb, H, W, workspace_mask = _load_pointcloud_data(
+        session_path, session_context
+    )
+    base_colors = _dim_colors_outside_workspace(rgb.reshape(-1, 3) / 255.0, workspace_mask)
+    return all_points, rgb, H, W, base_colors, workspace_mask
+
+
+def _camera_to_o3d(points: np.ndarray) -> np.ndarray:
+    """Kamera-Koordinaten → Open3D-Anzeige (Y/Z invertiert, wie übrige Viz)."""
+    pts = np.asarray(points, dtype=np.float64)
+    if pts.ndim == 1:
+        pts = pts.reshape(1, 3)
+    out = pts.copy()
+    out[:, 1] *= -1
+    out[:, 2] *= -1
+    return out
+
+
+_BOTTOM_METHOD_COLORS = {
+    "measured": [0.25, 0.95, 0.35],
+    "from_neighbor": [0.25, 0.55, 1.0],
+    "from_pallet": [1.0, 0.85, 0.2],
+    "uncertain": [1.0, 0.3, 0.3],
+}
+
+
+_OBB_EDGE_INDICES = (
+    (0, 1), (1, 2), (2, 3), (3, 0),
+    (4, 5), (5, 6), (6, 7), (7, 4),
+    (0, 4), (1, 5), (2, 6), (3, 7),
+)
+
+_OBB_FACE_TRIANGLES = (
+    (0, 1, 2), (0, 2, 3),
+    (4, 6, 5), (4, 7, 6),
+    (0, 4, 5), (0, 5, 1),
+    (1, 5, 6), (1, 6, 2),
+    (2, 6, 7), (2, 7, 3),
+    (3, 7, 4), (3, 4, 0),
+)
+
+
+def _make_obb_wireframe(corners_cam: np.ndarray, color: list[float]) -> o3d.geometry.LineSet:
+    corners = _camera_to_o3d(corners_cam)
+    ls = o3d.geometry.LineSet()
+    ls.points = o3d.utility.Vector3dVector(corners)
+    ls.lines = o3d.utility.Vector2iVector(list(_OBB_EDGE_INDICES))
+    ls.colors = o3d.utility.Vector3dVector([color for _ in _OBB_EDGE_INDICES])
+    return ls
+
+
+def _make_obb_solid_mesh(
+    corners_cam: np.ndarray,
+    color: list[float],
+    shade: float = 0.45,
+) -> o3d.geometry.TriangleMesh:
+    """Vollflächiger Quader-Mesh (alle 6 Flächen) mit abgedunkelter Farbe."""
+    corners = _camera_to_o3d(corners_cam)
+    mesh = o3d.geometry.TriangleMesh()
+    mesh.vertices = o3d.utility.Vector3dVector(corners)
+    mesh.triangles = o3d.utility.Vector3iVector(list(_OBB_FACE_TRIANGLES))
+    mesh.paint_uniform_color([c * shade for c in color])
+    mesh.compute_vertex_normals()
+    return mesh
+
+
+def _make_cylinder_edge(p0: np.ndarray, p1: np.ndarray, radius: float, color: list[float]):
+    """Erzeugt ein Zylinder-Mesh zwischen p0 und p1 (für dicke Kanten)."""
+    vec = p1 - p0
+    length = float(np.linalg.norm(vec))
+    if length < 1e-6:
+        return None
+    cyl = o3d.geometry.TriangleMesh.create_cylinder(radius=radius, height=length, resolution=12, split=1)
+    cyl.compute_vertex_normals()
+    cyl.paint_uniform_color(color)
+    z_axis = np.array([0.0, 0.0, 1.0])
+    axis = vec / length
+    rot_axis = np.cross(z_axis, axis)
+    rot_axis_norm = np.linalg.norm(rot_axis)
+    if rot_axis_norm < 1e-9:
+        if axis[2] < 0:
+            R = np.diag([1.0, -1.0, -1.0])
+            cyl.rotate(R, center=np.zeros(3))
+    else:
+        rot_axis /= rot_axis_norm
+        angle = float(np.arccos(np.clip(np.dot(z_axis, axis), -1.0, 1.0)))
+        K = np.array([
+            [0.0, -rot_axis[2], rot_axis[1]],
+            [rot_axis[2], 0.0, -rot_axis[0]],
+            [-rot_axis[1], rot_axis[0], 0.0],
+        ])
+        R = np.eye(3) + np.sin(angle) * K + (1 - np.cos(angle)) * (K @ K)
+        cyl.rotate(R, center=np.zeros(3))
+    midpoint = 0.5 * (p0 + p1)
+    cyl.translate(midpoint)
+    return cyl
+
+
+def _make_obb_thick_edges(
+    corners_cam: np.ndarray,
+    color: list[float],
+    radius: float = 0.004,
+) -> list:
+    """12 Zylinder-Meshes für gut sichtbare Box-Kanten."""
+    corners = _camera_to_o3d(corners_cam)
+    cylinders = []
+    for i, j in _OBB_EDGE_INDICES:
+        cyl = _make_cylinder_edge(corners[i], corners[j], radius, color)
+        if cyl is not None:
+            cylinders.append(cyl)
+    return cylinders
+
+
+def _make_obb_corner_markers(
+    corners_cam: np.ndarray,
+    color: list[float],
+    radius: float = 0.008,
+) -> list:
+    corners = _camera_to_o3d(corners_cam)
+    spheres = []
+    for p in corners:
+        s = o3d.geometry.TriangleMesh.create_sphere(radius=radius, resolution=8)
+        s.compute_vertex_normals()
+        s.paint_uniform_color(color)
+        s.translate(p)
+        spheres.append(s)
+    return spheres
+
+
+def visualize_bottom_inference_3d(
+    session_path,
+    candidates,
+    window_name: str = "Bottom-Plane Inference",
+    session_context=None,
+):
+    """
+    3D-Ansicht: extrudierte Paket-OBBs nach Stage 2.5 (Top-Fläche + inferierte Bodenhöhe).
+    """
+    if not candidates:
+        print("[VIZ] Bottom-Inference: keine Kandidaten – übersprungen.")
+        return
+
+    all_points, _, _, _, base_colors, _ = _load_pcd_for_viz(session_path, session_context)
+    bg = o3d.geometry.PointCloud()
+    bg.points = o3d.utility.Vector3dVector(all_points)
+    bg.colors = o3d.utility.Vector3dVector(base_colors * 0.45)
+    geoms: list = [bg]
+
+    if session_context is not None:
+        z_pal = float(session_context.z_pallet_m)
+        pal_pts = _camera_to_o3d(
+            np.array([[-0.4, 0.0, z_pal], [0.4, 0.0, z_pal], [0.0, -0.3, z_pal], [0.0, 0.3, z_pal]])
+        )
+        pal_ls = o3d.geometry.LineSet()
+        pal_ls.points = o3d.utility.Vector3dVector(pal_pts)
+        pal_ls.lines = o3d.utility.Vector2iVector([[0, 1], [2, 3]])
+        pal_ls.paint_uniform_color([0.6, 0.6, 0.6])
+        geoms.append(pal_ls)
+
+    method_counts: dict[str, int] = {}
+    for i, cand in enumerate(candidates):
+        if cand.bottom is None:
+            continue
+        b = cand.bottom
+        method = b.bottom_method
+        method_counts[method] = method_counts.get(method, 0) + 1
+        color = _BOTTOM_METHOD_COLORS.get(method, [0.8, 0.8, 0.8])
+
+        pts = np.asarray(cand.points_3d, dtype=np.float64)
+        if len(pts) > 0:
+            pcd_top = o3d.geometry.PointCloud()
+            pcd_top.points = o3d.utility.Vector3dVector(_camera_to_o3d(pts))
+            if len(pts) > 200:
+                pcd_top = pcd_top.voxel_down_sample(voxel_size=0.008)
+            pcd_top.paint_uniform_color([min(1.0, c + 0.1) for c in color])
+            geoms.append(pcd_top)
+
+        corners = np.asarray(b.parcel_obb["corners_3d"], dtype=np.float64)
+        geoms.append(_make_obb_solid_mesh(corners, color, shade=0.35))
+        geoms.extend(_make_obb_thick_edges(corners, color, radius=0.005))
+        geoms.extend(_make_obb_corner_markers(corners, color, radius=0.009))
+
+        label = cand.debug.get("label", cand.candidate_id[:6])
+        case = cand.debug.get("case_label", "?")
+        print(
+            f"  [BOTTOM-VIZ] #{i} {label}: {method} conf={b.bottom_confidence:.2f} "
+            f"h={b.height_m:.3f}m case={case}"
+        )
+
+    dist = ", ".join(f"{k}={v}" for k, v in sorted(method_counts.items()))
+    title = f"{window_name} ({dist})" if dist else window_name
+    print(f"[VIZ] Bottom-Inference: {len(candidates)} Kandidaten, {dist}")
+    o3d.visualization.draw_geometries(geoms, window_name=title)
+
+
+def visualize_3d_colored(
+    session_path, masks, labels, window_name="Segmentierte Objekte", session_context=None
+):
     """
     3D Visualisierung: Farbige Segmente (Oberflächen).
     """
-    all_points, rgb, H, W = _load_pointcloud_data(session_path)
-    
-    # Basis-Punktwolke (grau)
+    all_points, _, H, W, base_colors, _ = _load_pcd_for_viz(session_path, session_context)
+
     full_pcd = o3d.geometry.PointCloud()
     full_pcd.points = o3d.utility.Vector3dVector(all_points)
-    gray = np.full((len(all_points), 3), 0.7)
-    full_pcd.colors = o3d.utility.Vector3dVector(gray)
+    full_pcd.colors = o3d.utility.Vector3dVector(base_colors)
     
     geoms = [full_pcd]
     unique_colors = _generate_unique_colors(len(masks))
@@ -179,23 +392,20 @@ def visualize_3d_colored(session_path, masks, labels, window_name="Segmentierte 
     o3d.visualization.draw_geometries(geoms, window_name=window_name)
 
 
-def visualize_3d_rgbd(session_path):
+def visualize_3d_rgbd(session_path, session_context=None):
     """
     3D Visualisierung 1: RGBD Punktwolke mit Original-Bildfarben.
     """
-    all_points, rgb, H, W = _load_pointcloud_data(session_path)
-    
-    # RGB-Farben normalisieren (0-255 -> 0-1)
-    rgb_colors = rgb.reshape(-1, 3) / 255.0
-    
+    all_points, _, _, _, base_colors, _ = _load_pcd_for_viz(session_path, session_context)
+
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(all_points)
-    pcd.colors = o3d.utility.Vector3dVector(rgb_colors)
+    pcd.colors = o3d.utility.Vector3dVector(base_colors)
     
     o3d.visualization.draw_geometries([pcd], window_name="1/6: RGBD Punktwolke (Original-Farben)")
 
 
-def visualize_dino_boxes(session_path, dino_debug, stage="raw"):
+def visualize_dino_boxes(session_path, dino_debug, stage="raw", session_context=None):
     """
     3D Visualisierung: Grounding DINO Bounding Boxes als RAHMEN (nicht gefüllt).
     
@@ -208,12 +418,17 @@ def visualize_dino_boxes(session_path, dino_debug, stage="raw"):
         print(f"[VIZ] Keine DINO Debug-Daten vorhanden für Stage: {stage}")
         return
     
-    all_points, rgb, H, W = _load_pointcloud_data(session_path)
-    
-    # Lade Tiefenbild für Z-Koordinaten der Box-Rahmen
-    depth_path = os.path.join(session_path, "distance_to_image_plane", 
-                               "distance_to_image_plane_0000.npy")
-    depth = np.load(depth_path)
+    all_points, rgb, H, W, base_colors, _ = _load_pcd_for_viz(session_path, session_context)
+    if session_context is not None:
+        depth = session_context.depth_abs
+    else:
+        depth = np.load(
+            os.path.join(
+                session_path,
+                "distance_to_image_plane",
+                "distance_to_image_plane_0000.npy",
+            )
+        )
     
     # Kamera-Intrinsics (identisch zu _load_pointcloud_data)
     fx = fy = 437.04
@@ -237,11 +452,9 @@ def visualize_dino_boxes(session_path, dino_debug, stage="raw"):
         print(f"[VIZ] Keine Boxes für Stage: {stage}")
         return
     
-    # Basis-Punktwolke mit RGBD Farben (nicht grau!)
-    rgb_colors = rgb.reshape(-1, 3) / 255.0
     full_pcd = o3d.geometry.PointCloud()
     full_pcd.points = o3d.utility.Vector3dVector(all_points)
-    full_pcd.colors = o3d.utility.Vector3dVector(rgb_colors)
+    full_pcd.colors = o3d.utility.Vector3dVector(base_colors)
     
     geoms = [full_pcd]
     unique_colors = _generate_unique_colors(len(boxes))
@@ -442,7 +655,7 @@ def _log_match_skip(label, reason, diagnostics=None, edge_pixels=None, min_edge=
 
 def _fuse_dino_gradient_match(depth, dino_box, label, image_h, image_w,
                               border_touch_ratio=None, border_margin=1,
-                              closure_ratio=None):
+                              closure_ratio=None, pallet_relative=False):
     """
     Akzeptiere ein Paket wenn DINO-Box + durchgängige Gradient-Kante zusammenpassen.
     Prüft alle Segmente und wählt das beste (höchste closure, border ok).
@@ -453,7 +666,7 @@ def _fuse_dino_gradient_match(depth, dino_box, label, image_h, image_w,
         closure_ratio = MATCH_CLOSURE_RATIO
 
     # Stufe 1: Grobe Kanten → Z-Ebene → ROI auf Slab → Matching in Z-Ebene
-    analysis = analyze_box_gradient_z_aligned(depth, dino_box)
+    analysis = analyze_box_gradient_z_aligned(depth, dino_box, pallet_relative=pallet_relative)
     x1, y1, x2, y2 = analysis["box_coords"]
     split_mask = analysis["split_mask"].astype(np.uint8)
     segment_labels = analysis["segment_labels"]
@@ -496,7 +709,9 @@ def _fuse_dino_gradient_match(depth, dino_box, label, image_h, image_w,
     min_segment_pixels = max(200, int(box_area * 0.05))
 
     seg_ids = [s for s in np.unique(segment_labels) if s > 0]
-    front_id = select_frontmost_segment(segment_labels, box_depth_local)
+    front_id = select_frontmost_segment(
+        segment_labels, box_depth_local, pallet_relative=pallet_relative
+    )
 
     diagnostics = []
     candidates = []
@@ -630,7 +845,7 @@ def _fuse_dino_gradient_match(depth, dino_box, label, image_h, image_w,
 
 
 def _match_z_plane_m(match):
-    """Z-Ebene der Gradient-Kante in Metern (distance_to_image_plane: kleiner = näher/vorne)."""
+    """Z-Ebene der Gradient-Kante in Metern (depth_rel: größer = näher/vorne)."""
     zs = match.get("z_stats") or {}
     z = zs.get("z_plane_m")
     if z is not None:
@@ -710,14 +925,13 @@ def _match_overlap_metrics(m, k):
 def deduplicate_overlapping_matches(matches, iou_threshold=None):
     """
     Nach dem Matching: überlappende Pakete zusammenführen.
-    Bei Überlappung bleibt das Paket mit der vorderen Gradient-Kante (kleinere Tiefe).
+    Bei Überlappung bleibt das Paket mit der vorderen Gradient-Kante (größeres depth_rel).
     """
     if iou_threshold is None:
         iou_threshold = MATCH_DEDUP_IOU
     if len(matches) <= 1:
         return matches
 
-    # Vordere Kante zuerst (kleinere Tiefe = näher zur Kamera)
     prefer_closer = MATCH_DEDUP_KEEP_CLOSER
     sorted_matches = sorted(
         matches,
@@ -810,6 +1024,7 @@ def extract_dino_gradient_masks(session_path, dino_debug, sobel_viz_data,
     if border_touch_ratio is None:
         border_touch_ratio = MATCH_BORDER_TOUCH_RATIO
 
+    pallet_relative = sobel_viz_data.get("session_context") is not None
     H, W = depth.shape
     matches = []
     for box, label in zip(boxes, labels):
@@ -817,6 +1032,7 @@ def extract_dino_gradient_masks(session_path, dino_debug, sobel_viz_data,
             depth, box, label, H, W,
             border_touch_ratio=border_touch_ratio,
             closure_ratio=closure_ratio,
+            pallet_relative=pallet_relative,
         )
         if match is not None:
             matches.append(match)
@@ -825,8 +1041,9 @@ def extract_dino_gradient_masks(session_path, dino_debug, sobel_viz_data,
     return matches
 
 
-def visualize_dino_boxes_with_gradient_edges(session_path, dino_debug, sobel_viz_data, window_name,
-                                             matches=None):
+def visualize_dino_boxes_with_gradient_edges(
+    session_path, dino_debug, sobel_viz_data, window_name, matches=None, session_context=None
+):
     """
     3D: Nur gematchte Paare (DINO + Gradienten-Analyse).
     Box-Rahmen und grüne Kanten nur wenn beide Signale in derselben Region vorliegen.
@@ -845,7 +1062,9 @@ def visualize_dino_boxes_with_gradient_edges(session_path, dino_debug, sobel_viz
         print("[VIZ] Keine DINO-Boxen (post_iou) vorhanden.")
         return
 
-    all_points, _, H, W = _load_pointcloud_data(session_path)
+    if session_context is None and sobel_viz_data is not None:
+        session_context = sobel_viz_data.get("session_context")
+    all_points, _, H, W, base_colors, _ = _load_pcd_for_viz(session_path, session_context)
 
     if matches is None:
         matches = extract_dino_gradient_masks(session_path, dino_debug, sobel_viz_data)
@@ -858,7 +1077,7 @@ def visualize_dino_boxes_with_gradient_edges(session_path, dino_debug, sobel_viz
         return
 
     box_colors = _generate_unique_colors(len(matches))
-    colors = np.full((H * W, 3), 0.35)
+    colors = base_colors.copy()
     edge_count = 0
     mask_pixels = 0
     matched_boxes = []
@@ -922,7 +1141,7 @@ def visualize_dino_boxes_with_gradient_edges(session_path, dino_debug, sobel_viz
     o3d.visualization.draw_geometries(geoms, window_name=window_name)
 
 
-def visualize_sobel_edges(session_path, viz_data, window_title_suffix=""):
+def visualize_sobel_edges(session_path, viz_data, window_title_suffix="", session_context=None):
     """
     3D Visualisierung: Gradienten/Kanten Analyse.
     Färbt die Punktwolke basierend auf der Gradienten-Magnitude.
@@ -931,8 +1150,10 @@ def visualize_sobel_edges(session_path, viz_data, window_title_suffix=""):
         print("[VIZ] Keine Sobel-Daten vorhanden.")
         return
 
-    all_points, rgb, H, W = _load_pointcloud_data(session_path)
-    
+    if session_context is None and viz_data is not None:
+        session_context = viz_data.get("session_context")
+    all_points, _, H, W, base_colors, _ = _load_pcd_for_viz(session_path, session_context)
+
     gradient = viz_data["gradient_magnitude"]
     edges = viz_data["edges"]
     
@@ -940,18 +1161,13 @@ def visualize_sobel_edges(session_path, viz_data, window_title_suffix=""):
     # Clip bei 50mm für Kontrast
     grad_norm = np.clip(gradient, 0, 50) / 50.0
     
-    # Colormap: Blau (flach) -> Rot (Kante)
-    colors = np.zeros((H * W, 3))
-    
+    colors = base_colors.copy()
     grad_flat = grad_norm.flatten()
-    colors[:, 0] = grad_flat       # Rot
-    colors[:, 2] = 1 - grad_flat   # Blau
-    
-    # Markiere erkannte Edges (Spalten) in hellem Grün
+    colors[:, 0] = np.maximum(colors[:, 0], grad_flat)
+    colors[:, 2] = np.minimum(colors[:, 2], 1 - grad_flat)
+
     edges_flat = edges.flatten()
-    colors[edges_flat > 0, 0] = 0
-    colors[edges_flat > 0, 1] = 1
-    colors[edges_flat > 0, 2] = 0
+    colors[edges_flat > 0] = [0, 1, 0]
     
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(all_points)
@@ -961,7 +1177,7 @@ def visualize_sobel_edges(session_path, viz_data, window_title_suffix=""):
     o3d.visualization.draw_geometries([pcd], window_name=title)
 
 
-def visualize_per_box_gradient(session_path, viz_data, dino_debug):
+def visualize_per_box_gradient(session_path, viz_data, dino_debug, session_context=None):
     """
     NEU: Zeigt die Gradienten-Analyse pro Box an.
     Hebt hervor, wo starke Tiefensprünge innerhalb von Boxes gefunden wurden.
@@ -975,10 +1191,14 @@ def visualize_per_box_gradient(session_path, viz_data, dino_debug):
         print("[VIZ] Keine Per-Box Analyse durchgeführt.")
         return
     
-    all_points, rgb, H, W = _load_pointcloud_data(session_path)
-    
-    # Basis: Graue Punktwolke
-    base_colors = np.full((H, W, 3), 0.5)  # Grau
+    if session_context is None and viz_data is not None:
+        session_context = viz_data.get("session_context")
+    all_points, _, H, W, pcd_colors_flat, workspace_mask = _load_pcd_for_viz(
+        session_path, session_context
+    )
+    base_colors = pcd_colors_flat.reshape(H, W, 3)
+    if workspace_mask is not None:
+        base_colors[~workspace_mask] = [0.15, 0.15, 0.15]
     
     # Für jede Box: Zeige gefundene Segmente
     unique_colors = _generate_unique_colors(len(per_box) * 3)  # Genug Farben für alle Segmente
@@ -1020,10 +1240,11 @@ def visualize_per_box_gradient(session_path, viz_data, dino_debug):
     o3d.visualization.draw_geometries([pcd], window_name=title)
 
 
-def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=None, 
+def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=None,
                  original_masks=None, original_labels=None, dino_debug=None,
                  sam3d_masks=None, sam3d_labels=None,
-                 closed_matches=None):
+                 closed_matches=None, session_context=None,
+                 candidates=None):
     """
     Hauptfunktion: Zeigt alle Debug-Visualisierungen nacheinander.
     
@@ -1035,36 +1256,37 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
     5. Globale Gradient/Edges Analyse
     6. DINO-Boxen + Gradienten-Kanten (gematcht pro Box)
     7. SAM3D Segmente (eigener Output, optional)
+    8. Bottom-Plane Inference (extrudierte OBBs, optional)
     """
     has_sam3d = sam3d_masks is not None and sam3d_labels is not None
-    total_steps = 7 if has_sam3d else 6
+    has_bottom = candidates is not None and len(candidates) > 0
+    total_steps = 6 + int(has_sam3d) + int(has_bottom)
     print(f"\n[VIZ] Starte {total_steps}-fache Debug-Visualisierung...")
     
     # 1. RGBD mit Original-Farben
     print("[VIZ] 1/6: RGBD Punktwolke...")
-    visualize_3d_rgbd(session_path)
-    
-    # 2. DINO Raw Boxes
+    visualize_3d_rgbd(session_path, session_context=session_context)
+
     if dino_debug:
         print("[VIZ] 2/6: DINO Raw Boxes...")
-        visualize_dino_boxes(session_path, dino_debug, stage="raw")
-    
-    # 3. DINO Boxes nach IoU-NMS
+        visualize_dino_boxes(session_path, dino_debug, stage="raw", session_context=session_context)
+
     if dino_debug:
         print("[VIZ] 3/6: DINO Boxes nach IoU-NMS...")
-        visualize_dino_boxes(session_path, dino_debug, stage="post_iou")
-    
-    # 4. Per-Box Gradient-Analyse
+        visualize_dino_boxes(
+            session_path, dino_debug, stage="post_iou", session_context=session_context
+        )
+
     if sobel_viz_data and "per_box_analysis" in sobel_viz_data:
         print("[VIZ] 4/6: Per-Box Gradient-Analyse...")
-        visualize_per_box_gradient(session_path, sobel_viz_data, dino_debug)
-    
-    # 5. Globale Gradient/Edges Analyse
+        visualize_per_box_gradient(
+            session_path, sobel_viz_data, dino_debug, session_context=session_context
+        )
+
     if sobel_viz_data:
         print("[VIZ] 5/6: Globale Gradient-Analyse...")
-        visualize_sobel_edges(session_path, sobel_viz_data)
-        
-    # 6. DINO-Boxen mit Gradienten-Kanten (ersetzt finale Sobel-Segmente)
+        visualize_sobel_edges(session_path, sobel_viz_data, session_context=session_context)
+
     if dino_debug and sobel_viz_data:
         print(f"[VIZ] 6/{total_steps}: DINO-Boxen + Gradient-Kanten...")
         visualize_dino_boxes_with_gradient_edges(
@@ -1073,16 +1295,28 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
             sobel_viz_data,
             window_name=f"6/{total_steps}: Geschlossene Pakete (DINO ∩ durchgängige Kante)",
             matches=closed_matches,
+            session_context=session_context,
         )
-    
-    # 7. SAM3D (eigener Output, basiert auf den Stufe-6-Masken)
+
     if has_sam3d:
-        print(f"[VIZ] 7/{total_steps}: SAM3D Segmente (Input = Stufe-6-Masken)...")
+        step = 6 + 1
+        print(f"[VIZ] {step}/{total_steps}: SAM3D Segmente (Input = Stufe-6-Masken)...")
         visualize_3d_colored(
             session_path,
             sam3d_masks,
             sam3d_labels,
-            window_name=f"7/{total_steps}: SAM3D Segmente (Input = geschlossene Pakete)",
+            window_name=f"{step}/{total_steps}: SAM3D Segmente (Input = geschlossene Pakete)",
+            session_context=session_context,
+        )
+
+    if has_bottom:
+        step = total_steps
+        print(f"[VIZ] {step}/{total_steps}: Bottom-Plane Inference (extrudierte Volumen)...")
+        visualize_bottom_inference_3d(
+            session_path,
+            candidates,
+            window_name=f"{step}/{total_steps}: Bottom-Plane Inference (OBB + Bodenhöhe)",
+            session_context=session_context,
         )
     
     print(f"[VIZ] Alle {total_steps} Visualisierungen abgeschlossen.\n")

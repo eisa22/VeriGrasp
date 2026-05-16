@@ -5,6 +5,7 @@ Hauptpipeline für Pallet-Segmentierung.
 Pipeline: DINO → Box-Masken → Sobel (parameterfrei) → Visualisierung (+ SAM3D parallel)
 """
 from GroundingSAM.grounding_sam import run_grounding_dino_only
+from Segmentation.pallet_scene import prepare_session_context
 from Segmentation.sobel_refinement import apply_sobel_refinement
 from Sam3D.sam3d import refine_masks_3d
 from Visualization.visualizer import (
@@ -15,6 +16,13 @@ from Visualization.visualizer import (
 from LLMOrchestrator.orchestrator import run_orchestrator
 from path_utils import get_all_session_paths
 from config import DEBUG, DINO_MODEL_ID, MATCH_CLOSURE_RATIO, MATCH_BORDER_TOUCH_RATIO
+from perception.configs.load import load_bottom_inference_config
+from perception.adapter import (
+    build_candidates_from_closed_matches,
+    build_candidates_from_sam3d,
+    build_scene_pcd_from_depth,
+)
+from perception.bottom_inference import infer_bottom_planes
 import torch
 import numpy as np
 import os
@@ -45,8 +53,16 @@ def convert_boxes_to_masks(boxes, height, width):
 
 def process_session(session_path, dino_model=None, dino_processor=None):
     """Verarbeitet eine Session durch die gesamte Pipeline."""
+    # Phase 0: Palettenebene (z=0) + Workspace
+    session_context = prepare_session_context(session_path)
+    if session_context is None:
+        print(f"[SKIP] Session ohne Depth: {session_path}")
+        return
+
     # Phase 1: DINO
-    boxes, scores, labels, orig_image, dino_debug = run_grounding_dino_only(session_path, dino_model, dino_processor)
+    boxes, scores, labels, orig_image, dino_debug = run_grounding_dino_only(
+        session_path, dino_model, dino_processor, session_context=session_context
+    )
     if not boxes:
         return
     
@@ -64,7 +80,9 @@ def process_session(session_path, dino_model=None, dino_processor=None):
     original_masks = [m.copy() for m in masks]
     original_labels = labels.copy()
     
-    refined_masks, refined_labels, sobel_viz_data = apply_sobel_refinement(session_path, masks, labels, boxes)
+    refined_masks, refined_labels, sobel_viz_data = apply_sobel_refinement(
+        session_path, masks, labels, boxes, session_context=session_context
+    )
 
     # Phase 3b: DINO ∩ durchgängige Gradient-Kante → geschlossene Paket-Masken
     closed_matches = extract_dino_gradient_masks(
@@ -77,32 +95,68 @@ def process_session(session_path, dino_model=None, dino_processor=None):
     print(f"[CLOSED] {len(closed_matches)} durchgängig umrandete Pakete extrahiert (Input für SAM3D)")
 
     # Phase 3c: SAM3D auf den geschlossenen Stufe-6-Masken
-    sam3d_masks, sam3d_labels = [], []
+    sam3d_masks, sam3d_labels, sam3d_boxes = [], [], []
     if closed_matches:
         s6_masks = [m["mask"] for m in closed_matches]
         s6_boxes = [m["matched_box"] for m in closed_matches]
         s6_labels = [m["label"] for m in closed_matches]
         s6_scores = [1.0] * len(closed_matches)
-        sam3d_masks, _, _, sam3d_labels = refine_masks_3d(
-            s6_masks, s6_boxes, s6_scores, s6_labels, session_path
+        sam3d_masks, sam3d_boxes, _, sam3d_labels = refine_masks_3d(
+            s6_masks, s6_boxes, s6_scores, s6_labels, session_path,
+            session_context=session_context,
         )
     else:
         print("[SAM3D] Übersprungen – keine geschlossenen Pakete als Input.")
+
+    # Phase 3.5: Bottom-plane inference on SAM3D masks
+    candidates = []
+    if sam3d_masks:
+        bottom_cfg = load_bottom_inference_config()
+        candidates = build_candidates_from_sam3d(
+            sam3d_masks,
+            sam3d_labels,
+            session_context.depth_abs,
+            session_context.plane_model,
+            sam3d_boxes=sam3d_boxes,
+            session_context=session_context,
+        )
+        stride = int(bottom_cfg.get("scene_pcd_stride", 4))
+        scene_pcd = build_scene_pcd_from_depth(
+            session_context.depth_abs,
+            workspace_mask=session_context.workspace_mask,
+            stride=stride,
+        )
+        pallet_plane = tuple(float(x) for x in session_context.plane_model)
+        candidates = infer_bottom_planes(candidates, scene_pcd, pallet_plane, bottom_cfg)
+        method_counts: dict[str, int] = {}
+        for c in candidates:
+            method = c.bottom.bottom_method if c.bottom else "none"
+            method_counts[method] = method_counts.get(method, 0) + 1
+            print(
+                f"[BOTTOM] {c.candidate_id} '{c.debug.get('label')}': {method} "
+                f"top={c.top_surface_height:.3f}m bottom={c.bottom.bottom_z:.3f}m "
+                f"h={c.bottom.height_m:.3f}m conf={c.bottom.bottom_confidence:.2f} "
+                f"({c.debug.get('case_label', '?')})"
+            )
+        dist = ", ".join(f"{k}={v}" for k, v in sorted(method_counts.items()))
+        print(f"[BOTTOM] method distribution: {dist}")
 
     # Phase 4: Visualisierung
     results = None
     if DEBUG:
         results = visualize_3d(
-            session_path, 
-            refined_masks, 
-            refined_labels, 
-            sobel_viz_data, 
-            original_masks, 
+            session_path,
+            refined_masks,
+            refined_labels,
+            sobel_viz_data,
+            original_masks,
             original_labels,
             dino_debug,
             sam3d_masks=sam3d_masks if sam3d_masks else None,
             sam3d_labels=sam3d_labels if sam3d_labels else None,
             closed_matches=closed_matches,
+            session_context=session_context,
+            candidates=candidates if candidates else None,
         )
     
     # Phase 5: Screenshots (optional)
@@ -112,7 +166,8 @@ def process_session(session_path, dino_model=None, dino_processor=None):
     llm_result = None
     
     return {
-        "visualization": results, 
+        "visualization": results,
+        "candidates": candidates,
     }
 
 
