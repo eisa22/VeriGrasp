@@ -11,7 +11,7 @@ import json
 from datetime import datetime
 from PIL import Image, ImageDraw
 from Segmentation.sobel_refinement import (
-    analyze_box_gradient_parameterfree,
+    analyze_box_gradient_z_aligned,
     align_mask_to_depth_plane,
     select_frontmost_segment,
 )
@@ -19,6 +19,18 @@ from config import (
     Z_ALIGN_MIN_KEEP_RATIO,
     MATCH_CLOSURE_RATIO,
     MATCH_BORDER_TOUCH_RATIO,
+    MATCH_DEDUP_IOU,
+    MATCH_DEDUP_CONTAINMENT,
+    MATCH_DEDUP_IOU_FAR,
+    MATCH_DEDUP_CONTAINMENT_FAR,
+    MATCH_DEDUP_IOU_DEEP,
+    MATCH_DEDUP_CONTAINMENT_DEEP,
+    MATCH_DEDUP_Z_DEEP_M,
+    MATCH_DEDUP_Z_OCCLUDE_M,
+    MATCH_DEDUP_Z_DIFF_M,
+    MATCH_DEDUP_USE_DINO_BBOX,
+    MATCH_DEDUP_USE_BBOX,
+    MATCH_DEDUP_KEEP_CLOSER,
 )
 
 
@@ -440,10 +452,21 @@ def _fuse_dino_gradient_match(depth, dino_box, label, image_h, image_w,
     if closure_ratio is None:
         closure_ratio = MATCH_CLOSURE_RATIO
 
-    analysis = analyze_box_gradient_parameterfree(depth, dino_box)
+    # Stufe 1: Grobe Kanten → Z-Ebene → ROI auf Slab → Matching in Z-Ebene
+    analysis = analyze_box_gradient_z_aligned(depth, dino_box)
     x1, y1, x2, y2 = analysis["box_coords"]
     split_mask = analysis["split_mask"].astype(np.uint8)
     segment_labels = analysis["segment_labels"]
+    z_slab_mask = analysis.get("z_slab_mask")
+    used_z_slab = analysis.get("used_z_slab", False)
+
+    if used_z_slab:
+        print(
+            f"[Z-SLAB] '{label}': DINO-ROI auf Gradient-Z-Ebene "
+            f"z={analysis.get('z_plane_mm', 0):.0f}mm "
+            f"tol=±{analysis.get('z_tolerance_mm', 0):.0f}mm "
+            f"({int(z_slab_mask.sum()) if z_slab_mask is not None else 0}px)"
+        )
 
     box_h_local, box_w_local = split_mask.shape
     box_area = max(box_h_local * box_w_local, 1)
@@ -543,18 +566,20 @@ def _fuse_dino_gradient_match(depth, dino_box, label, image_h, image_w,
         return None
     global_mask[seg_ys_global, seg_xs_global] = 1
 
-    # Vorderebene (global) für Z-Schnitt
-    front_global = np.zeros((image_h, image_w), dtype=np.uint8)
-    front_local = analysis.get("front_layer_mask")
-    if front_local is not None:
-        front_global[y1:y2, x1:x2] = front_local
+    # Feinabstimmung: Maske auf Z-Slab (bereits vor Match) bzw. Vorderebene
+    constraint_mask = None
+    if z_slab_mask is not None and used_z_slab:
+        constraint_mask = z_slab_mask
+    else:
+        constraint_mask = np.zeros((image_h, image_w), dtype=np.uint8)
+        front_local = analysis.get("front_layer_mask")
+        if front_local is not None:
+            constraint_mask[y1:y2, x1:x2] = front_local
 
-    # Z-Alignment: Gradient-Kante definiert Z-Ebene (DINO ist nur XY)
     aligned_mask, z_stats = align_mask_to_depth_plane(
         global_mask, depth, split_mask, (x1, y1, x2, y2),
-        front_layer_mask=front_global,
+        front_layer_mask=constraint_mask,
     )
-    # Fallback ohne Vorderebenen-Schnitt bei knappem keep_ratio
     if aligned_mask is None and z_stats.get("reject_reason") == "low_keep_ratio":
         aligned_mask, z_stats = align_mask_to_depth_plane(
             global_mask, depth, split_mask, (x1, y1, x2, y2),
@@ -599,7 +624,162 @@ def _fuse_dino_gradient_match(depth, dino_box, label, image_h, image_w,
         "border_ratio": border_ratio,
         "closure": closed_score,
         "z_stats": z_stats,
+        "used_z_slab": used_z_slab,
+        "z_plane_mm": analysis.get("z_plane_mm"),
     }
+
+
+def _match_z_plane_m(match):
+    """Z-Ebene der Gradient-Kante in Metern (distance_to_image_plane: kleiner = näher/vorne)."""
+    zs = match.get("z_stats") or {}
+    z = zs.get("z_plane_m")
+    if z is not None:
+        return float(z)
+    z_mm = match.get("z_plane_mm")
+    if z_mm is not None:
+        return float(z_mm) / 1000.0
+    return float("inf")
+
+
+def _mask_iou(mask_a, mask_b):
+    a = np.asarray(mask_a) > 0
+    b = np.asarray(mask_b) > 0
+    inter = int(np.sum(a & b))
+    union = int(np.sum(a | b))
+    return inter / union if union > 0 else 0.0
+
+
+def _bbox_inter_areas(box_a, box_b):
+    ax1, ay1, ax2, ay2 = [int(v) for v in box_a]
+    bx1, by1, bx2, by2 = [int(v) for v in box_b]
+    ix1 = max(ax1, bx1)
+    iy1 = max(ay1, by1)
+    ix2 = min(ax2, bx2)
+    iy2 = min(ay2, by2)
+    inter = max(0, ix2 - ix1) * max(0, iy2 - iy1)
+    area_a = max(0, ax2 - ax1) * max(0, ay2 - ay1)
+    area_b = max(0, bx2 - bx1) * max(0, by2 - by1)
+    return inter, area_a, area_b
+
+
+def _bbox_iou(box_a, box_b):
+    inter, area_a, area_b = _bbox_inter_areas(box_a, box_b)
+    union = area_a + area_b - inter
+    return inter / union if union > 0 else 0.0
+
+
+def _bbox_containment(box_a, box_b):
+    """Anteil der kleineren BBox, der vom Schnitt überdeckt wird."""
+    inter, area_a, area_b = _bbox_inter_areas(box_a, box_b)
+    smaller = min(area_a, area_b)
+    return inter / smaller if smaller > 0 else 0.0
+
+
+def _mask_containment(mask_a, mask_b):
+    a = np.asarray(mask_a) > 0
+    b = np.asarray(mask_b) > 0
+    inter = int(np.sum(a & b))
+    smaller = min(int(a.sum()), int(b.sum()))
+    return inter / smaller if smaller > 0 else 0.0
+
+
+def _match_overlap_metrics(m, k):
+    """Liefert iou_mask, iou_bbox, contain_mask, contain_bbox.
+
+    iou_bbox/contain_bbox = max(matched_box, dino_box) – DINO ist die ursprüngliche
+    Region und oft die einzige, die Überlappung sichtbar macht.
+    """
+    iou_mask = _mask_iou(m["mask"], k["mask"])
+    contain_mask = _mask_containment(m["mask"], k["mask"])
+    iou_bbox = 0.0
+    contain_bbox = 0.0
+    if MATCH_DEDUP_USE_BBOX:
+        box_m = m.get("matched_box", m["dino_box"])
+        box_k = k.get("matched_box", k["dino_box"])
+        iou_bbox = _bbox_iou(box_m, box_k)
+        contain_bbox = _bbox_containment(box_m, box_k)
+        if MATCH_DEDUP_USE_DINO_BBOX:
+            dino_m = m.get("dino_box")
+            dino_k = k.get("dino_box")
+            if dino_m is not None and dino_k is not None:
+                iou_bbox = max(iou_bbox, _bbox_iou(dino_m, dino_k))
+                contain_bbox = max(contain_bbox, _bbox_containment(dino_m, dino_k))
+    return iou_mask, iou_bbox, contain_mask, contain_bbox
+
+
+def deduplicate_overlapping_matches(matches, iou_threshold=None):
+    """
+    Nach dem Matching: überlappende Pakete zusammenführen.
+    Bei Überlappung bleibt das Paket mit der vorderen Gradient-Kante (kleinere Tiefe).
+    """
+    if iou_threshold is None:
+        iou_threshold = MATCH_DEDUP_IOU
+    if len(matches) <= 1:
+        return matches
+
+    # Vordere Kante zuerst (kleinere Tiefe = näher zur Kamera)
+    prefer_closer = MATCH_DEDUP_KEEP_CLOSER
+    sorted_matches = sorted(
+        matches,
+        key=_match_z_plane_m,
+        reverse=not prefer_closer,
+    )
+    keep = []
+
+    for m in sorted_matches:
+        overlaps_kept = False
+        for k in keep:
+            iou_mask, iou_bbox, contain_mask, contain_bbox = _match_overlap_metrics(m, k)
+            iou = max(iou_mask, iou_bbox) if MATCH_DEDUP_USE_BBOX else iou_mask
+            containment = max(contain_mask, contain_bbox) if MATCH_DEDUP_USE_BBOX else contain_mask
+            z_m = _match_z_plane_m(m) * 1000
+            z_k = _match_z_plane_m(k) * 1000
+            z_diff_m = abs(z_m - z_k) / 1000.0
+
+            # Schwellen abhängig von Z-Differenz (mehr Δz → strenger gegen das hintere Paket)
+            if z_diff_m >= MATCH_DEDUP_Z_DEEP_M:
+                iou_thr = MATCH_DEDUP_IOU_DEEP
+                cont_thr = MATCH_DEDUP_CONTAINMENT_DEEP
+            elif z_diff_m >= MATCH_DEDUP_Z_OCCLUDE_M:
+                iou_thr = MATCH_DEDUP_IOU_FAR
+                cont_thr = MATCH_DEDUP_CONTAINMENT_FAR
+            else:
+                iou_thr = iou_threshold
+                cont_thr = MATCH_DEDUP_CONTAINMENT
+
+            triggers_iou = iou > iou_thr
+            triggers_contain = containment > cont_thr
+
+            if triggers_iou or triggers_contain:
+                if z_diff_m < MATCH_DEDUP_Z_DIFF_M:
+                    print(
+                        f"[DEDUP] gleiche Ebene '{m['label']}' & '{k['label']}': "
+                        f"|Δz|={z_diff_m*1000:.0f}mm < {MATCH_DEDUP_Z_DIFF_M*1000:.0f}mm → behalte beide"
+                    )
+                    continue
+                trigger = "IoU" if triggers_iou else "Containment"
+                print(
+                    f"[DEDUP] '{m['label']}' verworfen: {trigger}={max(iou, containment):.2f} "
+                    f"(iou_maske={iou_mask:.2f} iou_bbox={iou_bbox:.2f} "
+                    f"cont_maske={contain_mask:.2f} cont_bbox={contain_bbox:.2f}, "
+                    f"|Δz|={z_diff_m*1000:.0f}mm) "
+                    f"mit '{k['label']}' (z={z_m:.0f}mm vs z={z_k:.0f}mm gewinnt)"
+                )
+                overlaps_kept = True
+                break
+            elif iou > 0.02 or containment > 0.05:
+                print(
+                    f"[DEDUP] knapp: '{m['label']}' & '{k['label']}' "
+                    f"iou={iou:.2f} cont={containment:.2f} |Δz|={z_diff_m*1000:.0f}mm "
+                    f"(Schwellen IoU>{iou_thr} cont>{cont_thr})"
+                )
+        if not overlaps_kept:
+            keep.append(m)
+
+    removed = len(matches) - len(keep)
+    if removed > 0:
+        print(f"[DEDUP] {len(keep)}/{len(matches)} Matches nach Überlappungsfilter")
+    return keep
 
 
 def extract_dino_gradient_masks(session_path, dino_debug, sobel_viz_data,
@@ -640,6 +820,8 @@ def extract_dino_gradient_masks(session_path, dino_debug, sobel_viz_data,
         )
         if match is not None:
             matches.append(match)
+
+    matches = deduplicate_overlapping_matches(matches)
     return matches
 
 

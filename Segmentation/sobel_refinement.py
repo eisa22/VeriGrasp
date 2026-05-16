@@ -44,7 +44,44 @@ def _compute_iqr_tolerance(depths_m):
     return float(max(tol, 0.03))
 
 
-def analyze_box_gradient_parameterfree(depth, box):
+def estimate_z_plane_from_split_mask(depth, split_mask_local, box_coords):
+    """
+    Schätzt Z-Ebene und Toleranz aus Gradient-Kanten (Median + IQR).
+    Returns:
+        (z_plane_m, tolerance_m) oder (None, None)
+    """
+    x1, y1, x2, y2 = box_coords
+    H, W = depth.shape
+    edge_depths = []
+    bh, bw = split_mask_local.shape
+    for by in range(bh):
+        for bx in range(bw):
+            if split_mask_local[by, bx] > 0:
+                gy, gx = y1 + by, x1 + bx
+                if 0 <= gy < H and 0 <= gx < W and depth[gy, gx] > 0:
+                    edge_depths.append(depth[gy, gx])
+    if len(edge_depths) < 3:
+        return None, None
+    edge_depths = np.array(edge_depths)
+    z_plane = float(np.median(edge_depths))
+    tolerance = min(_compute_iqr_tolerance(edge_depths), 0.15)
+    return z_plane, tolerance
+
+
+def build_z_slab_mask(depth, box_coords, z_plane, tolerance):
+    """HxW Maske: Pixel in der Box auf der Gradient-Z-Ebene."""
+    x1, y1, x2, y2 = [int(c) for c in box_coords]
+    H, W = depth.shape
+    x1, y1 = max(0, x1), max(0, y1)
+    x2, y2 = min(W, x2), min(H, y2)
+    slab = np.zeros((H, W), dtype=np.uint8)
+    box_d = depth[y1:y2, x1:x2]
+    local = (box_d > 0) & (np.abs(box_d - z_plane) <= tolerance)
+    slab[y1:y2, x1:x2] = local.astype(np.uint8)
+    return slab
+
+
+def analyze_box_gradient_parameterfree(depth, box, depth_constraint_mask=None):
     """
     PARAMETERFREI: Analysiert den Gradienten innerhalb einer Bounding Box.
     Der Schwellwert wird automatisch aus der Gradient-Statistik berechnet.
@@ -53,6 +90,7 @@ def analyze_box_gradient_parameterfree(depth, box):
     Args:
         depth: 2D Tiefenbild (float, in Metern)
         box: [x1, y1, x2, y2] Koordinaten der Box
+        depth_constraint_mask: optional HxW – nur hier analysieren (Z-Slab)
         
     Returns:
         dict mit split_mask, num_segments, segment_labels, gradient_magnitude, box_coords
@@ -83,6 +121,10 @@ def analyze_box_gradient_parameterfree(depth, box):
     front_local = front_mask_full[y1:y2, x1:x2]
     box_depth_masked = box_depth.copy()
     box_depth_masked[front_local == 0] = 0
+
+    if depth_constraint_mask is not None:
+        constraint_local = depth_constraint_mask[y1:y2, x1:x2]
+        box_depth_masked[constraint_local == 0] = 0
     
     # In mm konvertieren (Hintergrund = 0 bleibt flach)
     box_depth_mm = box_depth_masked * 1000.0
@@ -129,6 +171,47 @@ def analyze_box_gradient_parameterfree(depth, box):
         'threshold_used': threshold_mm,
         'front_layer_mask': front_local.astype(np.uint8),
     }
+
+
+def analyze_box_gradient_z_aligned(depth, box):
+    """
+    Zuerst grobe Gradienten in der DINO-Box, dann Z-Ebene der Kante schätzen,
+    ROI auf Tiefen-Slab legen, danach Gradienten + Segmente nur in dieser Ebene.
+
+    Returns:
+        dict wie analyze_box_gradient_parameterfree, plus z_plane_m, z_tolerance_m,
+        z_slab_mask (HxW), used_z_slab (bool)
+    """
+    coarse = analyze_box_gradient_parameterfree(depth, box)
+    x1, y1, x2, y2 = coarse["box_coords"]
+    split_coarse = coarse["split_mask"]
+
+    z_plane, z_tol = estimate_z_plane_from_split_mask(
+        depth, split_coarse, (x1, y1, x2, y2)
+    )
+    if z_plane is None:
+        coarse["used_z_slab"] = False
+        return coarse
+
+    z_slab = build_z_slab_mask(depth, (x1, y1, x2, y2), z_plane, z_tol)
+    front_local = coarse.get("front_layer_mask")
+    if front_local is not None:
+        front_full = np.zeros_like(z_slab)
+        front_full[y1:y2, x1:x2] = front_local
+        z_slab = ((z_slab > 0) & (front_full > 0)).astype(np.uint8)
+
+    if int(z_slab.sum()) < 50:
+        coarse["used_z_slab"] = False
+        return coarse
+
+    fine = analyze_box_gradient_parameterfree(depth, box, depth_constraint_mask=z_slab)
+    fine["z_plane_m"] = z_plane
+    fine["z_plane_mm"] = z_plane * 1000
+    fine["z_tolerance_m"] = z_tol
+    fine["z_tolerance_mm"] = z_tol * 1000
+    fine["z_slab_mask"] = z_slab
+    fine["used_z_slab"] = True
+    return fine
 
 
 def align_mask_to_depth_plane(global_mask, depth, split_mask_local, box_coords,

@@ -42,6 +42,18 @@ RELATIVE_IOU_NMS_THRESH = 0.3   # NMS mit relativer IoU
 MATCH_CLOSURE_RATIO = 0.65        # Min. Geschlossenheit Kontur auf Gradient-Kante
 MATCH_BORDER_TOUCH_RATIO = 0.05   # Max. unerklärter Randkontakt (ohne Gradient)
 Z_ALIGN_MIN_KEEP_RATIO = 0.25     # Min. Anteil Segment-Pixel nach Z-Schnitt
+MATCH_DEDUP_IOU = 0.10            # IoU-Schwelle bei kleiner Z-Differenz
+MATCH_DEDUP_CONTAINMENT = 0.20    # Containment-Schwelle bei kleiner Z-Differenz
+MATCH_DEDUP_IOU_FAR = 0.05        # bei mittlerer Z-Differenz
+MATCH_DEDUP_CONTAINMENT_FAR = 0.10
+MATCH_DEDUP_IOU_DEEP = 0.02       # bei großer Z-Differenz (echte Occlusion)
+MATCH_DEDUP_CONTAINMENT_DEEP = 0.05
+MATCH_DEDUP_Z_DEEP_M = 0.10       # ab 100 mm = klare Occlusion
+MATCH_DEDUP_Z_OCCLUDE_M = 0.02    # ab 20 mm Z-Differenz gilt als occluded
+MATCH_DEDUP_Z_DIFF_M = 0.005      # < 5 mm Z-Differenz: gleiche Ebene → beide behalten
+MATCH_DEDUP_USE_DINO_BBOX = True  # DINO-BBox zusätzlich zur matched_box prüfen
+MATCH_DEDUP_USE_BBOX = True       # Auch BBox-Überlappung prüfen
+MATCH_DEDUP_KEEP_CLOSER = True    # True = kleinere Tiefe gewinnt (vordere/obere Kante)
 
 # SAM3D (selektiv)
 SAM3D_CHALLENGE_THRESHOLD = 0.08   # Nur Masken > 8%
