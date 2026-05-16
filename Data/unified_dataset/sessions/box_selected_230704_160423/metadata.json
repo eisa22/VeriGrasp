@@ -1,0 +1,25 @@
+{
+  "session_id": "box_selected_230704_160423",
+  "source_dataset": "box_is_selected",
+  "original_path": "/home/samuel/Thesis/VisionPipeline/Data/Datav2/Data/Box-Is selected",
+  "original_files": {
+    "rgb": "230704_160423.jpg",
+    "ply": "230704_160423.ply"
+  },
+  "format": {
+    "rgb": "jpg",
+    "depth": "npy (generated)",
+    "pointcloud": "npy (from ply)",
+    "depth_unit": "meters"
+  },
+  "camera_intrinsics": {
+    "fx": 437.04,
+    "fy": 437.04,
+    "cx": 640.0,
+    "cy": 360.0,
+    "width": 1280,
+    "height": 720,
+    "note": "Intrinsics assumed from pipeline defaults"
+  },
+  "conversion_date": "2026-05-16T10:50:34.056921"
+}

@@ -1,0 +1,20 @@
+{
+  "session_id": "pallet_rgbd_Replicator_12",
+  "source_dataset": "pallet_rgbd_data",
+  "original_path": "/home/samuel/Thesis/VisionPipeline/Data/pallet_rgbd_data/Replicator_12",
+  "format": {
+    "rgb": "png",
+    "depth": "npy",
+    "pointcloud": "npy",
+    "depth_unit": "meters"
+  },
+  "camera_intrinsics": {
+    "fx": 437.04,
+    "fy": 437.04,
+    "cx": 256.0,
+    "cy": 256.0,
+    "width": 512,
+    "height": 512
+  },
+  "conversion_date": "2026-05-16T10:50:21.426467"
+}

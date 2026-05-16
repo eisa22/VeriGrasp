@@ -4,6 +4,7 @@ import numpy as np
 import os
 from PIL import Image
 from scipy import ndimage
+from config import Z_ALIGN_MIN_KEEP_RATIO
 
 
 def compute_adaptive_gradient_threshold(gradient_magnitude):
@@ -32,10 +33,22 @@ def compute_adaptive_gradient_threshold(gradient_magnitude):
     return threshold_mm
 
 
+def _compute_iqr_tolerance(depths_m):
+    """IQR-Toleranz in Metern (min 30 mm, max 150 mm)."""
+    if len(depths_m) < 5:
+        return 0.03
+    q1 = np.percentile(depths_m, 25)
+    q3 = np.percentile(depths_m, 75)
+    iqr = q3 - q1
+    tol = 1.5 * iqr
+    return float(max(tol, 0.03))
+
+
 def analyze_box_gradient_parameterfree(depth, box):
     """
     PARAMETERFREI: Analysiert den Gradienten innerhalb einer Bounding Box.
     Der Schwellwert wird automatisch aus der Gradient-Statistik berechnet.
+    Gradienten werden nur auf der IQR-Vorderebene der Box berechnet.
     
     Args:
         depth: 2D Tiefenbild (float, in Metern)
@@ -61,11 +74,18 @@ def analyze_box_gradient_parameterfree(depth, box):
             'segment_labels': np.ones((y2-y1, x2-x1), dtype=np.int32),
             'gradient_magnitude': np.zeros((y2-y1, x2-x1)),
             'box_coords': (x1, y1, x2, y2),
-            'threshold_used': 0
+            'threshold_used': 0,
+            'front_layer_mask': np.zeros((max(y2 - y1, 0), max(x2 - x1, 0)), dtype=np.uint8),
         }
     
-    # In mm konvertieren
-    box_depth_mm = box_depth * 1000.0
+    # IQR-Vorderebene: Gradient nur auf oberster Schicht in der DINO-Box
+    front_mask_full, _ = create_depth_filtered_mask_parameterfree(box, depth, H, W)
+    front_local = front_mask_full[y1:y2, x1:x2]
+    box_depth_masked = box_depth.copy()
+    box_depth_masked[front_local == 0] = 0
+    
+    # In mm konvertieren (Hintergrund = 0 bleibt flach)
+    box_depth_mm = box_depth_masked * 1000.0
     
     # Leichter Blur
     box_depth_mm = cv2.GaussianBlur(box_depth_mm, (3, 3), 0)
@@ -106,8 +126,110 @@ def analyze_box_gradient_parameterfree(depth, box):
         'segment_labels': labels,
         'gradient_magnitude': gradient_magnitude,
         'box_coords': (x1, y1, x2, y2),
-        'threshold_used': threshold_mm
+        'threshold_used': threshold_mm,
+        'front_layer_mask': front_local.astype(np.uint8),
     }
+
+
+def align_mask_to_depth_plane(global_mask, depth, split_mask_local, box_coords,
+                              min_keep_ratio=None, front_layer_mask=None):
+    """
+    Schneidet eine 2D-Segmentmaske auf die Z-Ebene der Gradient-Kante.
+    Die Gradient-Kante definiert die Referenz-Z-Ebene; ein großer z_residual
+    vor dem Schnitt ist kein Reject-Grund (DINO ist rein 2D).
+
+    Args:
+        global_mask: HxW uint8 Maske
+        depth: HxW Tiefenbild in Metern
+        split_mask_local: Kantenmaske im lokalen Box-Koordinatensystem
+        box_coords: (x1, y1, x2, y2)
+        min_keep_ratio: Min. Anteil erhaltener Pixel nach Z-Schnitt
+        front_layer_mask: optional HxW, Schnitt mit Vorderebene vor Z-Align
+
+    Returns:
+        tuple: (aligned_mask, z_stats) – aligned_mask ist None bei Reject
+    """
+    if min_keep_ratio is None:
+        min_keep_ratio = Z_ALIGN_MIN_KEEP_RATIO
+
+    x1, y1, x2, y2 = box_coords
+    H, W = depth.shape
+    work_mask = global_mask.copy()
+
+    if front_layer_mask is not None:
+        work_mask = (work_mask > 0) & (front_layer_mask > 0)
+        work_mask = work_mask.astype(np.uint8)
+
+    # Tiefe der Gradient-Kante (global) – maßgeblich für Z-Ebene
+    edge_depths_list = []
+    box_h, box_w = split_mask_local.shape
+    for by in range(box_h):
+        for bx in range(box_w):
+            if split_mask_local[by, bx] > 0:
+                gy, gx = y1 + by, x1 + bx
+                if 0 <= gy < H and 0 <= gx < W and depth[gy, gx] > 0:
+                    edge_depths_list.append(depth[gy, gx])
+
+    seg_ys, seg_xs = np.where(work_mask > 0)
+    if len(seg_ys) == 0:
+        return None, {'reject_reason': 'empty_segment'}
+
+    seg_depths = depth[seg_ys, seg_xs]
+    seg_depths = seg_depths[seg_depths > 0]
+    if len(seg_depths) == 0:
+        return None, {'reject_reason': 'no_valid_depth'}
+
+    if edge_depths_list:
+        edge_depths_arr = np.array(edge_depths_list)
+        z_edge = float(np.median(edge_depths_arr))
+        tolerance = _compute_iqr_tolerance(edge_depths_arr)
+    else:
+        z_edge = float(np.median(seg_depths))
+        tolerance = _compute_iqr_tolerance(seg_depths)
+
+    z_interior_median = float(np.median(seg_depths))
+    z_residual = abs(z_interior_median - z_edge)
+
+    # Z-Schnitt auf Gradient-Ebene (behebt DINO↔Gradient Z-Verdrehung)
+    depth_ok = (depth > 0) & (np.abs(depth - z_edge) <= tolerance)
+    aligned = (work_mask > 0) & depth_ok
+    aligned = aligned.astype(np.uint8)
+
+    original_count = int(global_mask.sum())
+    kept_count = int(aligned.sum())
+    pixels_kept_ratio = kept_count / original_count if original_count > 0 else 0.0
+
+    kept_depths = depth[aligned > 0]
+    kept_depths = kept_depths[kept_depths > 0]
+    kept_spread = float(np.percentile(kept_depths, 75) - np.percentile(kept_depths, 25)) if len(kept_depths) > 5 else 0.0
+
+    z_stats = {
+        'z_plane_m': z_edge,
+        'z_plane_mm': z_edge * 1000,
+        'tolerance_m': tolerance,
+        'tolerance_mm': tolerance * 1000,
+        'z_residual_m': z_residual,
+        'z_residual_mm': z_residual * 1000,
+        'pixels_kept_ratio': pixels_kept_ratio,
+        'original_pixels': original_count,
+        'kept_pixels': kept_count,
+        'kept_depth_iqr_mm': kept_spread * 1000,
+    }
+
+    if kept_count < 50:
+        z_stats['reject_reason'] = 'too_few_pixels'
+        return None, z_stats
+
+    if pixels_kept_ratio < min_keep_ratio:
+        z_stats['reject_reason'] = 'low_keep_ratio'
+        return None, z_stats
+
+    # Nur ablehnen wenn das Ergebnis nach Schnitt selbst noch stark gestreut ist
+    if kept_spread > 3.0 * tolerance:
+        z_stats['reject_reason'] = 'kept_depth_scatter'
+        return None, z_stats
+
+    return aligned, z_stats
 
 
 def select_frontmost_segment(segment_labels, depth_box):

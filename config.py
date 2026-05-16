@@ -38,6 +38,11 @@ RELATIVE_IOU_NMS_THRESH = 0.3   # NMS mit relativer IoU
 # Tiefenfilterung: PARAMETERFREI
 # Die Tiefentrennung erfolgt automatisch via Otsu in sobel_refinement.py
 
+# DINO ↔ Gradient Match (Stufe 6 / SAM3D-Input)
+MATCH_CLOSURE_RATIO = 0.65        # Min. Geschlossenheit Kontur auf Gradient-Kante
+MATCH_BORDER_TOUCH_RATIO = 0.05   # Max. unerklärter Randkontakt (ohne Gradient)
+Z_ALIGN_MIN_KEEP_RATIO = 0.25     # Min. Anteil Segment-Pixel nach Z-Schnitt
+
 # SAM3D (selektiv)
 SAM3D_CHALLENGE_THRESHOLD = 0.08   # Nur Masken > 8%
 SAM3D_Z_RANGE_THRESHOLD = 0.05     # oder Z-Range > 5cm

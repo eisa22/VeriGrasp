@@ -5,10 +5,21 @@ Modul für 2D und 3D Visualisierung von Segmentierungsergebnissen.
 import numpy as np
 import torch
 import open3d as o3d
+import cv2
 import os
 import json
 from datetime import datetime
 from PIL import Image, ImageDraw
+from Segmentation.sobel_refinement import (
+    analyze_box_gradient_parameterfree,
+    align_mask_to_depth_plane,
+    select_frontmost_segment,
+)
+from config import (
+    Z_ALIGN_MIN_KEEP_RATIO,
+    MATCH_CLOSURE_RATIO,
+    MATCH_BORDER_TOUCH_RATIO,
+)
 
 
 def visualize_2d(orig_image, boxes, masks, labels, scores):
@@ -306,6 +317,440 @@ def visualize_dino_boxes(session_path, dino_debug, stage="raw"):
     o3d.visualization.draw_geometries(geoms, window_name=window_title)
 
 
+def _build_dino_box_wireframes(boxes, depth, H, W, box_colors=None, z_planes=None):
+    """Erstellt 3D-LineSets für Bounding Boxes (optional feste Z-Ebene pro Box)."""
+    fx = fy = 437.04
+    cx, cy = W / 2, H / 2
+
+    if box_colors is None:
+        box_colors = _generate_unique_colors(len(boxes))
+
+    def pixel_to_3d(px, py, z):
+        x_3d = (px - cx) * z / fx
+        y_3d = (py - cy) * z / fy
+        return [x_3d, -y_3d, -z]
+
+    geoms = []
+    for i, box in enumerate(boxes):
+        x1, y1, x2, y2 = [int(c) for c in box]
+        x1, y1 = max(0, x1), max(0, y1)
+        x2, y2 = min(W - 1, x2), min(H - 1, y2)
+
+        if z_planes is not None and i < len(z_planes) and z_planes[i] is not None:
+            box_z = z_planes[i]
+        else:
+            edge_depths = []
+            for px in range(x1, x2 + 1, 5):
+                if depth[y1, px] > 0:
+                    edge_depths.append(depth[y1, px])
+                if depth[y2, px] > 0:
+                    edge_depths.append(depth[y2, px])
+            for py in range(y1, y2 + 1, 5):
+                if depth[py, x1] > 0:
+                    edge_depths.append(depth[py, x1])
+                if depth[py, x2] > 0:
+                    edge_depths.append(depth[py, x2])
+            if not edge_depths:
+                continue
+            box_z = np.percentile(edge_depths, 10)
+        corners = [
+            pixel_to_3d(x1, y1, box_z),
+            pixel_to_3d(x2, y1, box_z),
+            pixel_to_3d(x2, y2, box_z),
+            pixel_to_3d(x1, y2, box_z),
+        ]
+        lines = [[0, 1], [1, 2], [2, 3], [3, 0]]
+
+        line_set = o3d.geometry.LineSet()
+        line_set.points = o3d.utility.Vector3dVector(corners)
+        line_set.lines = o3d.utility.Vector2iVector(lines)
+        color = box_colors[i % len(box_colors)]
+        line_set.colors = o3d.utility.Vector3dVector([color for _ in range(len(lines))])
+        geoms.append(line_set)
+
+    return geoms
+
+
+def _score_segment_for_match(seg_mask_local, split_mask, border_band, kernel3):
+    """Bewertet ein Segment: border_ratio, closure, seg_mask_local."""
+    seg_size = int(seg_mask_local.sum())
+    if seg_size == 0:
+        return None
+
+    split_dilated = cv2.dilate(split_mask, kernel3, iterations=2)
+    on_border = (seg_mask_local > 0) & border_band
+    unexplained_border = on_border & (split_dilated == 0)
+    border_ratio = int(unexplained_border.sum()) / seg_size
+
+    dilated = cv2.dilate(seg_mask_local, kernel3, iterations=1)
+    contour = (dilated.astype(bool)) & (~seg_mask_local.astype(bool))
+    contour_pixels = int(contour.sum())
+    if contour_pixels == 0:
+        return None
+
+    on_gradient = contour & (split_mask > 0)
+    on_border_explained = contour & border_band & (split_dilated > 0)
+    closed_pixels = int(np.sum(on_gradient | on_border_explained))
+    closed_score = closed_pixels / contour_pixels
+
+    return {
+        "border_ratio": border_ratio,
+        "closure": closed_score,
+        "seg_mask_local": seg_mask_local,
+        "size": seg_size,
+    }
+
+
+def _log_match_skip(label, reason, diagnostics=None, edge_pixels=None, min_edge=None):
+    """Diagnostik für verworfene DINO+Gradient-Matches."""
+    if diagnostics:
+        best = max(diagnostics, key=lambda d: d["closure"])
+        print(
+            f"[MATCH] SKIP '{label}': {reason} | "
+            f"best_seg={best['seg_id']} closure={best['closure']*100:.0f}% "
+            f"border={best['border_ratio']*100:.1f}% size={best['size']}px"
+        )
+        for d in diagnostics:
+            flag = "ok" if (
+                d["border_ratio"] <= MATCH_BORDER_TOUCH_RATIO
+                and d["closure"] >= MATCH_CLOSURE_RATIO
+            ) else "  "
+            print(
+                f"  {flag} seg={d['seg_id']} closure={d['closure']*100:.0f}% "
+                f"border={d['border_ratio']*100:.1f}% size={d['size']}px"
+            )
+    elif edge_pixels is not None:
+        print(
+            f"[MATCH] SKIP '{label}': {reason} "
+            f"(kanten={edge_pixels}px, min={min_edge}px)"
+        )
+    else:
+        print(f"[MATCH] SKIP '{label}': {reason}")
+
+
+def _fuse_dino_gradient_match(depth, dino_box, label, image_h, image_w,
+                              border_touch_ratio=None, border_margin=1,
+                              closure_ratio=None):
+    """
+    Akzeptiere ein Paket wenn DINO-Box + durchgängige Gradient-Kante zusammenpassen.
+    Prüft alle Segmente und wählt das beste (höchste closure, border ok).
+    """
+    if border_touch_ratio is None:
+        border_touch_ratio = MATCH_BORDER_TOUCH_RATIO
+    if closure_ratio is None:
+        closure_ratio = MATCH_CLOSURE_RATIO
+
+    analysis = analyze_box_gradient_parameterfree(depth, dino_box)
+    x1, y1, x2, y2 = analysis["box_coords"]
+    split_mask = analysis["split_mask"].astype(np.uint8)
+    segment_labels = analysis["segment_labels"]
+
+    box_h_local, box_w_local = split_mask.shape
+    box_area = max(box_h_local * box_w_local, 1)
+    edge_pixels = int(split_mask.sum())
+
+    if box_h_local < 10 or box_w_local < 10:
+        _log_match_skip(label, "box zu klein")
+        return None
+
+    min_edge_pixels = max(40, int(box_area * 0.002))
+    if edge_pixels < min_edge_pixels:
+        _log_match_skip(
+            label, "zu wenig Gradient-Kanten",
+            edge_pixels=edge_pixels, min_edge=min_edge_pixels,
+        )
+        return None
+
+    m = max(1, int(border_margin))
+    border_band = np.zeros((box_h_local, box_w_local), dtype=bool)
+    border_band[:m, :] = True
+    border_band[-m:, :] = True
+    border_band[:, :m] = True
+    border_band[:, -m:] = True
+
+    kernel3 = np.ones((3, 3), np.uint8)
+    box_depth_local = depth[y1:y2, x1:x2]
+    min_segment_pixels = max(200, int(box_area * 0.05))
+
+    seg_ids = [s for s in np.unique(segment_labels) if s > 0]
+    front_id = select_frontmost_segment(segment_labels, box_depth_local)
+
+    diagnostics = []
+    candidates = []
+
+    for seg_id in seg_ids:
+        seg_size = int(np.sum(segment_labels == seg_id))
+        if seg_size < min_segment_pixels:
+            continue
+
+        seg_mask_local = (segment_labels == seg_id).astype(np.uint8)
+        scored = _score_segment_for_match(seg_mask_local, split_mask, border_band, kernel3)
+        if scored is None:
+            continue
+
+        entry = {
+            "seg_id": int(seg_id),
+            "size": seg_size,
+            "border_ratio": scored["border_ratio"],
+            "closure": scored["closure"],
+            "seg_mask_local": scored["seg_mask_local"],
+            "is_front": seg_id == front_id,
+        }
+        diagnostics.append(entry)
+
+        if scored["border_ratio"] <= border_touch_ratio:
+            candidates.append(entry)
+
+    if not candidates:
+        _log_match_skip(label, "alle Segmente occluded (Rand ohne Gradient)", diagnostics)
+        return None
+
+    # Bestes Segment: höchste closure unter border-ok; Front-Segment bei Gleichstand bevorzugen
+    candidates.sort(
+        key=lambda c: (c["closure"], c["is_front"], c["size"]),
+        reverse=True,
+    )
+    best = candidates[0]
+
+    if best["closure"] < closure_ratio:
+        _log_match_skip(
+            label,
+            f"Geschlossenheit < {closure_ratio*100:.0f}%",
+            diagnostics,
+        )
+        return None
+
+    chosen = best
+    seg_mask_local = chosen["seg_mask_local"]
+    border_ratio = chosen["border_ratio"]
+    closed_score = chosen["closure"]
+    seg_id = chosen["seg_id"]
+
+    print(
+        f"[MATCH] OK '{label}': seg={seg_id} closure={closed_score*100:.0f}% "
+        f"border={border_ratio*100:.1f}% (front={chosen['is_front']})"
+    )
+
+    # In globale Bildmaske einsetzen (2D-Segment vor Z-Schnitt)
+    global_mask = np.zeros((image_h, image_w), dtype=np.uint8)
+    seg_ys_local, seg_xs_local = np.where(seg_mask_local > 0)
+    seg_xs_global = seg_xs_local + x1
+    seg_ys_global = seg_ys_local + y1
+    valid = (seg_xs_global < image_w) & (seg_ys_global < image_h)
+    seg_xs_global = seg_xs_global[valid]
+    seg_ys_global = seg_ys_global[valid]
+    if len(seg_xs_global) == 0:
+        return None
+    global_mask[seg_ys_global, seg_xs_global] = 1
+
+    # Vorderebene (global) für Z-Schnitt
+    front_global = np.zeros((image_h, image_w), dtype=np.uint8)
+    front_local = analysis.get("front_layer_mask")
+    if front_local is not None:
+        front_global[y1:y2, x1:x2] = front_local
+
+    # Z-Alignment: Gradient-Kante definiert Z-Ebene (DINO ist nur XY)
+    aligned_mask, z_stats = align_mask_to_depth_plane(
+        global_mask, depth, split_mask, (x1, y1, x2, y2),
+        front_layer_mask=front_global,
+    )
+    # Fallback ohne Vorderebenen-Schnitt bei knappem keep_ratio
+    if aligned_mask is None and z_stats.get("reject_reason") == "low_keep_ratio":
+        aligned_mask, z_stats = align_mask_to_depth_plane(
+            global_mask, depth, split_mask, (x1, y1, x2, y2),
+            front_layer_mask=None,
+            min_keep_ratio=Z_ALIGN_MIN_KEEP_RATIO * 0.7,
+        )
+    if aligned_mask is None:
+        reason = z_stats.get("reject_reason", "unknown")
+        print(
+            f"[Z-ALIGN] REJECT '{label}': {reason} "
+            f"(residual={z_stats.get('z_residual_mm', 0):.0f}mm, "
+            f"kept={z_stats.get('pixels_kept_ratio', 0)*100:.0f}%, "
+            f"tol={z_stats.get('tolerance_mm', 0):.0f}mm)"
+        )
+        return None
+
+    seg_ys_a, seg_xs_a = np.where(aligned_mask > 0)
+    if len(seg_xs_a) == 0:
+        return None
+
+    matched_box = [
+        int(seg_xs_a.min()),
+        int(seg_ys_a.min()),
+        int(seg_xs_a.max()),
+        int(seg_ys_a.max()),
+    ]
+
+    print(
+        f"[Z-ALIGN] '{label}': z_plane={z_stats['z_plane_mm']:.0f}mm, "
+        f"tol={z_stats['tolerance_mm']:.0f}mm, kept={z_stats['pixels_kept_ratio']*100:.0f}%, "
+        f"residual={z_stats['z_residual_mm']:.0f}mm"
+    )
+
+    return {
+        "label": label,
+        "dino_box": [x1, y1, x2, y2],
+        "matched_box": matched_box,
+        "mask": aligned_mask,
+        "analysis": analysis,
+        "edge_pixels": edge_pixels,
+        "segment_pixels": int(aligned_mask.sum()),
+        "border_ratio": border_ratio,
+        "closure": closed_score,
+        "z_stats": z_stats,
+    }
+
+
+def extract_dino_gradient_masks(session_path, dino_debug, sobel_viz_data,
+                                closure_ratio=None, border_touch_ratio=None):
+    """
+    Extrahiert Pakete, die in der DINO-Box durchgängig von Gradient-Kanten umrandet sind.
+    Wird sowohl von der Visualisierung als auch von der Pipeline (→ SAM3D) verwendet.
+
+    Returns:
+        list[dict] mit Keys: label, dino_box, matched_box, mask (HxW), analysis,
+                              edge_pixels, segment_pixels, border_ratio, closure
+        Leere Liste wenn keine Daten/Matches.
+    """
+    if dino_debug is None or sobel_viz_data is None:
+        return []
+
+    depth = sobel_viz_data.get("depth")
+    if depth is None:
+        return []
+
+    boxes = dino_debug.get("post_iou_boxes", [])
+    labels = dino_debug.get("post_iou_labels", [])
+    if not boxes:
+        return []
+
+    if closure_ratio is None:
+        closure_ratio = MATCH_CLOSURE_RATIO
+    if border_touch_ratio is None:
+        border_touch_ratio = MATCH_BORDER_TOUCH_RATIO
+
+    H, W = depth.shape
+    matches = []
+    for box, label in zip(boxes, labels):
+        match = _fuse_dino_gradient_match(
+            depth, box, label, H, W,
+            border_touch_ratio=border_touch_ratio,
+            closure_ratio=closure_ratio,
+        )
+        if match is not None:
+            matches.append(match)
+    return matches
+
+
+def visualize_dino_boxes_with_gradient_edges(session_path, dino_debug, sobel_viz_data, window_name,
+                                             matches=None):
+    """
+    3D: Nur gematchte Paare (DINO + Gradienten-Analyse).
+    Box-Rahmen und grüne Kanten nur wenn beide Signale in derselben Region vorliegen.
+    """
+    if dino_debug is None or sobel_viz_data is None:
+        print("[VIZ] Keine DINO- oder Sobel-Daten für Box+Gradient-Ansicht.")
+        return
+
+    depth = sobel_viz_data.get("depth")
+    if depth is None:
+        print("[VIZ] Kein Tiefenbild in Sobel-Daten.")
+        return
+
+    boxes = dino_debug.get("post_iou_boxes", [])
+    if not boxes:
+        print("[VIZ] Keine DINO-Boxen (post_iou) vorhanden.")
+        return
+
+    all_points, _, H, W = _load_pointcloud_data(session_path)
+
+    if matches is None:
+        matches = extract_dino_gradient_masks(session_path, dino_debug, sobel_viz_data)
+
+    n_total = len(boxes)
+    n_skipped = n_total - len(matches)
+
+    if not matches:
+        print("[VIZ] Keine DINO+Gradient-Matches – nichts zu zeichnen.")
+        return
+
+    box_colors = _generate_unique_colors(len(matches))
+    colors = np.full((H * W, 3), 0.35)
+    edge_count = 0
+    mask_pixels = 0
+    matched_boxes = []
+    z_planes = []
+
+    for i, match in enumerate(matches):
+        analysis = match["analysis"]
+        x1, y1, x2, y2 = analysis["box_coords"]
+        split_mask = analysis["split_mask"]
+        global_mask = match["mask"]
+        z_stats = match.get("z_stats", {})
+        z_plane = z_stats.get("z_plane_m")
+        tol = z_stats.get("tolerance_m", 0.03)
+        box_color = np.array(box_colors[i])
+        matched_boxes.append(match["matched_box"])
+        z_planes.append(z_plane)
+
+        # Maske: nur Pixel auf Z-Ebene (Maske ist bereits z-aligniert)
+        mask_ys, mask_xs = np.where(global_mask > 0)
+        for gy, gx in zip(mask_ys, mask_xs):
+            idx = gy * W + gx
+            colors[idx] = box_color
+        mask_pixels += len(mask_ys)
+
+        # Gradient-Kanten nur wenn auf derselben Z-Ebene
+        box_h, box_w = split_mask.shape
+        for by in range(box_h):
+            for bx in range(box_w):
+                img_y = y1 + by
+                img_x = x1 + bx
+                if img_y >= H or img_x >= W:
+                    continue
+                if split_mask[by, bx] > 0 and depth[img_y, img_x] > 0:
+                    if z_plane is None or abs(depth[img_y, img_x] - z_plane) <= tol:
+                        colors[img_y * W + img_x] = [0.1, 1.0, 0.2]
+                        edge_count += 1
+
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(all_points)
+    pcd.colors = o3d.utility.Vector3dVector(colors)
+
+    geoms = [pcd]
+    # DINO-Box auf Gradient-Z-Ebene (XY von DINO, Z von Gradient – behebt „Verdrehung“)
+    dino_boxes = [m["dino_box"] for m in matches]
+    dino_colors = [np.array(c) * 0.45 for c in box_colors]
+    geoms.extend(_build_dino_box_wireframes(
+        dino_boxes, depth, H, W, dino_colors, z_planes=z_planes
+    ))
+    # Maske-BBox (enger, nach Z-Schnitt)
+    geoms.extend(_build_dino_box_wireframes(
+        matched_boxes, depth, H, W, box_colors, z_planes=z_planes
+    ))
+
+    print(
+        f"[VIZ] {len(matches)}/{n_total} gematcht "
+        f"(Maske={mask_pixels}px, Kanten={edge_count}px), "
+        f"{n_skipped} übersprungen (occluded oder Kante nicht durchgängig)"
+    )
+    for i, m in enumerate(matches):
+        d = m["dino_box"]
+        f = m["matched_box"]
+        zs = m.get("z_stats", {})
+        print(
+            f"  Match {i}: '{m['label']}' "
+            f"DINO=[{d[0]},{d[1]},{d[2]},{d[3]}] → "
+            f"Maske=[{f[0]},{f[1]},{f[2]},{f[3]}] "
+            f"(Segment={m['segment_pixels']}px, "
+            f"Geschlossenheit={m['closure']*100:.1f}%, "
+            f"Rand={m['border_ratio']*100:.1f}%, "
+            f"z={zs.get('z_plane_mm', 0):.0f}mm)"
+        )
+    o3d.visualization.draw_geometries(geoms, window_name=window_name)
+
+
 def visualize_sobel_edges(session_path, viz_data, window_title_suffix=""):
     """
     3D Visualisierung: Gradienten/Kanten Analyse.
@@ -405,9 +850,11 @@ def visualize_per_box_gradient(session_path, viz_data, dino_debug):
 
 
 def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=None, 
-                 original_masks=None, original_labels=None, dino_debug=None):
+                 original_masks=None, original_labels=None, dino_debug=None,
+                 sam3d_masks=None, sam3d_labels=None,
+                 closed_matches=None):
     """
-    Hauptfunktion: Zeigt alle 6 Visualisierungen nacheinander.
+    Hauptfunktion: Zeigt alle Debug-Visualisierungen nacheinander.
     
     Reihenfolge:
     1. RGBD mit Original-Farben
@@ -415,9 +862,12 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
     3. DINO Boxes nach IoU-NMS
     4. Per-Box Gradient-Analyse (wo wurden Segmente getrennt?)
     5. Globale Gradient/Edges Analyse
-    6. Finale segmentierte Objekte (nach Refinement)
+    6. DINO-Boxen + Gradienten-Kanten (gematcht pro Box)
+    7. SAM3D Segmente (eigener Output, optional)
     """
-    print("\n[VIZ] Starte 6-fache Debug-Visualisierung...")
+    has_sam3d = sam3d_masks is not None and sam3d_labels is not None
+    total_steps = 7 if has_sam3d else 6
+    print(f"\n[VIZ] Starte {total_steps}-fache Debug-Visualisierung...")
     
     # 1. RGBD mit Original-Farben
     print("[VIZ] 1/6: RGBD Punktwolke...")
@@ -443,12 +893,28 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
         print("[VIZ] 5/6: Globale Gradient-Analyse...")
         visualize_sobel_edges(session_path, sobel_viz_data)
         
-    # 6. Finale segmentierte Objekte (mit Sobel verfeinert)
-    print("[VIZ] 6/6: Finale Segmente...")
-    visualize_3d_colored(session_path, refined_masks, refined_labels, 
-                        window_name="6/6: Finale Segmente (Nach Gradient-Refinement)")
+    # 6. DINO-Boxen mit Gradienten-Kanten (ersetzt finale Sobel-Segmente)
+    if dino_debug and sobel_viz_data:
+        print(f"[VIZ] 6/{total_steps}: DINO-Boxen + Gradient-Kanten...")
+        visualize_dino_boxes_with_gradient_edges(
+            session_path,
+            dino_debug,
+            sobel_viz_data,
+            window_name=f"6/{total_steps}: Geschlossene Pakete (DINO ∩ durchgängige Kante)",
+            matches=closed_matches,
+        )
     
-    print("[VIZ] Alle 6 Visualisierungen abgeschlossen.\n")
+    # 7. SAM3D (eigener Output, basiert auf den Stufe-6-Masken)
+    if has_sam3d:
+        print(f"[VIZ] 7/{total_steps}: SAM3D Segmente (Input = Stufe-6-Masken)...")
+        visualize_3d_colored(
+            session_path,
+            sam3d_masks,
+            sam3d_labels,
+            window_name=f"7/{total_steps}: SAM3D Segmente (Input = geschlossene Pakete)",
+        )
+    
+    print(f"[VIZ] Alle {total_steps} Visualisierungen abgeschlossen.\n")
     return {}
 
 
