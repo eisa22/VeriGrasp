@@ -922,15 +922,20 @@ def _match_overlap_metrics(m, k):
     return iou_mask, iou_bbox, contain_mask, contain_bbox
 
 
-def deduplicate_overlapping_matches(matches, iou_threshold=None):
+def deduplicate_overlapping_matches(matches, iou_threshold=None, return_excluded=False):
     """
     Nach dem Matching: überlappende Pakete zusammenführen.
     Bei Überlappung bleibt das Paket mit der vorderen Gradient-Kante (größeres depth_rel).
+
+    Args:
+        return_excluded: wenn True, gibt (kept, excluded) zurück. Jedes excluded
+            dict erhält zusätzliche Felder _status="excluded_by_dedup" und
+            _occluded_by (label des überdeckenden Match).
     """
     if iou_threshold is None:
         iou_threshold = MATCH_DEDUP_IOU
     if len(matches) <= 1:
-        return matches
+        return (matches, []) if return_excluded else matches
 
     prefer_closer = MATCH_DEDUP_KEEP_CLOSER
     sorted_matches = sorted(
@@ -939,9 +944,11 @@ def deduplicate_overlapping_matches(matches, iou_threshold=None):
         reverse=not prefer_closer,
     )
     keep = []
+    excluded = []
 
     for m in sorted_matches:
         overlaps_kept = False
+        occluded_by = None
         for k in keep:
             iou_mask, iou_bbox, contain_mask, contain_bbox = _match_overlap_metrics(m, k)
             iou = max(iou_mask, iou_bbox) if MATCH_DEDUP_USE_BBOX else iou_mask
@@ -980,6 +987,7 @@ def deduplicate_overlapping_matches(matches, iou_threshold=None):
                     f"mit '{k['label']}' (z={z_m:.0f}mm vs z={z_k:.0f}mm gewinnt)"
                 )
                 overlaps_kept = True
+                occluded_by = k["label"]
                 break
             elif iou > 0.02 or containment > 0.05:
                 print(
@@ -987,17 +995,25 @@ def deduplicate_overlapping_matches(matches, iou_threshold=None):
                     f"iou={iou:.2f} cont={containment:.2f} |Δz|={z_diff_m*1000:.0f}mm "
                     f"(Schwellen IoU>{iou_thr} cont>{cont_thr})"
                 )
-        if not overlaps_kept:
+        if overlaps_kept:
+            m_excluded = dict(m)
+            m_excluded["_status"] = "excluded_by_dedup"
+            m_excluded["_occluded_by"] = occluded_by
+            excluded.append(m_excluded)
+        else:
             keep.append(m)
 
     removed = len(matches) - len(keep)
     if removed > 0:
         print(f"[DEDUP] {len(keep)}/{len(matches)} Matches nach Überlappungsfilter")
+    if return_excluded:
+        return keep, excluded
     return keep
 
 
 def extract_dino_gradient_masks(session_path, dino_debug, sobel_viz_data,
-                                closure_ratio=None, border_touch_ratio=None):
+                                closure_ratio=None, border_touch_ratio=None,
+                                return_excluded=False):
     """
     Extrahiert Pakete, die in der DINO-Box durchgängig von Gradient-Kanten umrandet sind.
     Wird sowohl von der Visualisierung als auch von der Pipeline (→ SAM3D) verwendet.
@@ -1007,17 +1023,19 @@ def extract_dino_gradient_masks(session_path, dino_debug, sobel_viz_data,
                               edge_pixels, segment_pixels, border_ratio, closure
         Leere Liste wenn keine Daten/Matches.
     """
+    empty: tuple = ([], []) if return_excluded else []
+
     if dino_debug is None or sobel_viz_data is None:
-        return []
+        return empty
 
     depth = sobel_viz_data.get("depth")
     if depth is None:
-        return []
+        return empty
 
     boxes = dino_debug.get("post_iou_boxes", [])
     labels = dino_debug.get("post_iou_labels", [])
     if not boxes:
-        return []
+        return empty
 
     if closure_ratio is None:
         closure_ratio = MATCH_CLOSURE_RATIO
@@ -1037,6 +1055,9 @@ def extract_dino_gradient_masks(session_path, dino_debug, sobel_viz_data,
         if match is not None:
             matches.append(match)
 
+    if return_excluded:
+        kept, excluded = deduplicate_overlapping_matches(matches, return_excluded=True)
+        return kept, excluded
     matches = deduplicate_overlapping_matches(matches)
     return matches
 
@@ -1240,14 +1261,87 @@ def visualize_per_box_gradient(session_path, viz_data, dino_debug, session_conte
     o3d.visualization.draw_geometries([pcd], window_name=title)
 
 
+def visualize_all_stage5_matches(
+    session_path,
+    kept: list,
+    excluded: list,
+    window_name: str = "Stage 5: Alle Matches",
+    session_context=None,
+):
+    """
+    3D-Ansicht aller Stage-5-Matches: kept (grün) + dedup-excluded (rot).
+
+    Die exkludierten Matches sind Pakete, die durch den Overlap-Filter
+    entfernt wurden – meistens das tiefere Paket bei einem Stack. Stage 8
+    nutzt deren Top-Höhe, um Bounding-Boxen nach unten zu ziehen.
+    """
+    if not kept and not excluded:
+        print("[VIZ] Stage-5: keine Matches – übersprungen.")
+        return
+
+    all_points, _, H, W, base_colors, _ = _load_pcd_for_viz(session_path, session_context)
+    colors = base_colors.copy() * 0.55
+
+    # Kept matches: grün-blaue Farbtöne, voll deckend
+    for i, m in enumerate(kept):
+        mask = np.asarray(m["mask"]) > 0
+        if not mask.any():
+            continue
+        hue = (i * 47 + 90) / 360.0
+        rgb = _hsv_to_rgb(hue, 0.85, 0.95)
+        ys, xs = np.where(mask)
+        idx = ys * W + xs
+        colors[idx] = rgb
+
+    # Excluded matches: rot-orange, leicht ausgegraut
+    for i, m in enumerate(excluded):
+        mask = np.asarray(m["mask"]) > 0
+        if not mask.any():
+            continue
+        hue = (i * 23) / 360.0 % 1.0
+        rgb = _hsv_to_rgb(hue, 0.95, 0.75)
+        ys, xs = np.where(mask)
+        idx = ys * W + xs
+        colors[idx] = rgb
+
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(all_points)
+    pcd.colors = o3d.utility.Vector3dVector(colors)
+
+    print(
+        f"[VIZ] Stage-5: {len(kept)} kept (grün-blau), "
+        f"{len(excluded)} excluded (rot-orange)"
+    )
+    for i, m in enumerate(kept):
+        zs = m.get("z_stats") or {}
+        print(
+            f"  KEPT     #{i} '{m['label']}': z={zs.get('z_plane_mm', 0):.0f}mm  "
+            f"closure={m.get('closure', 0)*100:.0f}%  bbox={m.get('matched_box')}"
+        )
+    for i, m in enumerate(excluded):
+        zs = m.get("z_stats") or {}
+        print(
+            f"  EXCLUDED #{i} '{m['label']}': z={zs.get('z_plane_mm', 0):.0f}mm  "
+            f"occluded_by='{m.get('_occluded_by', '?')}'  bbox={m.get('matched_box')}"
+        )
+
+    o3d.visualization.draw_geometries([pcd], window_name=window_name)
+
+
+def _hsv_to_rgb(h: float, s: float, v: float) -> list:
+    """Pure-Python HSV->RGB (h,s,v in [0,1])."""
+    import colorsys
+    return list(colorsys.hsv_to_rgb(h, s, v))
+
+
 def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=None,
                  original_masks=None, original_labels=None, dino_debug=None,
                  sam3d_masks=None, sam3d_labels=None,
-                 closed_matches=None, session_context=None,
-                 candidates=None):
+                 closed_matches=None, excluded_matches=None,
+                 session_context=None, candidates=None):
     """
     Hauptfunktion: Zeigt alle Debug-Visualisierungen nacheinander.
-    
+
     Reihenfolge:
     1. RGBD mit Original-Farben
     2. DINO Raw Boxes (alle erkannten)
@@ -1255,12 +1349,14 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
     4. Per-Box Gradient-Analyse (wo wurden Segmente getrennt?)
     5. Globale Gradient/Edges Analyse
     6. DINO-Boxen + Gradienten-Kanten (gematcht pro Box)
-    7. SAM3D Segmente (eigener Output, optional)
-    8. Bottom-Plane Inference (extrudierte OBBs, optional)
+    7. Alle Stage-5-Matches inkl. dedup-excluded (Nachbar-Pool für Stage 8)
+    8. SAM3D Segmente (eigener Output, optional)
+    9. Bottom-Plane Inference (extrudierte OBBs, optional)
     """
     has_sam3d = sam3d_masks is not None and sam3d_labels is not None
     has_bottom = candidates is not None and len(candidates) > 0
-    total_steps = 6 + int(has_sam3d) + int(has_bottom)
+    has_all_matches = bool(closed_matches) or bool(excluded_matches)
+    total_steps = 6 + int(has_all_matches) + int(has_sam3d) + int(has_bottom)
     print(f"\n[VIZ] Starte {total_steps}-fache Debug-Visualisierung...")
     
     # 1. RGBD mit Original-Farben
@@ -1298,8 +1394,25 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
             session_context=session_context,
         )
 
+    next_step = 7
+    if has_all_matches:
+        step = next_step
+        print(
+            f"[VIZ] {step}/{total_steps}: Alle Stage-5-Matches "
+            f"(kept={len(closed_matches or [])}, "
+            f"excluded={len(excluded_matches or [])})..."
+        )
+        visualize_all_stage5_matches(
+            session_path,
+            kept=closed_matches or [],
+            excluded=excluded_matches or [],
+            window_name=f"{step}/{total_steps}: Alle erkannten Pakete (kept + dedup-excluded)",
+            session_context=session_context,
+        )
+        next_step += 1
+
     if has_sam3d:
-        step = 6 + 1
+        step = next_step
         print(f"[VIZ] {step}/{total_steps}: SAM3D Segmente (Input = Stufe-6-Masken)...")
         visualize_3d_colored(
             session_path,
@@ -1308,6 +1421,7 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
             window_name=f"{step}/{total_steps}: SAM3D Segmente (Input = geschlossene Pakete)",
             session_context=session_context,
         )
+        next_step += 1
 
     if has_bottom:
         step = total_steps

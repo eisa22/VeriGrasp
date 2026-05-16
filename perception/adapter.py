@@ -3,13 +3,43 @@
 from __future__ import annotations
 
 import hashlib
+from dataclasses import dataclass
 
 import numpy as np
 
 from perception.candidate import CandidateOut
-from perception.geometry.plane import heights_above_plane
+from perception.geometry.plane import heights_above_plane, project_to_plane_xy
 
 FX = FY = 437.04
+
+
+@dataclass
+class MatchNeighbor:
+    """A potential neighbour parcel extracted from a Stage-5 match.
+
+    Contains the parcel's top height (above pallet) and its XY footprint in
+    the pallet plane frame. Used by Stage 2.5 as a deterministic source of
+    'next parcel below', including matches that were later discarded by the
+    overlap dedup step.
+    """
+    match_id: str
+    label: str
+    status: str                                 # "kept" | "excluded_by_dedup"
+    top_surface_height: float                   # height above pallet (m)
+    footprint_xy: tuple[float, float, float, float]  # (x0, y0, x1, y1)
+    center_xy: np.ndarray
+    occluded_by: str | None = None              # label of the kept match that hid us
+
+
+def _footprint_from_xy(xy: np.ndarray) -> tuple[float, float, float, float]:
+    if xy.size == 0:
+        return (0.0, 0.0, 0.0, 0.0)
+    return (
+        float(xy[:, 0].min()),
+        float(xy[:, 1].min()),
+        float(xy[:, 0].max()),
+        float(xy[:, 1].max()),
+    )
 
 
 def _stable_candidate_id(label: str, bbox: list, top_h: float) -> str:
@@ -127,6 +157,57 @@ def build_candidates_from_closed_matches(
             candidates.append(cand)
 
     return candidates
+
+
+def build_match_neighbors(
+    matches: list[dict],
+    depth: np.ndarray,
+    plane_model: np.ndarray,
+    status: str,
+) -> list[MatchNeighbor]:
+    """
+    Build MatchNeighbor entries from Stage-5 matches (kept or excluded).
+
+    Each match must have:
+      - "mask" : HxW binary mask (the parcel's top surface)
+      - "matched_box" : [x1, y1, x2, y2] (pixel coords)
+      - "label"
+      - "z_stats"["z_plane_m"] : top height above pallet (m), already
+        in pallet-relative coords because Sobel runs with pallet_relative=True
+
+    We re-backproject the mask to get the 3D footprint in plane-XY for a
+    consistent neighbour search.
+    """
+    H, W = depth.shape
+    cx, cy = W / 2.0, H / 2.0
+    plane = tuple(float(x) for x in plane_model)
+
+    out: list[MatchNeighbor] = []
+    for m in matches:
+        mask = np.asarray(m["mask"], dtype=np.uint8)
+        pts = _backproject_mask(mask, depth, cx, cy)
+        if len(pts) < 10:
+            continue
+        heights = heights_above_plane(pts, plane)
+        xy = project_to_plane_xy(pts, plane)
+        top_h = float(np.percentile(heights, 95))
+        fp = _footprint_from_xy(xy)
+        center = np.array(
+            [(fp[0] + fp[2]) * 0.5, (fp[1] + fp[3]) * 0.5], dtype=np.float64
+        )
+        mid = str(_stable_candidate_id(m.get("label", "match"), list(m["matched_box"]), top_h))
+        out.append(
+            MatchNeighbor(
+                match_id=mid,
+                label=str(m.get("label", "match")),
+                status=status,
+                top_surface_height=top_h,
+                footprint_xy=fp,
+                center_xy=center,
+                occluded_by=m.get("_occluded_by"),
+            )
+        )
+    return out
 
 
 def build_candidates_from_sam3d(

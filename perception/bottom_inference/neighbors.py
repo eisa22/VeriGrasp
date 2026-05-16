@@ -11,6 +11,9 @@ from scipy.spatial import cKDTree
 from perception.candidate import CandidateOut
 from perception.geometry.plane import heights_above_plane, project_to_plane_xy
 
+# Default intrinsics – kept in sync with perception.adapter.FX/FY.
+FX = FY = 437.04
+
 
 @dataclass
 class CandidateGeometry:
@@ -292,6 +295,66 @@ def find_neighbor_surface_via_scene(
     return z, n_used
 
 
+def find_neighbor_via_matches(
+    target: CandidateGeometry,
+    match_neighbors: list,
+    config: dict,
+) -> tuple[float | None, str | None, str | None]:
+    """
+    Find a 'neighbour' match parcel whose top is strictly below the target's
+    lowest visible surface. The neighbour must be in the spatial vicinity:
+
+      1. Preferred: footprints overlap (IoU >= match_neighbor_min_iou).
+      2. Fallback: 2D distance between footprint centers <= match_neighbor_max_dist_m.
+
+    Among all qualifying neighbours, the HIGHEST top wins (= the surface
+    closest to the target, i.e. the parcel the target is presumably resting
+    on).
+
+    User spec: 'compare the lowest point of the object with the neighbour
+    object (even if it was excluded earlier). Pull the bounding box down
+    UNLESS the lowest point is already at the same level or deeper toward
+    z_pallet.'
+
+    Returns (top_height, match_id, status) or (None, None, None).
+    """
+    if not match_neighbors:
+        return None, None, None
+
+    tol = float(config.get("tolerance_m", 0.008))
+    min_iou = float(config.get("match_neighbor_min_iou", 0.05))
+    max_dist = float(config.get("match_neighbor_max_dist_m", 0.40))
+    z_lowest = float(target.z_visible_min)
+
+    candidates: list[tuple[float, str, str, float, float]] = []  # (top, id, status, iou, dist)
+
+    for n in match_neighbors:
+        if getattr(n, "match_id", None) is None:
+            continue
+        n_h = float(n.top_surface_height)
+        if n_h >= z_lowest - tol:
+            continue
+        iou = footprint_iou(target.obb_footprint, n.footprint_xy)
+        dist = float(np.linalg.norm(target.center_xy - n.center_xy))
+        if iou < min_iou and dist > max_dist:
+            continue
+        candidates.append((n_h, n.match_id, n.status, iou, dist))
+
+    if not candidates:
+        return None, None, None
+
+    # Highest qualifying top wins.
+    candidates.sort(key=lambda x: -x[0])
+    best_h, best_id, best_status, best_iou, best_dist = candidates[0]
+    print(
+        f"[BOTTOM-NB] target z_min={z_lowest:.3f}m -> "
+        f"picked {best_status} '{best_id[:8]}' top={best_h:.3f}m "
+        f"(iou={best_iou:.2f}, d={best_dist*1000:.0f}mm, "
+        f"pool considered={len(candidates)})"
+    )
+    return best_h, best_id, best_status
+
+
 def find_lateral_neighbors(
     target: CandidateGeometry,
     all_geom: dict[str, CandidateGeometry],
@@ -343,6 +406,133 @@ def find_lateral_neighbors(
         z_highest_neighbor=float(tops[highest_idx]),
         highest_neighbor_id=ids[highest_idx],
         neighbor_spread=spread,
+    )
+
+
+@dataclass
+class GradientPlateau:
+    """A flat region in the neighbourhood of a parcel, separated from
+    other regions by Sobel edges."""
+    label: int
+    area_px: int
+    height_above_pallet: float       # robust top-height of the plateau
+    centroid_px: tuple[float, float]
+
+
+@dataclass
+class GradientNeighborResult:
+    z_highest_neighbor: float | None
+    chosen_label: int | None
+    plateaus: list[GradientPlateau]
+    n_ring_pixels: int
+
+
+def _backproject_pixels(
+    ys: np.ndarray,
+    xs: np.ndarray,
+    depth: np.ndarray,
+    fx: float = FX,
+    fy: float = FY,
+) -> np.ndarray:
+    H, W = depth.shape
+    cx, cy = W / 2.0, H / 2.0
+    z = depth[ys, xs].astype(np.float64)
+    x = (xs.astype(np.float64) - cx) * z / fx
+    y = (ys.astype(np.float64) - cy) * z / fy
+    return np.stack([x, y, z], axis=1)
+
+
+def find_neighbor_via_gradient(
+    target: CandidateOut,
+    depth: np.ndarray,
+    sobel_edges: np.ndarray,
+    workspace_mask: np.ndarray | None,
+    plane: tuple[float, float, float, float],
+    z_visible_min: float,
+    config: dict,
+) -> GradientNeighborResult:
+    """
+    Pure-Sobel neighbourhood analysis (no DINO, no Stage-5 matches).
+
+    1. Define the neighbourhood as a ring around the target mask
+       (dilate by `neighbor_radius_px`, then subtract the mask itself).
+    2. Inside the ring, a "plateau" = connected component of pixels that
+       are NOT marked as a Sobel/Canny edge AND have a valid depth value.
+    3. For each plateau (area >= `min_plateau_area_px`):
+         - Backproject all pixels, compute height_above_pallet,
+         - Use a robust upper estimate (95th percentile) as the plateau's
+           top height (the user's 'höchster Punkt' on the plateau).
+    4. Return the highest plateau whose top is strictly below
+       z_visible_min - tolerance.
+    """
+    cfg = config.get("gradient_neighbor", {})
+    radius_px = int(cfg.get("neighbor_radius_px", 60))
+    min_plateau_area_px = int(cfg.get("min_plateau_area_px", 400))
+    edge_dilate_px = int(cfg.get("edge_dilate_px", 1))
+    height_percentile = float(cfg.get("height_percentile", 95.0))
+    tol = float(config.get("tolerance_m", 0.008))
+
+    target_mask = np.asarray(target.mask_2d, dtype=np.uint8) > 0
+    edges = np.asarray(sobel_edges, dtype=np.uint8) > 0
+    depth = np.asarray(depth, dtype=np.float64)
+
+    if target_mask.sum() == 0:
+        return GradientNeighborResult(None, None, [], 0)
+
+    kernel = cv2.getStructuringElement(
+        cv2.MORPH_ELLIPSE, (2 * radius_px + 1, 2 * radius_px + 1)
+    )
+    dilated = cv2.dilate(target_mask.astype(np.uint8), kernel, iterations=1) > 0
+    ring = dilated & ~target_mask
+    if workspace_mask is not None:
+        ring &= np.asarray(workspace_mask, dtype=bool)
+    ring &= depth > 0
+
+    if edge_dilate_px > 0:
+        ek = cv2.getStructuringElement(
+            cv2.MORPH_RECT, (2 * edge_dilate_px + 1, 2 * edge_dilate_px + 1)
+        )
+        edges = cv2.dilate(edges.astype(np.uint8), ek, iterations=1) > 0
+
+    plateau_mask = ring & ~edges
+    n_ring = int(ring.sum())
+    if not plateau_mask.any():
+        return GradientNeighborResult(None, None, [], n_ring)
+
+    n_labels, labels, stats, _ = cv2.connectedComponentsWithStats(
+        plateau_mask.astype(np.uint8), connectivity=8
+    )
+
+    plateaus: list[GradientPlateau] = []
+    for li in range(1, n_labels):
+        area = int(stats[li, cv2.CC_STAT_AREA])
+        if area < min_plateau_area_px:
+            continue
+        ys, xs = np.where(labels == li)
+        pts = _backproject_pixels(ys, xs, depth)
+        heights = heights_above_plane(pts, plane)
+        top = float(np.percentile(heights, height_percentile))
+        cx_px = float(xs.mean())
+        cy_px = float(ys.mean())
+        plateaus.append(
+            GradientPlateau(
+                label=li,
+                area_px=area,
+                height_above_pallet=top,
+                centroid_px=(cx_px, cy_px),
+            )
+        )
+
+    qualifying = [p for p in plateaus if p.height_above_pallet < z_visible_min - tol]
+    if not qualifying:
+        return GradientNeighborResult(None, None, plateaus, n_ring)
+
+    best = max(qualifying, key=lambda p: p.height_above_pallet)
+    return GradientNeighborResult(
+        z_highest_neighbor=best.height_above_pallet,
+        chosen_label=best.label,
+        plateaus=plateaus,
+        n_ring_pixels=n_ring,
     )
 
 

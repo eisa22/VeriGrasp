@@ -1,0 +1,204 @@
+{
+  "kept": [
+    {
+      "label": "small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        175,
+        282,
+        238,
+        347
+      ],
+      "dino_box": [
+        172,
+        277,
+        242,
+        363
+      ],
+      "z_plane_m": 1.2448272705078125,
+      "z_plane_mm": 1244.8272705078125,
+      "closure": 1.0,
+      "border_ratio": 0.029611130931145202,
+      "segment_pixels": 4162,
+      "occluded_by": null
+    },
+    {
+      "label": "small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        257,
+        144,
+        319,
+        209
+      ],
+      "dino_box": [
+        254,
+        140,
+        323,
+        210
+      ],
+      "z_plane_m": 1.2412943840026855,
+      "z_plane_mm": 1241.2943840026855,
+      "closure": 1.0,
+      "border_ratio": 0.01396580784974717,
+      "segment_pixels": 4153,
+      "occluded_by": null
+    },
+    {
+      "label": "small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        185,
+        211,
+        250,
+        274
+      ],
+      "dino_box": [
+        182,
+        208,
+        251,
+        278
+      ],
+      "z_plane_m": 1.239884376525879,
+      "z_plane_mm": 1239.884376525879,
+      "closure": 1.0,
+      "border_ratio": 0.013997627520759193,
+      "segment_pixels": 4215,
+      "occluded_by": null
+    },
+    {
+      "label": "small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        323,
+        143,
+        390,
+        206
+      ],
+      "dino_box": [
+        323,
+        139,
+        391,
+        211
+      ],
+      "z_plane_m": 1.2391633987426758,
+      "z_plane_mm": 1239.1633987426758,
+      "closure": 1.0,
+      "border_ratio": 0.022217025257249765,
+      "segment_pixels": 4276,
+      "occluded_by": null
+    },
+    {
+      "label": "small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        245,
+        290,
+        310,
+        354
+      ],
+      "dino_box": [
+        242,
+        285,
+        311,
+        359
+      ],
+      "z_plane_m": 1.238436222076416,
+      "z_plane_mm": 1238.436222076416,
+      "closure": 1.0,
+      "border_ratio": 0.026155187445510025,
+      "segment_pixels": 4250,
+      "occluded_by": null
+    },
+    {
+      "label": "small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        255,
+        215,
+        320,
+        278
+      ],
+      "dino_box": [
+        251,
+        211,
+        321,
+        282
+      ],
+      "z_plane_m": 1.2375131845474243,
+      "z_plane_mm": 1237.5131845474243,
+      "closure": 1.0,
+      "border_ratio": 0.030026690391459075,
+      "segment_pixels": 4221,
+      "occluded_by": null
+    },
+    {
+      "label": "small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        188,
+        141,
+        253,
+        204
+      ],
+      "dino_box": [
+        184,
+        137,
+        254,
+        208
+      ],
+      "z_plane_m": 1.2370178699493408,
+      "z_plane_mm": 1237.0178699493408,
+      "closure": 1.0,
+      "border_ratio": 0.016026396417629037,
+      "segment_pixels": 4219,
+      "occluded_by": null
+    },
+    {
+      "label": "small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        320,
+        217,
+        387,
+        280
+      ],
+      "dino_box": [
+        320,
+        213,
+        388,
+        284
+      ],
+      "z_plane_m": 1.2368805408477783,
+      "z_plane_mm": 1236.8805408477783,
+      "closure": 1.0,
+      "border_ratio": 0.026939903292654846,
+      "segment_pixels": 4343,
+      "occluded_by": null
+    },
+    {
+      "label": "small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        315,
+        288,
+        380,
+        352
+      ],
+      "dino_box": [
+        311,
+        283,
+        381,
+        364
+      ],
+      "z_plane_m": 1.1996484994888306,
+      "z_plane_mm": 1199.6484994888306,
+      "closure": 1.0,
+      "border_ratio": 0.04232902033271719,
+      "segment_pixels": 4290,
+      "occluded_by": null
+    }
+  ],
+  "excluded": [],
+  "n_total": 9
+}

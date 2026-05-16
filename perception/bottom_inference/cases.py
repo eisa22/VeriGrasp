@@ -70,12 +70,12 @@ def decide_bottom(
     used_ids = [highest_neighbor_id] if highest_neighbor_id is not None else []
 
     if z_highest_neighbor < z_lowest_visible - delta:
-        confidence = 0.9 if neighbor_source == "scene" else 0.75
+        confidence = 0.90 if neighbor_source == "gradient" else 0.75
         return BottomDecision(
             bottom_z=z_highest_neighbor,
             bottom_method="from_neighbor",
             bottom_confidence=confidence,
-            case_label=f"B_dropped_to_{neighbor_source}",
+            case_label=f"B_dropped_to_{neighbor_source or 'unknown'}",
             used_neighbor_ids=used_ids,
         )
 

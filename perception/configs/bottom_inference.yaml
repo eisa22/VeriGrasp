@@ -4,17 +4,18 @@ height_tolerance: 0.005
 tolerance_m: 0.008
 pallet_height_tolerance: 0.030
 edge_distance_m: 0.05
-scene_pcd_stride: 2
+gradient_neighbor:
+  neighbor_radius_px: 60          # ring radius around the parcel mask (pixels)
+  min_plateau_area_px: 400        # plateau must contain >= this many pixels
+  edge_dilate_px: 1               # widen Sobel edges by 1 px to seal hair-line gaps
+  height_percentile: 95.0         # 'höchster Punkt' per plateau
 solid_surface:
   slab_m: 0.005                  # 5 mm band thickness for height histogram
   min_points: 40                 # min points per band
   min_fraction: 0.03             # OR 3 % of available points
-  min_step_m: 0.030              # parcel-to-neighbour gap (3 cm) to skip side noise
-  neighbor_ring_outer_m: 0.10    # search up to 10 cm beyond the OBB footprint
-  neighbor_ring_inner_m: 0.010   # but exclude the inner 1 cm rim (where parcel sides project)
-  min_component_pixels: 120      # ~30 cm² at 5 mm raster = real surface, not a thin ring
-  min_aspect_ratio: 0.25         # band CC must not be a long thin strip
-  raster_m: 0.005                # 5 mm/px raster for connectivity check
+  raster_m: 0.005
+  min_component_pixels: 120
+  min_aspect_ratio: 0.25
 obb:
   min_points: 50
   max_aspect_ratio: 20.0

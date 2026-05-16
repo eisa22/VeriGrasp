@@ -23,6 +23,7 @@ from perception.adapter import (
     build_scene_pcd_from_depth,
 )
 from perception.bottom_inference import infer_bottom_planes
+import json
 import torch
 import numpy as np
 import os
@@ -30,6 +31,42 @@ from transformers import (
     AutoProcessor as DinoProcessor,
     AutoModelForZeroShotObjectDetection as DinoModel
 )
+
+
+def _save_stage5_matches(session_path: str, kept: list, excluded: list) -> None:
+    """Persist Stage-5 matches (all packages, kept + excluded) to JSON.
+
+    The full mask is omitted from JSON (too large); the matched_box, label,
+    z_plane and dedup status are kept. The full data stays in memory and is
+    used by Stage 8 for bottom-plane inference.
+    """
+    def _serialize(match: dict, status: str) -> dict:
+        zs = match.get("z_stats") or {}
+        return {
+            "label": str(match.get("label", "")),
+            "status": status,
+            "matched_box": [int(v) for v in match.get("matched_box", [])],
+            "dino_box": [int(v) for v in match.get("dino_box", [])],
+            "z_plane_m": float(zs.get("z_plane_m", float("nan"))),
+            "z_plane_mm": float(match.get("z_plane_mm", float("nan"))),
+            "closure": float(match.get("closure", 0.0)),
+            "border_ratio": float(match.get("border_ratio", 0.0)),
+            "segment_pixels": int(match.get("segment_pixels", 0)),
+            "occluded_by": match.get("_occluded_by"),
+        }
+
+    payload = {
+        "kept": [_serialize(m, "kept") for m in kept],
+        "excluded": [_serialize(m, "excluded_by_dedup") for m in excluded],
+        "n_total": len(kept) + len(excluded),
+    }
+    out_path = os.path.join(session_path, "stage5_matches.json")
+    try:
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2, ensure_ascii=False)
+        print(f"[STAGE-5] gespeichert -> {out_path}")
+    except OSError as exc:
+        print(f"[STAGE-5] Speichern fehlgeschlagen ({out_path}): {exc}")
 
 
 def convert_boxes_to_masks(boxes, height, width):
@@ -85,14 +122,21 @@ def process_session(session_path, dino_model=None, dino_processor=None):
     )
 
     # Phase 3b: DINO ∩ durchgängige Gradient-Kante → geschlossene Paket-Masken
-    closed_matches = extract_dino_gradient_masks(
+    # Auch die durch Overlap-Dedup ausgeschlossenen Matches zurückbekommen –
+    # sie liefern den Top-Höhen-Hinweis für die Bottom-Inferenz (Stage 8).
+    closed_matches, excluded_matches = extract_dino_gradient_masks(
         session_path,
         dino_debug,
         sobel_viz_data,
         closure_ratio=MATCH_CLOSURE_RATIO,
         border_touch_ratio=MATCH_BORDER_TOUCH_RATIO,
+        return_excluded=True,
     )
-    print(f"[CLOSED] {len(closed_matches)} durchgängig umrandete Pakete extrahiert (Input für SAM3D)")
+    print(
+        f"[STAGE-5] {len(closed_matches)} kept + {len(excluded_matches)} excluded "
+        f"= {len(closed_matches) + len(excluded_matches)} Pakete insgesamt erkannt"
+    )
+    _save_stage5_matches(session_path, closed_matches, excluded_matches)
 
     # Phase 3c: SAM3D auf den geschlossenen Stufe-6-Masken
     sam3d_masks, sam3d_labels, sam3d_boxes = [], [], []
@@ -108,7 +152,10 @@ def process_session(session_path, dino_model=None, dino_processor=None):
     else:
         print("[SAM3D] Übersprungen – keine geschlossenen Pakete als Input.")
 
-    # Phase 3.5: Bottom-plane inference on SAM3D masks
+    # Phase 3.5 (Stage 8): Bottom-plane inference auf SAM3D-Masken.
+    # Nachbar-Bestimmung rein gradient-basiert: Im Umfeld jeder Maske werden
+    # über Sobel-Kanten Plateaus segmentiert und das höchste qualifizierende
+    # Plateau (Top unter z_visible_min) liefert den Box-Boden.
     candidates = []
     if sam3d_masks:
         bottom_cfg = load_bottom_inference_config()
@@ -120,22 +167,26 @@ def process_session(session_path, dino_model=None, dino_processor=None):
             sam3d_boxes=sam3d_boxes,
             session_context=session_context,
         )
-        stride = int(bottom_cfg.get("scene_pcd_stride", 4))
-        scene_pcd = build_scene_pcd_from_depth(
-            session_context.depth_abs,
-            workspace_mask=session_context.workspace_mask,
-            stride=stride,
-        )
         pallet_plane = tuple(float(x) for x in session_context.plane_model)
-        candidates = infer_bottom_planes(candidates, scene_pcd, pallet_plane, bottom_cfg)
+        sobel_edges = sobel_viz_data.get("edges") if sobel_viz_data else None
+        candidates = infer_bottom_planes(
+            candidates,
+            pallet_plane,
+            bottom_cfg,
+            depth=session_context.depth_abs,
+            sobel_edges=sobel_edges,
+            workspace_mask=session_context.workspace_mask,
+        )
         method_counts: dict[str, int] = {}
         for c in candidates:
             method = c.bottom.bottom_method if c.bottom else "none"
             method_counts[method] = method_counts.get(method, 0) + 1
+            n_pl = c.debug.get("gradient_n_plateaus", 0)
             print(
                 f"[BOTTOM] {c.candidate_id} '{c.debug.get('label')}': {method} "
                 f"top={c.top_surface_height:.3f}m bottom={c.bottom.bottom_z:.3f}m "
                 f"h={c.bottom.height_m:.3f}m conf={c.bottom.bottom_confidence:.2f} "
+                f"src={c.debug.get('neighbor_source', '-')} plateaus={n_pl} "
                 f"({c.debug.get('case_label', '?')})"
             )
         dist = ", ".join(f"{k}={v}" for k, v in sorted(method_counts.items()))
@@ -155,6 +206,7 @@ def process_session(session_path, dino_model=None, dino_processor=None):
             sam3d_masks=sam3d_masks if sam3d_masks else None,
             sam3d_labels=sam3d_labels if sam3d_labels else None,
             closed_matches=closed_matches,
+            excluded_matches=excluded_matches,
             session_context=session_context,
             candidates=candidates if candidates else None,
         )
