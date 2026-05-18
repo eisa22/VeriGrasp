@@ -97,6 +97,19 @@ def infer_bottom_planes(
             gradient_label = grad_result.chosen_label
             gradient_plateaus = grad_result.plateaus
             gradient_ring_px = grad_result.n_ring_pixels
+            if gradient_plateaus:
+                plat_summary = ", ".join(
+                    f"{p.height_above_pallet:+.3f}m({p.area_px}px)"
+                    for p in sorted(
+                        gradient_plateaus,
+                        key=lambda x: -x.height_above_pallet,
+                    )[:8]
+                )
+                print(
+                    f"[BOTTOM-GR] {c.candidate_id[:8]} z_min={g.z_visible_min:.3f}m "
+                    f"ring={gradient_ring_px}px plateaus={len(gradient_plateaus)} "
+                    f"[{plat_summary}] -> picked={gradient_z if gradient_z is None else f'{gradient_z:.3f}m'}"
+                )
         else:
             gradient_z = None
             gradient_label = None

@@ -16,8 +16,9 @@ _DEFAULT_CONFIG: dict[str, Any] = {
     "pallet_height_tolerance": 0.030,
     "edge_distance_m": 0.05,
     "gradient_neighbor": {
-        "neighbor_radius_px": 60,
-        "min_plateau_area_px": 400,
+        "neighbor_radius_m": 0.30,
+        "neighbor_radius_px": 80,
+        "min_plateau_area_px": 300,
         "edge_dilate_px": 1,
         "height_percentile": 95.0,
     },

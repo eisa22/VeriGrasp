@@ -455,18 +455,20 @@ def find_neighbor_via_gradient(
     Pure-Sobel neighbourhood analysis (no DINO, no Stage-5 matches).
 
     1. Define the neighbourhood as a ring around the target mask
-       (dilate by `neighbor_radius_px`, then subtract the mask itself).
+       (dilate by `neighbor_radius_m` converted to pixels via the
+       parcel's mean depth, fallback to `neighbor_radius_px`).
     2. Inside the ring, a "plateau" = connected component of pixels that
        are NOT marked as a Sobel/Canny edge AND have a valid depth value.
     3. For each plateau (area >= `min_plateau_area_px`):
          - Backproject all pixels, compute height_above_pallet,
-         - Use a robust upper estimate (95th percentile) as the plateau's
+         - Use a robust upper estimate (`height_percentile`) as the plateau's
            top height (the user's 'höchster Punkt' on the plateau).
     4. Return the highest plateau whose top is strictly below
        z_visible_min - tolerance.
     """
     cfg = config.get("gradient_neighbor", {})
-    radius_px = int(cfg.get("neighbor_radius_px", 60))
+    radius_px_fallback = int(cfg.get("neighbor_radius_px", 60))
+    radius_m = cfg.get("neighbor_radius_m", None)
     min_plateau_area_px = int(cfg.get("min_plateau_area_px", 400))
     edge_dilate_px = int(cfg.get("edge_dilate_px", 1))
     height_percentile = float(cfg.get("height_percentile", 95.0))
@@ -478,6 +480,14 @@ def find_neighbor_via_gradient(
 
     if target_mask.sum() == 0:
         return GradientNeighborResult(None, None, [], 0)
+
+    # Radius in Metern -> Pixel via mittlerer Tiefe der Target-Maske.
+    if radius_m is not None:
+        target_depth = depth[target_mask]
+        mean_depth = float(np.median(target_depth[target_depth > 0])) if (target_depth > 0).any() else 1.0
+        radius_px = max(10, int(round(float(radius_m) * FX / max(mean_depth, 0.1))))
+    else:
+        radius_px = radius_px_fallback
 
     kernel = cv2.getStructuringElement(
         cv2.MORPH_ELLIPSE, (2 * radius_px + 1, 2 * radius_px + 1)

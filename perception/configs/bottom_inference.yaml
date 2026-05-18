@@ -5,8 +5,9 @@ tolerance_m: 0.008
 pallet_height_tolerance: 0.030
 edge_distance_m: 0.05
 gradient_neighbor:
-  neighbor_radius_px: 60          # ring radius around the parcel mask (pixels)
-  min_plateau_area_px: 400        # plateau must contain >= this many pixels
+  neighbor_radius_m: 0.30         # ring radius around the parcel (metres) - converted to px via mean depth
+  neighbor_radius_px: 80          # fallback if neighbor_radius_m is null
+  min_plateau_area_px: 300        # plateau must contain >= this many pixels
   edge_dilate_px: 1               # widen Sobel edges by 1 px to seal hair-line gaps
   height_percentile: 95.0         # 'höchster Punkt' per plateau
 solid_surface:
