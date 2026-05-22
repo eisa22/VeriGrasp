@@ -57,11 +57,13 @@ def infer_bottom_planes(
 
     Algorithm per candidate (user spec):
       1. Lowest solid surface of the parcel from its SAM mask (z_visible_min).
-      2. Around the parcel: define a neighbourhood (dilated ring) and use
-         only Sobel/Canny gradient edges to split the ring into plateaus.
-         The highest plateau whose top is below z_visible_min is the
-         neighbour.
-      3. If such a neighbour exists -> drop the bounding box to its top.
+      2. Two parallel neighbour sources:
+         (a) Gradient: ring around the parcel split into plateaus by
+             Sobel/Canny edges. Highest plateau with top < z_visible_min.
+         (b) Lateral: top-surfaces of OTHER detected candidates within
+             `lateral_radius_m`. Highest top below z_visible_min.
+         The HIGHER of the two qualifying surfaces wins.
+      3. If a neighbour exists -> drop the bounding box to its top.
          Else, leave the box at z_visible_min (or fall to the pallet if
          the parcel sits directly on it).
 
@@ -97,26 +99,51 @@ def infer_bottom_planes(
             gradient_label = grad_result.chosen_label
             gradient_plateaus = grad_result.plateaus
             gradient_ring_px = grad_result.n_ring_pixels
-            if gradient_plateaus:
-                plat_summary = ", ".join(
-                    f"{p.height_above_pallet:+.3f}m({p.area_px}px)"
-                    for p in sorted(
-                        gradient_plateaus,
-                        key=lambda x: -x.height_above_pallet,
-                    )[:8]
-                )
-                print(
-                    f"[BOTTOM-GR] {c.candidate_id[:8]} z_min={g.z_visible_min:.3f}m "
-                    f"ring={gradient_ring_px}px plateaus={len(gradient_plateaus)} "
-                    f"[{plat_summary}] -> picked={gradient_z if gradient_z is None else f'{gradient_z:.3f}m'}"
-                )
+            gradient_components = grad_result.n_components_total
+            gradient_rej = grad_result.rejection_counts or {}
+            plat_summary = ", ".join(
+                f"{p.height_above_pallet:+.3f}m"
+                f"(A={p.area_m2*1e4:.0f}cm²,σ={p.height_std_m*1000:.0f}mm,ar={p.aspect_ratio:.2f})"
+                for p in sorted(
+                    gradient_plateaus, key=lambda x: -x.height_above_pallet,
+                )[:8]
+            ) or "-"
+            rej_summary = (
+                f"area_px={gradient_rej.get('area_px', 0)}"
+                f" ar={gradient_rej.get('aspect', 0)}"
+                f" m2={gradient_rej.get('area_m2', 0)}"
+                f" σ={gradient_rej.get('z_std', 0)}"
+            )
+            picked = "None" if gradient_z is None else f"{gradient_z:.3f}m"
+            print(
+                f"[BOTTOM-GR] {c.candidate_id[:8]} z_min={g.z_visible_min:.3f}m "
+                f"ring={gradient_ring_px}px comp={gradient_components} "
+                f"kept={len(gradient_plateaus)} rej[{rej_summary}] "
+                f"plateaus=[{plat_summary}] -> picked={picked}"
+            )
         else:
             gradient_z = None
             gradient_label = None
             gradient_plateaus = []
             gradient_ring_px = 0
+            gradient_components = 0
+            gradient_rej = {}
 
         lateral_info = find_lateral_neighbors(g, geom_index, config)
+
+        if lateral_info.neighbor_ids:
+            lat_summary = ", ".join(
+                f"{nid[:6]}@{t:+.3f}m"
+                for nid, t in sorted(
+                    zip(lateral_info.neighbor_ids, lateral_info.neighbor_tops),
+                    key=lambda x: -x[1],
+                )[:6]
+            )
+            print(
+                f"[BOTTOM-LT] {c.candidate_id[:8]} z_min={g.z_visible_min:.3f}m "
+                f"others=[{lat_summary}] -> "
+                f"highest={lateral_info.z_highest_neighbor:.3f}m"
+            )
 
         z_highest_neighbor, highest_id, source = _resolve_neighbor_z(
             gradient_z, gradient_label, lateral_info,
@@ -162,12 +189,17 @@ def infer_bottom_planes(
         debug["obb_extent_xy"] = g.obb_extent_xy
         debug["z_pallet"] = z_pallet
         debug["gradient_n_ring_pixels"] = gradient_ring_px
-        debug["gradient_n_plateaus"] = len(gradient_plateaus)
+        debug["gradient_n_components_total"] = gradient_components
+        debug["gradient_n_plateaus_kept"] = len(gradient_plateaus)
+        debug["gradient_rejections"] = dict(gradient_rej)
         debug["gradient_plateaus"] = [
             {
                 "label": p.label,
                 "area_px": p.area_px,
+                "area_m2": p.area_m2,
                 "height_above_pallet": p.height_above_pallet,
+                "height_std_m": p.height_std_m,
+                "aspect_ratio": p.aspect_ratio,
                 "centroid_px": list(p.centroid_px),
             }
             for p in gradient_plateaus

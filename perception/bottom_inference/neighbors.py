@@ -360,9 +360,15 @@ def find_lateral_neighbors(
     all_geom: dict[str, CandidateGeometry],
     config: dict,
 ) -> NeighborInfo:
-    """Detected-candidate neighbours (only used as a sanity hint)."""
+    """Detected-candidate neighbours: top-surfaces of OTHER parcels.
+
+    A candidate qualifies as neighbour when its detected top is strictly
+    below the target's lowest visible point (`z_visible_min`). The highest
+    qualifying neighbour is the "next surface below the target" and pulls
+    the bottom plane down to that height.
+    """
     lateral_radius_m = float(config["lateral_radius_m"])
-    height_tolerance = float(config["height_tolerance"])
+    tol = float(config.get("tolerance_m", config.get("height_tolerance", 0.008)))
 
     r_neighbor = lateral_radius_m + 0.5 * target.obb_extent_xy
     ids: list[str] = []
@@ -377,13 +383,14 @@ def find_lateral_neighbors(
     tree = cKDTree(centers)
     idxs = tree.query_ball_point(target.center_xy, r_neighbor)
 
+    reference = float(target.z_visible_min)
     for i in idxs:
         g = others[i]
-        if g.top_surface_height >= target.top_surface_height - height_tolerance:
+        if g.top_surface_height >= reference - tol:
             continue
         dist = float(np.linalg.norm(g.center_xy - target.center_xy))
         ids.append(g.candidate_id)
-        tops.append(g.top_surface_height)
+        tops.append(float(g.top_surface_height))
         dists.append(dist)
 
     order = np.argsort(ids)
@@ -415,7 +422,10 @@ class GradientPlateau:
     other regions by Sobel edges."""
     label: int
     area_px: int
+    area_m2: float
     height_above_pallet: float       # robust top-height of the plateau
+    height_std_m: float
+    aspect_ratio: float
     centroid_px: tuple[float, float]
 
 
@@ -425,6 +435,28 @@ class GradientNeighborResult:
     chosen_label: int | None
     plateaus: list[GradientPlateau]
     n_ring_pixels: int
+    n_components_total: int = 0
+    rejection_counts: dict | None = None
+
+
+def _dominant_height(heights: np.ndarray, slab_m: float) -> float:
+    """Median height inside the histogram bin with the most points.
+
+    More robust than np.percentile when a plateau's Z values are bi-modal
+    (e.g. two height regimes glued together because Sobel missed an edge).
+    """
+    if heights.size == 0:
+        return 0.0
+    h_min, h_max = float(heights.min()), float(heights.max())
+    if h_max - h_min < slab_m:
+        return float(np.median(heights))
+    n_bins = max(1, int(np.ceil((h_max - h_min) / slab_m)))
+    hist, edges = np.histogram(heights, bins=n_bins)
+    best = int(np.argmax(hist))
+    in_band = (heights >= edges[best]) & (heights <= edges[best + 1])
+    if not in_band.any():
+        return float(np.median(heights))
+    return float(np.median(heights[in_band]))
 
 
 def _backproject_pixels(
@@ -469,7 +501,12 @@ def find_neighbor_via_gradient(
     cfg = config.get("gradient_neighbor", {})
     radius_px_fallback = int(cfg.get("neighbor_radius_px", 60))
     radius_m = cfg.get("neighbor_radius_m", None)
-    min_plateau_area_px = int(cfg.get("min_plateau_area_px", 400))
+    min_plateau_area_px = int(cfg.get("min_plateau_area_px", 300))
+    min_plateau_area_m2 = float(cfg.get("min_plateau_area_m2", 0.005))
+    max_plateau_z_std = float(cfg.get("max_plateau_z_std_m", 0.015))
+    min_aspect = float(cfg.get("min_aspect_ratio", 0.25))
+    use_dominant = bool(cfg.get("use_dominant_height_band", True))
+    slab_m = float(cfg.get("slab_m", 0.005))
     edge_dilate_px = int(cfg.get("edge_dilate_px", 1))
     height_percentile = float(cfg.get("height_percentile", 95.0))
     tol = float(config.get("tolerance_m", 0.008))
@@ -479,9 +516,8 @@ def find_neighbor_via_gradient(
     depth = np.asarray(depth, dtype=np.float64)
 
     if target_mask.sum() == 0:
-        return GradientNeighborResult(None, None, [], 0)
+        return GradientNeighborResult(None, None, [], 0, 0, {})
 
-    # Radius in Metern -> Pixel via mittlerer Tiefe der Target-Maske.
     if radius_m is not None:
         target_depth = depth[target_mask]
         mean_depth = float(np.median(target_depth[target_depth > 0])) if (target_depth > 0).any() else 1.0
@@ -507,35 +543,67 @@ def find_neighbor_via_gradient(
     plateau_mask = ring & ~edges
     n_ring = int(ring.sum())
     if not plateau_mask.any():
-        return GradientNeighborResult(None, None, [], n_ring)
+        return GradientNeighborResult(None, None, [], n_ring, 0, {})
 
     n_labels, labels, stats, _ = cv2.connectedComponentsWithStats(
         plateau_mask.astype(np.uint8), connectivity=8
     )
 
     plateaus: list[GradientPlateau] = []
+    rej = {"area_px": 0, "aspect": 0, "area_m2": 0, "z_std": 0}
+
     for li in range(1, n_labels):
-        area = int(stats[li, cv2.CC_STAT_AREA])
-        if area < min_plateau_area_px:
+        area_px = int(stats[li, cv2.CC_STAT_AREA])
+        if area_px < min_plateau_area_px:
+            rej["area_px"] += 1
             continue
+
+        w_px = int(stats[li, cv2.CC_STAT_WIDTH])
+        h_px = int(stats[li, cv2.CC_STAT_HEIGHT])
+        aspect = min(w_px, h_px) / max(max(w_px, h_px), 1)
+        if aspect < min_aspect:
+            rej["aspect"] += 1
+            continue
+
         ys, xs = np.where(labels == li)
         pts = _backproject_pixels(ys, xs, depth)
         heights = heights_above_plane(pts, plane)
-        top = float(np.percentile(heights, height_percentile))
+
+        mean_z_cam = float(np.median(pts[:, 2]))
+        area_m2 = area_px * (mean_z_cam / FX) * (mean_z_cam / FY)
+        if area_m2 < min_plateau_area_m2:
+            rej["area_m2"] += 1
+            continue
+
+        sigma_h = float(np.std(heights))
+        if sigma_h > max_plateau_z_std:
+            rej["z_std"] += 1
+            continue
+
+        if use_dominant:
+            top = _dominant_height(heights, slab_m)
+        else:
+            top = float(np.percentile(heights, height_percentile))
+
         cx_px = float(xs.mean())
         cy_px = float(ys.mean())
         plateaus.append(
             GradientPlateau(
                 label=li,
-                area_px=area,
+                area_px=area_px,
+                area_m2=area_m2,
                 height_above_pallet=top,
+                height_std_m=sigma_h,
+                aspect_ratio=aspect,
                 centroid_px=(cx_px, cy_px),
             )
         )
 
     qualifying = [p for p in plateaus if p.height_above_pallet < z_visible_min - tol]
     if not qualifying:
-        return GradientNeighborResult(None, None, plateaus, n_ring)
+        return GradientNeighborResult(
+            None, None, plateaus, n_ring, n_labels - 1, rej,
+        )
 
     best = max(qualifying, key=lambda p: p.height_above_pallet)
     return GradientNeighborResult(
@@ -543,6 +611,8 @@ def find_neighbor_via_gradient(
         chosen_label=best.label,
         plateaus=plateaus,
         n_ring_pixels=n_ring,
+        n_components_total=n_labels - 1,
+        rejection_counts=rej,
     )
 
 
