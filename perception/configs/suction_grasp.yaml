@@ -13,3 +13,13 @@ fy: 437.04
 model: deeplabv3plus_resnet101
 checkpoint_path: null
 depth_clamp_max_m: 3.0
+centroid_constraint:
+  enabled: true
+  pick_nearest_for_primary: true
+  distance_percentile: 70
+  radius_scale: 0.85
+  min_radius_m: 0.03
+  max_radius_m: 0.15
+  anchor_window_px: 7
+  use_xy_distance: true
+  relax_on_empty: true

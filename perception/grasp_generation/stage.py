@@ -8,6 +8,11 @@ import cv2
 import numpy as np
 
 from perception.grasp_generation.camera import camera_from_shape
+from perception.grasp_generation.centroid import (
+    compute_grasp_centroid_zone,
+    pick_grasp_nearest_centroid,
+)
+from perception.grasp_generation.types import SuctionGrasp
 from perception.grasp_generation.normal_std_backend import run_normal_std
 from perception.grasp_generation.types import SuctionGraspResult
 from perception.selection.select_target import SelectionResult
@@ -65,8 +70,20 @@ def compute_suction_grasps(
     fy = float(cfg.get("fy", 437.04))
     camera = camera_from_shape(h, w, fx=fx, fy=fy)
 
+    anchor_3d, radius_m, centroid_debug = compute_grasp_centroid_zone(
+        candidate, mask, depth, camera, cfg
+    )
+
     if backend == "normal_std":
-        grasps, debug = run_normal_std(depth, mask, camera, cfg)
+        grasps, debug = run_normal_std(
+            depth,
+            mask,
+            camera,
+            cfg,
+            centroid_anchor=anchor_3d,
+            centroid_radius_m=radius_m,
+            centroid_debug=centroid_debug,
+        )
     elif backend == "neural":
         checkpoint = cfg.get("checkpoint_path")
         if not checkpoint:
@@ -88,10 +105,37 @@ def compute_suction_grasps(
             debug={"error": f"unknown_backend:{backend}"},
         )
 
+    primary_grasp: SuctionGrasp | None = None
+    cc = cfg.get("centroid_constraint") or {}
+    pick_nearest = cc.get("pick_nearest_for_primary", True)
+    if grasps:
+        if (
+            cc.get("enabled", False)
+            and pick_nearest
+            and anchor_3d is not None
+        ):
+            primary_grasp, near_idx = pick_grasp_nearest_centroid(
+                grasps,
+                anchor_3d,
+                use_xy_distance=bool(cc.get("use_xy_distance", True)),
+            )
+            if near_idx is not None:
+                pos = primary_grasp.position
+                anchor = np.asarray(anchor_3d, dtype=np.float64)
+                debug["primary_grasp_selection"] = "nearest_centroid"
+                debug["primary_grasp_index"] = int(near_idx)
+                debug["primary_grasp_dist_xy_m"] = float(
+                    np.linalg.norm(pos[:2] - anchor[:2])
+                )
+        else:
+            primary_grasp = grasps[0]
+            debug["primary_grasp_selection"] = "highest_score"
+
     return SuctionGraspResult(
         grasps=grasps,
         candidate_id=candidate.candidate_id,
         backend=backend,
         config_snapshot=dict(cfg),
         debug=debug,
+        primary_grasp=primary_grasp,
     )

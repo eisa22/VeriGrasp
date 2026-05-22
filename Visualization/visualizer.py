@@ -571,6 +571,32 @@ def visualize_selected_target_3d(
     o3d.visualization.draw_geometries(geoms, window_name=title)
 
 
+def _make_centroid_zone_ring(
+    anchor_3d: np.ndarray,
+    radius_m: float,
+    n_segments: int = 48,
+    color: list[float] | None = None,
+) -> o3d.geometry.LineSet:
+    """XY circle at anchor depth — centroid grasp zone (camera → O3D)."""
+    anchor = np.asarray(anchor_3d, dtype=np.float64).reshape(3)
+    theta = np.linspace(0, 2 * np.pi, n_segments, endpoint=False)
+    pts_cam = np.stack(
+        [
+            anchor[0] + radius_m * np.cos(theta),
+            anchor[1] + radius_m * np.sin(theta),
+            np.full(n_segments, anchor[2]),
+        ],
+        axis=1,
+    )
+    pts_o3d = _camera_to_o3d(pts_cam)
+    lines = [[i, (i + 1) % n_segments] for i in range(n_segments)]
+    ring = o3d.geometry.LineSet()
+    ring.points = o3d.utility.Vector3dVector(pts_o3d)
+    ring.lines = o3d.utility.Vector2iVector(np.asarray(lines, dtype=np.int32))
+    ring.paint_uniform_color(color if color is not None else [0.2, 0.85, 1.0])
+    return ring
+
+
 def _score_to_grasp_color(score: float, score_min: float, score_max: float) -> list[float]:
     import colorsys
 
@@ -639,6 +665,18 @@ def visualize_suction_grasps_3d(
         print("[VIZ] Suction grasps: keine Greifpunkte zum Anzeigen – übersprungen.")
         return
 
+    dbg = grasp_result.debug or {}
+    if single_grasp and dbg.get("centroid_constraint_enabled") and "anchor_3d" in dbg:
+        anchor = np.asarray(dbg["anchor_3d"], dtype=np.float64)
+        radius_m = float(dbg.get("radius_m_relaxed", dbg.get("radius_m", 0.0)))
+        if radius_m > 0:
+            geoms.append(_make_centroid_zone_ring(anchor, radius_m))
+            anchor_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.008)
+            anchor_sphere.translate(_camera_to_o3d(anchor.reshape(1, 3))[0])
+            anchor_sphere.paint_uniform_color([0.2, 0.85, 1.0])
+            anchor_sphere.compute_vertex_normals()
+            geoms.append(anchor_sphere)
+
     scores = [g.score for g in shown]
     s_min, s_max = min(scores), max(scores)
     sphere_r = 0.018 if single_grasp else 0.012
@@ -666,12 +704,15 @@ def visualize_suction_grasps_3d(
     )
     best = shown[0]
     if single_grasp:
+        sel_mode = dbg.get("primary_grasp_selection", "highest_score")
+        dist_xy = dbg.get("primary_grasp_dist_xy_m")
+        dist_s = f" dist_xy={dist_xy:.3f}m" if dist_xy is not None else ""
         title = (
             f"{window_name}: '{p_label}' "
-            f"(best grasp score={best.score:.3f}, backend={grasp_result.backend})"
+            f"({sel_mode} score={best.score:.3f}{dist_s}, backend={grasp_result.backend})"
         )
         print(
-            f"[GRASP-VIZ] best grasp #{best.rank}: score={best.score:.3f} "
+            f"[GRASP-VIZ] primary grasp #{best.rank}: {sel_mode} score={best.score:.3f}{dist_s} "
             f"pos=({best.position[0]:.3f},{best.position[1]:.3f},{best.position[2]:.3f}) "
             f"pixel=({best.row},{best.col}) backend={grasp_result.backend}"
         )
@@ -701,7 +742,13 @@ def visualize_best_suction_grasp_3d(
     session_context=None,
     scene_planes=None,
 ):
-    """Stage 12: selected parcel + single best grasp (grasps[0] only)."""
+    """Stage 12: selected parcel + primary grasp (nearest to mask centroid when enabled)."""
+    if grasp_result.primary_grasp is not None:
+        shown = [grasp_result.primary_grasp]
+    elif grasp_result.grasps:
+        shown = [grasp_result.grasps[0]]
+    else:
+        shown = []
     visualize_suction_grasps_3d(
         session_path,
         candidates,
@@ -710,7 +757,7 @@ def visualize_best_suction_grasp_3d(
         window_name=window_name,
         session_context=session_context,
         scene_planes=scene_planes,
-        grasps_override=[grasp_result.grasps[0]],
+        grasps_override=shown,
         single_grasp=True,
     )
 

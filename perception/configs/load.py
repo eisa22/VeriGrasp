@@ -126,6 +126,17 @@ _DEFAULT_SUCTION_GRASP_CONFIG: dict[str, Any] = {
     "model": "deeplabv3plus_resnet101",
     "checkpoint_path": None,
     "depth_clamp_max_m": 3.0,
+    "centroid_constraint": {
+        "enabled": True,
+        "pick_nearest_for_primary": True,
+        "distance_percentile": 70,
+        "radius_scale": 0.85,
+        "min_radius_m": 0.03,
+        "max_radius_m": 0.15,
+        "anchor_window_px": 7,
+        "use_xy_distance": True,
+        "relax_on_empty": True,
+    },
 }
 
 _SUCTION_GRASP_CONFIG_PATH = Path(__file__).resolve().parent / "suction_grasp.yaml"

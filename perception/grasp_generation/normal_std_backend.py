@@ -11,6 +11,7 @@ import torch
 import torch.nn.functional as F
 
 from perception.grasp_generation.camera import CameraInfo, depth_to_point_cloud
+from perception.grasp_generation.centroid import build_centroid_disk_mask
 from perception.grasp_generation.types import SuctionGrasp
 
 
@@ -168,11 +169,30 @@ def _apply_separation_filter(
     return selected
 
 
+def _apply_centroid_zone_to_heatmap(
+    heatmap: np.ndarray,
+    point_cloud: np.ndarray,
+    anchor_3d: np.ndarray | None,
+    radius_m: float | None,
+    use_xy_distance: bool,
+) -> tuple[np.ndarray, int]:
+    if anchor_3d is None or radius_m is None:
+        return heatmap, int(np.count_nonzero(heatmap > 0))
+    disk = build_centroid_disk_mask(
+        point_cloud, anchor_3d, radius_m, use_xy_distance=use_xy_distance
+    )
+    masked = heatmap * disk.astype(np.float32)
+    return masked, int(np.count_nonzero(masked > 0))
+
+
 def run_normal_std(
     depth_img: np.ndarray,
     obj_mask: np.ndarray,
     camera: CameraInfo,
     config: dict[str, Any],
+    centroid_anchor: np.ndarray | None = None,
+    centroid_radius_m: float | None = None,
+    centroid_debug: dict[str, Any] | None = None,
 ) -> tuple[list[SuctionGrasp], dict[str, Any]]:
     heatmap, normal_map, point_cloud = estimate_suction_heatmap(
         depth_img,
@@ -182,7 +202,32 @@ def run_normal_std(
         filter_size=int(config.get("normal_std_filter_size", 25)),
     )
     k_size = int(config.get("heatmap_kernel_size", 15))
-    heatmap = smooth_heatmap(heatmap, k_size)
+    heatmap_smooth = smooth_heatmap(heatmap, k_size)
+
+    cc = config.get("centroid_constraint") or {}
+    use_xy = bool(cc.get("use_xy_distance", True))
+    radius_used = centroid_radius_m
+    anchor_used = centroid_anchor
+    heatmap, n_zone_px = _apply_centroid_zone_to_heatmap(
+        heatmap_smooth.copy(),
+        point_cloud,
+        anchor_used,
+        radius_used,
+        use_xy,
+    )
+    relaxed = False
+    if n_zone_px == 0 and cc.get("relax_on_empty", True) and anchor_used is not None:
+        r_max = float(cc.get("max_radius_m", 0.15))
+        if radius_used is not None and radius_used < r_max:
+            radius_used = r_max
+            relaxed = True
+            heatmap, n_zone_px = _apply_centroid_zone_to_heatmap(
+                heatmap_smooth.copy(),
+                point_cloud,
+                anchor_used,
+                radius_used,
+                use_xy,
+            )
 
     scores, rows, cols = grid_sample(
         heatmap,
@@ -219,10 +264,18 @@ def run_normal_std(
             )
         )
 
-    debug = {
+    debug: dict[str, Any] = {
         "heatmap_max": float(np.max(heatmap)) if heatmap.size else 0.0,
         "heatmap_mean_in_mask": float(np.mean(heatmap[obj_mask])) if np.any(obj_mask) else 0.0,
         "candidates_after_mask": int(len(scores)),
         "n_selected": len(grasps),
+        "heatmap_pixels_inside_zone": n_zone_px,
+        "centroid_zone_relaxed": relaxed,
     }
+    if centroid_debug:
+        debug.update(centroid_debug)
+    if radius_used is not None and radius_used != centroid_radius_m:
+        debug["radius_m_relaxed"] = radius_used
+    if len(grasps) == 0 and anchor_used is not None and n_zone_px == 0:
+        debug["error"] = "centroid_zone_empty"
     return grasps, debug

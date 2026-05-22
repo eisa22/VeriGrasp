@@ -258,11 +258,22 @@ def process_session(session_path, dino_model=None, dino_processor=None):
             f"n_grasps={n_grasps}"
         )
         if n_grasps > 0:
-            top = grasp_result.grasps[0]
+            top = grasp_result.primary_grasp or grasp_result.grasps[0]
+            sel = grasp_result.debug.get("primary_grasp_selection", "highest_score")
             print(
-                f"[GRASP] best score={top.score:.3f} "
+                f"[GRASP] primary ({sel}) score={top.score:.3f} "
                 f"pos=({top.position[0]:.3f},{top.position[1]:.3f},{top.position[2]:.3f})"
             )
+            if grasp_result.debug.get("centroid_constraint_enabled"):
+                r = grasp_result.debug.get(
+                    "radius_m_relaxed", grasp_result.debug.get("radius_m")
+                )
+                print(
+                    f"[GRASP] centroid zone: radius={r:.3f}m "
+                    f"anchor=({grasp_result.debug['anchor_3d'][0]:.3f},"
+                    f"{grasp_result.debug['anchor_3d'][1]:.3f},"
+                    f"{grasp_result.debug['anchor_3d'][2]:.3f})"
+                )
             for g in grasp_result.grasps[:5]:
                 print(
                     f"         #{g.rank}: score={g.score:.3f} "

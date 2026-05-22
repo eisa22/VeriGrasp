@@ -38,13 +38,18 @@ class SuctionGraspResult:
     backend: str
     config_snapshot: dict[str, Any] = field(default_factory=dict)
     debug: dict[str, Any] = field(default_factory=dict)
+    primary_grasp: SuctionGrasp | None = None
 
     def to_serializable(self) -> dict:
-        return {
+        out = {
             "candidate_id": self.candidate_id,
             "backend": self.backend,
             "n_grasps": len(self.grasps),
             "grasps": [g.to_serializable() for g in self.grasps],
+            "primary_grasp": (
+                self.primary_grasp.to_serializable() if self.primary_grasp else None
+            ),
             "config": self.config_snapshot,
             "debug": self.debug,
         }
+        return out
