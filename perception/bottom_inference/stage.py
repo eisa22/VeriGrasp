@@ -10,25 +10,35 @@ from perception.bottom_inference.cases import decide_bottom
 from perception.bottom_inference.neighbors import (
     build_geometry_index,
     find_lateral_neighbors,
+    find_neighbor_via_depth_histogram,
     find_neighbor_via_gradient,
 )
 from perception.bottom_inference.obb import fit_extruded_obb
+from perception.bottom_inference.scene_planes import (
+    detect_scene_planes,
+    find_neighbor_via_scene_planes,
+)
 from perception.candidate import BottomInference, CandidateOut
 
 
 def _resolve_neighbor_z(
     gradient_z: float | None,
     gradient_label: int | None,
+    histogram_z: float | None,
+    scene_z: float | None,
+    scene_id: int | None,
     lateral_info,
 ) -> tuple[float | None, str | None, str]:
-    """
-    Pick the highest neighbour-surface from the gradient-based plateau
-    analysis and the lateral-candidate fallback.
-    """
+    """Pick the highest valid neighbour across all four sources."""
     candidates_z: list[tuple[float, str | None, str]] = []
     if gradient_z is not None:
         gid = f"plateau_{gradient_label}" if gradient_label is not None else "plateau"
         candidates_z.append((gradient_z, gid, "gradient"))
+    if histogram_z is not None:
+        candidates_z.append((histogram_z, "depth_band", "histogram"))
+    if scene_z is not None:
+        sid = f"scene_plane_{scene_id}" if scene_id is not None else "scene_plane"
+        candidates_z.append((scene_z, sid, "scene_plane"))
     if lateral_info.z_highest_neighbor is not None:
         candidates_z.append((
             float(lateral_info.z_highest_neighbor),
@@ -51,6 +61,7 @@ def infer_bottom_planes(
     workspace_mask: np.ndarray | None = None,
     match_neighbors: list | None = None,
     scene_pcd: np.ndarray | None = None,
+    return_scene_planes: bool = False,
 ) -> list[CandidateOut]:
     """
     Enrich each candidate with bottom-plane inference.
@@ -86,6 +97,31 @@ def infer_bottom_planes(
     audit = config.get("audit", {})
     z_pallet = 0.0
     gradient_enabled = depth is not None and sobel_edges is not None
+    histogram_enabled = depth is not None
+    scene_enabled = depth is not None
+
+    if scene_enabled:
+        exclude_masks = [c.mask_2d for c in candidates]
+        scene_planes = detect_scene_planes(
+            depth=depth,
+            sobel_edges=sobel_edges,
+            workspace_mask=workspace_mask,
+            exclude_masks=exclude_masks,
+            plane=plane,
+            config=config,
+        )
+        print(
+            f"[BOTTOM-SP] detected {len(scene_planes)} scene planes "
+            f"(non-candidate flat regions)"
+        )
+        for sp in sorted(scene_planes, key=lambda p: -p.height_above_pallet)[:12]:
+            print(
+                f"             id={sp.plane_id} h={sp.height_above_pallet:+.3f}m "
+                f"A={sp.area_m2*1e4:.0f}cm² σ={sp.height_std_m*1000:.0f}mm "
+                f"ar={sp.aspect_ratio:.2f}"
+            )
+    else:
+        scene_planes = []
 
     for c in candidates:
         g = geom_index[c.candidate_id]
@@ -94,6 +130,7 @@ def infer_bottom_planes(
             grad_result = find_neighbor_via_gradient(
                 c, depth, sobel_edges, workspace_mask, plane,
                 z_visible_min=g.z_visible_min, config=config,
+                obb_extent_xy_m=g.obb_extent_xy,
             )
             gradient_z = grad_result.z_highest_neighbor
             gradient_label = grad_result.chosen_label
@@ -115,8 +152,11 @@ def infer_bottom_planes(
                 f" σ={gradient_rej.get('z_std', 0)}"
             )
             picked = "None" if gradient_z is None else f"{gradient_z:.3f}m"
+            r_m = grad_result.effective_radius_m
+            r_str = f"{r_m:.2f}m" if r_m == r_m else "n/a"  # NaN check
             print(
                 f"[BOTTOM-GR] {c.candidate_id[:8]} z_min={g.z_visible_min:.3f}m "
+                f"obb={g.obb_extent_xy:.2f}m r={r_str}/{grad_result.radius_px}px "
                 f"ring={gradient_ring_px}px comp={gradient_components} "
                 f"kept={len(gradient_plateaus)} rej[{rej_summary}] "
                 f"plateaus=[{plat_summary}] -> picked={picked}"
@@ -128,6 +168,69 @@ def infer_bottom_planes(
             gradient_ring_px = 0
             gradient_components = 0
             gradient_rej = {}
+
+        if histogram_enabled:
+            hist_result = find_neighbor_via_depth_histogram(
+                c, depth, workspace_mask, plane,
+                z_visible_min=g.z_visible_min, config=config,
+                obb_extent_xy_m=g.obb_extent_xy,
+            )
+            histogram_z = hist_result.z_highest_neighbor
+            histogram_bands = hist_result.bands
+            histogram_rej = hist_result.rejection_counts or {}
+            band_summary = ", ".join(
+                f"{b.height_median:+.3f}m"
+                f"(A={b.area_m2*1e4:.0f}cm²,ar={b.aspect_ratio:.2f})"
+                for b in sorted(histogram_bands, key=lambda x: -x.height_median)[:8]
+            ) or "-"
+            picked_h = "None" if histogram_z is None else f"{histogram_z:.3f}m"
+            r_m_h = hist_result.effective_radius_m
+            r_str_h = f"{r_m_h:.2f}m" if r_m_h == r_m_h else "n/a"
+            print(
+                f"[BOTTOM-HG] {c.candidate_id[:8]} z_min={g.z_visible_min:.3f}m "
+                f"r={r_str_h}/{hist_result.radius_px}px "
+                f"ring={hist_result.n_ring_pixels}px "
+                f"bands_kept={len(histogram_bands)} "
+                f"rej[low={histogram_rej.get('low_pixels', 0)} "
+                f"comp={histogram_rej.get('no_component', 0)} "
+                f"ar={histogram_rej.get('aspect', 0)} "
+                f"m2={histogram_rej.get('area_m2', 0)}] "
+                f"bands=[{band_summary}] -> picked={picked_h}"
+            )
+        else:
+            histogram_z = None
+            histogram_bands = []
+            histogram_rej = {}
+
+        if scene_planes:
+            target_xy = np.asarray(c.points_3d, dtype=np.float64)[:, :2] \
+                if c.points_3d is not None else np.zeros((0, 2))
+            sp_result = find_neighbor_via_scene_planes(
+                target_points_xy=target_xy,
+                z_visible_min=g.z_visible_min,
+                scene_planes=scene_planes,
+                config=config,
+            )
+            scene_z = sp_result.z_highest_neighbor
+            scene_id = sp_result.chosen_plane_id
+            scene_qualifying = sp_result.qualifying_ids
+            scene_rej = sp_result.rejection_counts
+            qualifying_summary = ", ".join(
+                f"id{pid}@{next((p.height_above_pallet for p in scene_planes if p.plane_id == pid), 0):+.3f}m"
+                for pid in scene_qualifying[:6]
+            ) or "-"
+            picked_sp = "None" if scene_z is None else f"{scene_z:.3f}m"
+            print(
+                f"[BOTTOM-SP] {c.candidate_id[:8]} z_min={g.z_visible_min:.3f}m "
+                f"rej[high={scene_rej.get('too_high', 0)} "
+                f"nooverlap={scene_rej.get('no_overlap', 0)}] "
+                f"qualifying=[{qualifying_summary}] -> picked={picked_sp}"
+            )
+        else:
+            scene_z = None
+            scene_id = None
+            scene_qualifying = []
+            scene_rej = {}
 
         lateral_info = find_lateral_neighbors(g, geom_index, config)
 
@@ -141,12 +244,14 @@ def infer_bottom_planes(
             )
             print(
                 f"[BOTTOM-LT] {c.candidate_id[:8]} z_min={g.z_visible_min:.3f}m "
+                f"r={lateral_info.effective_radius_m:.2f}m "
                 f"others=[{lat_summary}] -> "
                 f"highest={lateral_info.z_highest_neighbor:.3f}m"
             )
 
         z_highest_neighbor, highest_id, source = _resolve_neighbor_z(
-            gradient_z, gradient_label, lateral_info,
+            gradient_z, gradient_label, histogram_z,
+            scene_z, scene_id, lateral_info,
         )
 
         decision = decide_bottom(
@@ -180,6 +285,11 @@ def infer_bottom_planes(
         debug["neighbor_ids_used"] = list(decision.used_neighbor_ids)
         debug["z_visible_min"] = g.z_visible_min
         debug["z_neighbor_top_gradient"] = gradient_z
+        debug["z_neighbor_top_histogram"] = histogram_z
+        debug["z_neighbor_top_scene"] = scene_z
+        debug["scene_plane_id_chosen"] = scene_id
+        debug["scene_planes_qualifying"] = list(scene_qualifying)
+        debug["scene_plane_rejections"] = dict(scene_rej)
         debug["z_neighbor_top_lateral"] = lateral_info.z_neighbor_top
         debug["z_highest_neighbor"] = z_highest_neighbor
         debug["neighbor_source"] = source
@@ -204,6 +314,20 @@ def infer_bottom_planes(
             }
             for p in gradient_plateaus
         ]
+        debug["histogram_n_bands_kept"] = len(histogram_bands)
+        debug["histogram_rejections"] = dict(histogram_rej)
+        debug["histogram_bands"] = [
+            {
+                "band_low": b.band_low,
+                "band_high": b.band_high,
+                "height_median": b.height_median,
+                "area_px": b.area_px,
+                "area_m2": b.area_m2,
+                "aspect_ratio": b.aspect_ratio,
+                "centroid_px": list(b.centroid_px),
+            }
+            for b in histogram_bands
+        ]
 
         if audit.get("store_per_neighbor_distances", False):
             debug["neighbor_distances_m"] = list(lateral_info.neighbor_distances)
@@ -222,4 +346,6 @@ def infer_bottom_planes(
         from perception.bottom_inference.debug import visualize_bottom_inference
         visualize_bottom_inference(enriched, plane)
 
+    if return_scene_planes:
+        return enriched, scene_planes
     return enriched

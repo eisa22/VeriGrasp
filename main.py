@@ -157,6 +157,7 @@ def process_session(session_path, dino_model=None, dino_processor=None):
     # über Sobel-Kanten Plateaus segmentiert und das höchste qualifizierende
     # Plateau (Top unter z_visible_min) liefert den Box-Boden.
     candidates = []
+    scene_planes = []
     if sam3d_masks:
         bottom_cfg = load_bottom_inference_config()
         candidates = build_candidates_from_sam3d(
@@ -169,13 +170,14 @@ def process_session(session_path, dino_model=None, dino_processor=None):
         )
         pallet_plane = tuple(float(x) for x in session_context.plane_model)
         sobel_edges = sobel_viz_data.get("edges") if sobel_viz_data else None
-        candidates = infer_bottom_planes(
+        candidates, scene_planes = infer_bottom_planes(
             candidates,
             pallet_plane,
             bottom_cfg,
             depth=session_context.depth_abs,
             sobel_edges=sobel_edges,
             workspace_mask=session_context.workspace_mask,
+            return_scene_planes=True,
         )
         method_counts: dict[str, int] = {}
         for c in candidates:
@@ -209,6 +211,7 @@ def process_session(session_path, dino_model=None, dino_processor=None):
             excluded_matches=excluded_matches,
             session_context=session_context,
             candidates=candidates if candidates else None,
+            scene_planes=scene_planes if scene_planes else None,
         )
     
     # Phase 5: Screenshots (optional)

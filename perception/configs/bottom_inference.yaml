@@ -1,11 +1,15 @@
 lateral_radius_m: 0.30
+lateral_radius_factor: 1.5         # adaptive: r = max(lateral_radius_m, factor * obb_extent_xy)
+lateral_radius_max_m: 1.5          # hard cap so huge parcels don't sweep the whole scene
 min_neighbors: 2
 height_tolerance: 0.005
 tolerance_m: 0.008
 pallet_height_tolerance: 0.030
 edge_distance_m: 0.05
 gradient_neighbor:
-  neighbor_radius_m: 0.30          # ring radius around the parcel (metres) - converted to px via mean depth
+  neighbor_radius_m: 0.30          # minimum ring radius (metres)
+  adaptive_radius_factor: 1.0      # adaptive: r = max(neighbor_radius_m, factor * obb_extent_xy_m)
+  max_radius_m: 1.0                # hard cap so huge parcels don't dilate forever
   neighbor_radius_px: 80           # fallback if neighbor_radius_m is null
   min_plateau_area_px: 300         # hard lower bound on pixel area (cheap pre-filter)
   min_plateau_area_m2: 0.005       # 50 cm² minimum area in metric space (depth-independent)
@@ -15,6 +19,27 @@ gradient_neighbor:
   slab_m: 0.005                    # bin width for the dominant-height histogram
   edge_dilate_px: 1                # widen Sobel edges by 1 px to seal hair-line gaps
   height_percentile: 95.0          # fallback only when use_dominant_height_band=false
+depth_histogram:
+  enabled: true                    # Sobel-independent plateau detection
+  # Ring geometry inherits from gradient_neighbor unless overridden here
+  slab_m: 0.005                    # height bin width (5 mm slabs)
+  min_band_pixels: 200             # ring pixels at this height
+  min_band_fraction: 0.02          # OR >= 2% of ring pixels
+  min_component_area_m2: 0.003     # 30 cm² minimum component area
+  min_component_aspect: 0.20       # less strict than gradient (band is already mono-height)
+scene_planes:
+  enabled: true                    # global flat-surface detection
+  edge_dilate_px: 2                # widen Sobel edges before slicing components
+  exclude_dilate_px: 4             # widen SAM3D masks to avoid candidate-border leakage
+  min_component_px: 200            # pixel area pre-filter on connected components
+  min_area_m2: 0.003               # 30 cm² minimum metric area (depth-independent)
+  min_aspect_ratio: 0.15           # planes can be elongated, but not 1-px stripes
+  max_height_std_m: 0.020          # 2 cm height-std max (plane must be flat)
+  slab_m: 0.005                    # height bin width for CC sub-splitting
+  min_band_pixels: 100             # min pixels per height band inside a CC
+  min_band_fraction: 0.05          # OR 5% of the CC's pixels
+  min_overlap: 0.05                # XY-footprint min-area-fraction overlap with target
+  max_centroid_dist_m: 0.20        # OR centroid within 20 cm of target centre
 solid_surface:
   slab_m: 0.005                  # 5 mm band thickness for height histogram
   min_points: 40                 # min points per band

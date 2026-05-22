@@ -34,6 +34,7 @@ class NeighborInfo:
     z_highest_neighbor: float | None
     highest_neighbor_id: str | None
     neighbor_spread: float | None
+    effective_radius_m: float = float("nan")
 
 
 def _footprint_from_xy(xy: np.ndarray) -> tuple[float, float, float, float]:
@@ -368,16 +369,21 @@ def find_lateral_neighbors(
     the bottom plane down to that height.
     """
     lateral_radius_m = float(config["lateral_radius_m"])
+    lateral_radius_factor = float(config.get("lateral_radius_factor", 1.5))
+    lateral_radius_max_m = float(config.get("lateral_radius_max_m", 1.5))
     tol = float(config.get("tolerance_m", config.get("height_tolerance", 0.008)))
 
-    r_neighbor = lateral_radius_m + 0.5 * target.obb_extent_xy
+    obb = float(target.obb_extent_xy)
+    r_neighbor = max(lateral_radius_m, obb * lateral_radius_factor)
+    r_neighbor = min(r_neighbor, lateral_radius_max_m)
+
     ids: list[str] = []
     tops: list[float] = []
     dists: list[float] = []
 
     others = [g for cid, g in all_geom.items() if cid != target.candidate_id]
     if not others:
-        return NeighborInfo([], [], [], None, None, None, None)
+        return NeighborInfo([], [], [], None, None, None, None, r_neighbor)
 
     centers = np.array([g.center_xy for g in others], dtype=np.float64)
     tree = cKDTree(centers)
@@ -399,7 +405,7 @@ def find_lateral_neighbors(
     dists = [dists[i] for i in order]
 
     if not ids:
-        return NeighborInfo([], [], [], None, None, None, None)
+        return NeighborInfo([], [], [], None, None, None, None, r_neighbor)
 
     med = float(np.median(tops))
     spread = float(np.median(np.abs(np.array(tops) - med)))
@@ -413,6 +419,7 @@ def find_lateral_neighbors(
         z_highest_neighbor=float(tops[highest_idx]),
         highest_neighbor_id=ids[highest_idx],
         neighbor_spread=spread,
+        effective_radius_m=r_neighbor,
     )
 
 
@@ -437,6 +444,8 @@ class GradientNeighborResult:
     n_ring_pixels: int
     n_components_total: int = 0
     rejection_counts: dict | None = None
+    effective_radius_m: float = float("nan")
+    radius_px: int = 0
 
 
 def _dominant_height(heights: np.ndarray, slab_m: float) -> float:
@@ -474,6 +483,57 @@ def _backproject_pixels(
     return np.stack([x, y, z], axis=1)
 
 
+def _build_neighborhood_ring(
+    target_mask: np.ndarray,
+    depth: np.ndarray,
+    workspace_mask: np.ndarray | None,
+    radius_min_m: float,
+    adaptive_factor: float,
+    max_radius_m: float,
+    obb_extent_xy_m: float | None,
+    fallback_radius_px: int,
+) -> tuple[np.ndarray, float, int]:
+    """Return (ring_mask, effective_radius_m, radius_px).
+
+    Adaptive: r_m = clamp(max(radius_min_m, adaptive_factor * obb_extent), max_radius_m).
+    Pixel radius derived via the parcel's mean depth.
+    """
+    if radius_min_m is None:
+        return _empty_ring(target_mask, fallback_radius_px), float("nan"), fallback_radius_px
+
+    target_depth = depth[target_mask]
+    valid = target_depth[target_depth > 0]
+    mean_depth = float(np.median(valid)) if valid.size > 0 else 1.0
+
+    base = float(radius_min_m)
+    if obb_extent_xy_m is not None and adaptive_factor > 0:
+        effective_radius_m = max(base, float(obb_extent_xy_m) * adaptive_factor)
+    else:
+        effective_radius_m = base
+    effective_radius_m = min(effective_radius_m, max_radius_m)
+
+    radius_px = max(10, int(round(effective_radius_m * FX / max(mean_depth, 0.1))))
+    return _empty_ring(target_mask, radius_px, workspace_mask, depth), effective_radius_m, radius_px
+
+
+def _empty_ring(
+    target_mask: np.ndarray,
+    radius_px: int,
+    workspace_mask: np.ndarray | None = None,
+    depth: np.ndarray | None = None,
+) -> np.ndarray:
+    kernel = cv2.getStructuringElement(
+        cv2.MORPH_ELLIPSE, (2 * radius_px + 1, 2 * radius_px + 1)
+    )
+    dilated = cv2.dilate(target_mask.astype(np.uint8), kernel, iterations=1) > 0
+    ring = dilated & ~target_mask
+    if workspace_mask is not None:
+        ring &= np.asarray(workspace_mask, dtype=bool)
+    if depth is not None:
+        ring &= depth > 0
+    return ring
+
+
 def find_neighbor_via_gradient(
     target: CandidateOut,
     depth: np.ndarray,
@@ -482,13 +542,17 @@ def find_neighbor_via_gradient(
     plane: tuple[float, float, float, float],
     z_visible_min: float,
     config: dict,
+    obb_extent_xy_m: float | None = None,
 ) -> GradientNeighborResult:
     """
     Pure-Sobel neighbourhood analysis (no DINO, no Stage-5 matches).
 
-    1. Define the neighbourhood as a ring around the target mask
-       (dilate by `neighbor_radius_m` converted to pixels via the
-       parcel's mean depth, fallback to `neighbor_radius_px`).
+    1. Define the neighbourhood as a ring around the target mask. The
+       effective radius is adaptive:
+            r_m = max(neighbor_radius_m, adaptive_radius_factor * obb_extent_xy_m)
+       so large parcels search a proportionally larger ring.
+       Pixel radius is derived from `r_m` via the parcel's mean depth
+       (fallback: `neighbor_radius_px`).
     2. Inside the ring, a "plateau" = connected component of pixels that
        are NOT marked as a Sobel/Canny edge AND have a valid depth value.
     3. For each plateau (area >= `min_plateau_area_px`):
@@ -500,7 +564,9 @@ def find_neighbor_via_gradient(
     """
     cfg = config.get("gradient_neighbor", {})
     radius_px_fallback = int(cfg.get("neighbor_radius_px", 60))
-    radius_m = cfg.get("neighbor_radius_m", None)
+    radius_m_min = cfg.get("neighbor_radius_m", None)
+    adaptive_factor = float(cfg.get("adaptive_radius_factor", 1.0))
+    max_radius_m = float(cfg.get("max_radius_m", 1.0))
     min_plateau_area_px = int(cfg.get("min_plateau_area_px", 300))
     min_plateau_area_m2 = float(cfg.get("min_plateau_area_m2", 0.005))
     max_plateau_z_std = float(cfg.get("max_plateau_z_std_m", 0.015))
@@ -516,14 +582,24 @@ def find_neighbor_via_gradient(
     depth = np.asarray(depth, dtype=np.float64)
 
     if target_mask.sum() == 0:
-        return GradientNeighborResult(None, None, [], 0, 0, {})
+        return GradientNeighborResult(None, None, [], 0, 0, {}, float("nan"), 0)
 
-    if radius_m is not None:
+    if radius_m_min is not None:
         target_depth = depth[target_mask]
         mean_depth = float(np.median(target_depth[target_depth > 0])) if (target_depth > 0).any() else 1.0
-        radius_px = max(10, int(round(float(radius_m) * FX / max(mean_depth, 0.1))))
+
+        base = float(radius_m_min)
+        if obb_extent_xy_m is not None and adaptive_factor > 0:
+            adaptive = float(obb_extent_xy_m) * adaptive_factor
+            effective_radius_m = max(base, adaptive)
+        else:
+            effective_radius_m = base
+        effective_radius_m = min(effective_radius_m, max_radius_m)
+
+        radius_px = max(10, int(round(effective_radius_m * FX / max(mean_depth, 0.1))))
     else:
         radius_px = radius_px_fallback
+        effective_radius_m = float("nan")
 
     kernel = cv2.getStructuringElement(
         cv2.MORPH_ELLIPSE, (2 * radius_px + 1, 2 * radius_px + 1)
@@ -543,7 +619,9 @@ def find_neighbor_via_gradient(
     plateau_mask = ring & ~edges
     n_ring = int(ring.sum())
     if not plateau_mask.any():
-        return GradientNeighborResult(None, None, [], n_ring, 0, {})
+        return GradientNeighborResult(
+            None, None, [], n_ring, 0, {}, effective_radius_m, radius_px,
+        )
 
     n_labels, labels, stats, _ = cv2.connectedComponentsWithStats(
         plateau_mask.astype(np.uint8), connectivity=8
@@ -603,6 +681,7 @@ def find_neighbor_via_gradient(
     if not qualifying:
         return GradientNeighborResult(
             None, None, plateaus, n_ring, n_labels - 1, rej,
+            effective_radius_m, radius_px,
         )
 
     best = max(qualifying, key=lambda p: p.height_above_pallet)
@@ -612,6 +691,174 @@ def find_neighbor_via_gradient(
         plateaus=plateaus,
         n_ring_pixels=n_ring,
         n_components_total=n_labels - 1,
+        rejection_counts=rej,
+        effective_radius_m=effective_radius_m,
+        radius_px=radius_px,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Depth-histogram plateau detection (Sobel-independent fallback)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class DepthBand:
+    """A horizontal slab of points in the neighbourhood ring (identified
+    purely by depth histogramming, no Sobel required)."""
+    band_low: float
+    band_high: float
+    height_median: float
+    area_px: int
+    area_m2: float
+    aspect_ratio: float
+    centroid_px: tuple[float, float]
+
+
+@dataclass
+class DepthHistogramResult:
+    z_highest_neighbor: float | None
+    bands: list[DepthBand]
+    n_ring_pixels: int
+    effective_radius_m: float = float("nan")
+    radius_px: int = 0
+    rejection_counts: dict | None = None
+
+
+def find_neighbor_via_depth_histogram(
+    target: CandidateOut,
+    depth: np.ndarray,
+    workspace_mask: np.ndarray | None,
+    plane: tuple[float, float, float, float],
+    z_visible_min: float,
+    config: dict,
+    obb_extent_xy_m: float | None = None,
+) -> DepthHistogramResult:
+    """Sobel-free plateau detection.
+
+    Procedure:
+      1. Build the same adaptive ring as the gradient detector.
+      2. Compute height-above-pallet for every valid pixel in the ring.
+      3. Bin the heights into `slab_m` slabs and accept every slab whose
+         pixel count exceeds `min_band_pixels` OR `min_band_fraction` of
+         the ring.
+      4. Per accepted band, run 2D connected components on the in-band
+         pixels and keep the largest component that passes
+         (min_component_area_m2, min_component_aspect).
+      5. Band's "top" = median height inside that band. Return the
+         highest band whose top is strictly below z_visible_min - tol.
+
+    Works when Sobel is too noisy / misses thin edges between adjacent
+    cardboard parcels at the same colour: the depth jump itself is enough
+    to separate them in the height histogram.
+    """
+    cfg = config.get("depth_histogram", {})
+    if not cfg.get("enabled", True):
+        return DepthHistogramResult(None, [], 0)
+
+    radius_min_m = cfg.get("neighbor_radius_m", config.get("gradient_neighbor", {}).get("neighbor_radius_m", 0.30))
+    adaptive_factor = float(cfg.get("adaptive_radius_factor",
+                                    config.get("gradient_neighbor", {}).get("adaptive_radius_factor", 1.0)))
+    max_radius_m = float(cfg.get("max_radius_m",
+                                 config.get("gradient_neighbor", {}).get("max_radius_m", 1.0)))
+    fallback_radius_px = int(cfg.get("neighbor_radius_px", 80))
+    slab_m = float(cfg.get("slab_m", 0.005))
+    min_band_pixels = int(cfg.get("min_band_pixels", 200))
+    min_band_fraction = float(cfg.get("min_band_fraction", 0.02))
+    min_area_m2 = float(cfg.get("min_component_area_m2", 0.003))
+    min_aspect = float(cfg.get("min_component_aspect", 0.20))
+    tol = float(config.get("tolerance_m", 0.008))
+
+    target_mask = np.asarray(target.mask_2d, dtype=np.uint8) > 0
+    depth = np.asarray(depth, dtype=np.float64)
+    if target_mask.sum() == 0:
+        return DepthHistogramResult(None, [], 0)
+
+    ring, effective_radius_m, radius_px = _build_neighborhood_ring(
+        target_mask, depth, workspace_mask,
+        radius_min_m, adaptive_factor, max_radius_m,
+        obb_extent_xy_m, fallback_radius_px,
+    )
+    n_ring = int(ring.sum())
+    if n_ring == 0:
+        return DepthHistogramResult(None, [], 0, effective_radius_m, radius_px, {})
+
+    ys, xs = np.where(ring)
+    pts = _backproject_pixels(ys, xs, depth)
+    heights = heights_above_plane(pts, plane)
+
+    h_min, h_max = float(heights.min()), float(heights.max())
+    if h_max - h_min < slab_m:
+        n_bins = 1
+    else:
+        n_bins = max(1, int(np.ceil((h_max - h_min) / slab_m)))
+    hist, edges = np.histogram(heights, bins=n_bins)
+
+    pixel_threshold = max(min_band_pixels, int(min_band_fraction * n_ring))
+
+    bands: list[DepthBand] = []
+    rej = {"low_pixels": 0, "no_component": 0, "area_m2": 0, "aspect": 0}
+
+    for bi in range(len(hist)):
+        if hist[bi] < pixel_threshold:
+            rej["low_pixels"] += 1
+            continue
+        lo, hi = float(edges[bi]), float(edges[bi + 1])
+        in_band = (heights >= lo) & (heights <= hi)
+        if not in_band.any():
+            rej["low_pixels"] += 1
+            continue
+
+        band_mask = np.zeros_like(ring, dtype=np.uint8)
+        band_mask[ys[in_band], xs[in_band]] = 1
+
+        n_labels, labels, stats, _ = cv2.connectedComponentsWithStats(
+            band_mask, connectivity=8,
+        )
+        if n_labels <= 1:
+            rej["no_component"] += 1
+            continue
+
+        best_li = int(np.argmax(stats[1:, cv2.CC_STAT_AREA])) + 1
+        area_px = int(stats[best_li, cv2.CC_STAT_AREA])
+        w_px = int(stats[best_li, cv2.CC_STAT_WIDTH])
+        h_px = int(stats[best_li, cv2.CC_STAT_HEIGHT])
+        aspect = min(w_px, h_px) / max(max(w_px, h_px), 1)
+        if aspect < min_aspect:
+            rej["aspect"] += 1
+            continue
+
+        cys, cxs = np.where(labels == best_li)
+        comp_pts = _backproject_pixels(cys, cxs, depth)
+        mean_zcam = float(np.median(comp_pts[:, 2]))
+        area_m2 = area_px * (mean_zcam / FX) * (mean_zcam / FY)
+        if area_m2 < min_area_m2:
+            rej["area_m2"] += 1
+            continue
+
+        comp_heights = heights_above_plane(comp_pts, plane)
+        bands.append(DepthBand(
+            band_low=lo,
+            band_high=hi,
+            height_median=float(np.median(comp_heights)),
+            area_px=area_px,
+            area_m2=area_m2,
+            aspect_ratio=aspect,
+            centroid_px=(float(cxs.mean()), float(cys.mean())),
+        ))
+
+    qualifying = [b for b in bands if b.height_median < z_visible_min - tol]
+    if not qualifying:
+        return DepthHistogramResult(
+            None, bands, n_ring, effective_radius_m, radius_px, rej,
+        )
+
+    best = max(qualifying, key=lambda b: b.height_median)
+    return DepthHistogramResult(
+        z_highest_neighbor=best.height_median,
+        bands=bands,
+        n_ring_pixels=n_ring,
+        effective_radius_m=effective_radius_m,
+        radius_px=radius_px,
         rejection_counts=rej,
     )
 

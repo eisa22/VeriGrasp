@@ -210,6 +210,60 @@ def test_higher_of_gradient_and_lateral_wins():
     assert t_out.debug["neighbor_source"] == "lateral"
 
 
+def test_scene_planes_detected_and_exported():
+    """Global scene-plane detection must find the lower flat region between
+    target and pallet and return it via the optional output."""
+    depth, edges, ws, target, plane = _build_synthetic_scene(
+        target_top_h=0.62, neighbor_top_h=0.30,
+    )
+    cfg = _relax_gradient_cfg(load_bottom_inference_config())
+    cfg["scene_planes"]["min_component_px"] = 50
+    cfg["scene_planes"]["min_band_pixels"] = 50
+    cfg["scene_planes"]["min_area_m2"] = 0.0
+    cfg["scene_planes"]["min_overlap"] = 0.0
+    cfg["scene_planes"]["max_centroid_dist_m"] = 5.0
+
+    enriched, scene_planes = infer_bottom_planes(
+        [target], plane, cfg,
+        depth=depth, sobel_edges=edges, workspace_mask=ws,
+        return_scene_planes=True,
+    )
+    assert len(scene_planes) >= 2
+
+    heights = sorted(sp.height_above_pallet for sp in scene_planes)
+    assert any(abs(h - 0.0) < 0.02 for h in heights)
+    assert any(abs(h - 0.30) < 0.02 for h in heights)
+
+    debug = enriched[0].debug
+    assert "scene_plane_id_chosen" in debug
+    assert debug["z_neighbor_top_scene"] is not None
+    assert debug["z_neighbor_top_scene"] == pytest.approx(0.30, abs=0.02)
+
+
+def test_depth_histogram_finds_plateau_without_sobel():
+    """
+    The depth-histogram detector must find the lower plateau even when we
+    feed in an EMPTY sobel map (i.e. Sobel missed the edge between target
+    and neighbour). The histogram operates on depth alone.
+    """
+    depth, edges, ws, target, plane = _build_synthetic_scene(
+        target_top_h=0.62, neighbor_top_h=0.30,
+    )
+    empty_edges = np.zeros_like(edges)
+    cfg = _relax_gradient_cfg(load_bottom_inference_config())
+    cfg["depth_histogram"]["min_band_pixels"] = 50
+    cfg["depth_histogram"]["min_component_area_m2"] = 0.0
+
+    out = infer_bottom_planes(
+        [target], plane, cfg,
+        depth=depth, sobel_edges=empty_edges, workspace_mask=ws,
+    )
+    assert out[0].bottom.bottom_method == "from_neighbor"
+    assert out[0].bottom.bottom_z == pytest.approx(0.30, abs=0.02)
+    assert out[0].debug["neighbor_source"] == "histogram"
+    assert out[0].debug["histogram_n_bands_kept"] >= 1
+
+
 def test_lateral_neighbor_above_z_visible_min_is_ignored():
     """A neighbour whose top is ABOVE z_visible_min must not be used."""
     target = _make_flat_parcel("target", top_h=0.30, center_xy=(0.0, 0.0))
@@ -270,6 +324,8 @@ def test_immutability_and_audit_fields():
             "neighbor_ids_used",
             "z_visible_min",
             "z_neighbor_top_gradient",
+            "z_neighbor_top_histogram",
+            "z_neighbor_top_scene",
             "z_neighbor_top_lateral",
             "z_highest_neighbor",
             "neighbor_source",

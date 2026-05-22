@@ -70,7 +70,12 @@ def decide_bottom(
     used_ids = [highest_neighbor_id] if highest_neighbor_id is not None else []
 
     if z_highest_neighbor < z_lowest_visible - delta:
-        confidence = 0.90 if neighbor_source == "gradient" else 0.75
+        confidence = {
+            "gradient": 0.90,
+            "histogram": 0.85,
+            "scene_plane": 0.88,
+            "lateral": 0.75,
+        }.get(neighbor_source, 0.70)
         return BottomDecision(
             bottom_z=z_highest_neighbor,
             bottom_method="from_neighbor",

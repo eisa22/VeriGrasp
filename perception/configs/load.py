@@ -10,6 +10,8 @@ import yaml
 
 _DEFAULT_CONFIG: dict[str, Any] = {
     "lateral_radius_m": 0.30,
+    "lateral_radius_factor": 1.5,
+    "lateral_radius_max_m": 1.5,
     "min_neighbors": 2,
     "height_tolerance": 0.005,
     "tolerance_m": 0.008,
@@ -17,6 +19,8 @@ _DEFAULT_CONFIG: dict[str, Any] = {
     "edge_distance_m": 0.05,
     "gradient_neighbor": {
         "neighbor_radius_m": 0.30,
+        "adaptive_radius_factor": 1.0,
+        "max_radius_m": 1.0,
         "neighbor_radius_px": 80,
         "min_plateau_area_px": 300,
         "min_plateau_area_m2": 0.005,
@@ -26,6 +30,28 @@ _DEFAULT_CONFIG: dict[str, Any] = {
         "slab_m": 0.005,
         "edge_dilate_px": 1,
         "height_percentile": 95.0,
+    },
+    "depth_histogram": {
+        "enabled": True,
+        "slab_m": 0.005,
+        "min_band_pixels": 200,
+        "min_band_fraction": 0.02,
+        "min_component_area_m2": 0.003,
+        "min_component_aspect": 0.20,
+    },
+    "scene_planes": {
+        "enabled": True,
+        "edge_dilate_px": 2,
+        "exclude_dilate_px": 4,
+        "min_component_px": 200,
+        "min_area_m2": 0.003,
+        "min_aspect_ratio": 0.15,
+        "max_height_std_m": 0.020,
+        "slab_m": 0.005,
+        "min_band_pixels": 100,
+        "min_band_fraction": 0.05,
+        "min_overlap": 0.05,
+        "max_centroid_dist_m": 0.20,
     },
     "solid_surface": {
         "slab_m": 0.005,

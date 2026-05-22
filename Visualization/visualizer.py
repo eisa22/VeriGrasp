@@ -278,14 +278,63 @@ def _make_obb_corner_markers(
     return spheres
 
 
+def _height_to_rgb(h: float, h_min: float = 0.0, h_max: float = 0.6) -> list[float]:
+    """Map a height-above-pallet value to an RGB colour (blue=low, red=high)."""
+    if h_max <= h_min:
+        t = 0.5
+    else:
+        t = float(np.clip((h - h_min) / (h_max - h_min), 0.0, 1.0))
+    return [t, 0.45 + 0.4 * (1.0 - abs(2 * t - 1.0)), 1.0 - t]
+
+
+def _scene_plane_geometries(
+    scene_planes,
+    candidates,
+    h_range: tuple[float, float] | None = None,
+):
+    """Build coloured point clouds for each detected scene-plane.
+
+    `scene_planes` is a list of `ScenePlane` (perception.bottom_inference.scene_planes).
+    Returns a list of Open3D geometries.
+    """
+    if not scene_planes:
+        return []
+
+    heights = [p.height_above_pallet for p in scene_planes]
+    if h_range is None:
+        h_min = min(heights + [0.0])
+        h_max = max(heights + [0.6])
+    else:
+        h_min, h_max = h_range
+
+    geoms = []
+    for sp in scene_planes:
+        pts = sp.points_3d
+        if pts is None or len(pts) == 0:
+            continue
+        color = _height_to_rgb(sp.height_above_pallet, h_min, h_max)
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(_camera_to_o3d(pts))
+        if len(pts) > 800:
+            pcd = pcd.voxel_down_sample(voxel_size=0.005)
+        pcd.paint_uniform_color(color)
+        geoms.append(pcd)
+    return geoms
+
+
 def visualize_bottom_inference_3d(
     session_path,
     candidates,
     window_name: str = "Bottom-Plane Inference",
     session_context=None,
+    scene_planes=None,
 ):
     """
     3D-Ansicht: extrudierte Paket-OBBs nach Stage 2.5 (Top-Fläche + inferierte Bodenhöhe).
+
+    Zusätzlich werden – sofern `scene_planes` übergeben wird – alle global
+    detektierten Referenz-Flächen eingezeichnet, eingefärbt nach Höhe
+    (blau = nahe Palette, rot = nahe Top).
     """
     if not candidates:
         print("[VIZ] Bottom-Inference: keine Kandidaten – übersprungen.")
@@ -296,6 +345,11 @@ def visualize_bottom_inference_3d(
     bg.points = o3d.utility.Vector3dVector(all_points)
     bg.colors = o3d.utility.Vector3dVector(base_colors * 0.45)
     geoms: list = [bg]
+
+    if scene_planes:
+        sp_geoms = _scene_plane_geometries(scene_planes, candidates)
+        geoms.extend(sp_geoms)
+        print(f"[BOTTOM-VIZ] zeichne {len(sp_geoms)} Referenz-Flächen (scene_planes)")
 
     if session_context is not None:
         z_pal = float(session_context.z_pallet_m)
@@ -1338,7 +1392,7 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
                  original_masks=None, original_labels=None, dino_debug=None,
                  sam3d_masks=None, sam3d_labels=None,
                  closed_matches=None, excluded_matches=None,
-                 session_context=None, candidates=None):
+                 session_context=None, candidates=None, scene_planes=None):
     """
     Hauptfunktion: Zeigt alle Debug-Visualisierungen nacheinander.
 
@@ -1425,12 +1479,15 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
 
     if has_bottom:
         step = total_steps
-        print(f"[VIZ] {step}/{total_steps}: Bottom-Plane Inference (extrudierte Volumen)...")
+        n_planes = len(scene_planes or [])
+        suffix = f" + {n_planes} Referenz-Flächen" if n_planes else ""
+        print(f"[VIZ] {step}/{total_steps}: Bottom-Plane Inference (extrudierte Volumen){suffix}...")
         visualize_bottom_inference_3d(
             session_path,
             candidates,
-            window_name=f"{step}/{total_steps}: Bottom-Plane Inference (OBB + Bodenhöhe)",
+            window_name=f"{step}/{total_steps}: Bottom-Plane Inference (OBB + Bodenhöhe){suffix}",
             session_context=session_context,
+            scene_planes=scene_planes,
         )
     
     print(f"[VIZ] Alle {total_steps} Visualisierungen abgeschlossen.\n")
