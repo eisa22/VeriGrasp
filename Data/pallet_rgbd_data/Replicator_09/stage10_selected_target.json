@@ -111,53 +111,53 @@
       "n_lateral_peers": 2
     },
     {
-      "candidate_id": "8127ada41dc7",
+      "candidate_id": "047eb97c9d42",
       "rank": 2,
+      "score": 0.518426204699455,
+      "top_z": 1.2470784716248406,
+      "n_lateral_peers": 2
+    },
+    {
+      "candidate_id": "5470a110c0dc",
+      "rank": 3,
+      "score": 0.5286088959477389,
+      "top_z": 1.247078424524574,
+      "n_lateral_peers": 3
+    },
+    {
+      "candidate_id": "b272ba1e5502",
+      "rank": 4,
+      "score": 0.5286091559136106,
+      "top_z": 1.2470786844904458,
+      "n_lateral_peers": 3
+    },
+    {
+      "candidate_id": "548ab471bbc3",
+      "rank": 5,
+      "score": 0.5286091567491078,
+      "top_z": 1.247078685325943,
+      "n_lateral_peers": 4
+    },
+    {
+      "candidate_id": "8127ada41dc7",
+      "rank": 6,
       "score": 1.2470779418929065,
       "top_z": 1.2470779700919332,
       "n_lateral_peers": 2
     },
     {
       "candidate_id": "2d1c7c7886e8",
-      "rank": 3,
+      "rank": 7,
       "score": 1.2470781777331974,
       "top_z": 1.247078209561389,
       "n_lateral_peers": 3
     },
     {
-      "candidate_id": "5470a110c0dc",
-      "rank": 4,
-      "score": 1.2470783915961057,
-      "top_z": 1.247078424524574,
-      "n_lateral_peers": 3
-    },
-    {
-      "candidate_id": "047eb97c9d42",
-      "rank": 5,
-      "score": 1.2470784413765594,
-      "top_z": 1.2470784716248406,
-      "n_lateral_peers": 2
-    },
-    {
       "candidate_id": "5763f18c0b0f",
-      "rank": 6,
+      "rank": 8,
       "score": 1.2470784755193167,
       "top_z": 1.2470785094814838,
       "n_lateral_peers": 2
-    },
-    {
-      "candidate_id": "b272ba1e5502",
-      "rank": 7,
-      "score": 1.2470786570925858,
-      "top_z": 1.2470786844904458,
-      "n_lateral_peers": 3
-    },
-    {
-      "candidate_id": "548ab471bbc3",
-      "rank": 8,
-      "score": 1.247078657928083,
-      "top_z": 1.247078685325943,
-      "n_lateral_peers": 4
     }
   ],
   "rejected": []

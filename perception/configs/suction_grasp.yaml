@@ -1,0 +1,15 @@
+backend: normal_std
+max_grasps: 20
+min_score: 0.3
+grid_down_rate: 10
+grid_topk: 1024
+heatmap_kernel_size: 15
+min_separation_m: 0.04
+normal_knn: 224
+normal_std_filter_size: 25
+fx: 437.04
+fy: 437.04
+# neural (optional, requires checkpoint_path)
+model: deeplabv3plus_resnet101
+checkpoint_path: null
+depth_clamp_max_m: 3.0

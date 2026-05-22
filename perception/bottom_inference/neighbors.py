@@ -425,15 +425,18 @@ def find_lateral_neighbors(
 
 @dataclass
 class GradientPlateau:
-    """A flat region in the neighbourhood of a parcel, separated from
-    other regions by Sobel edges."""
+    """Flat region separated from others by Sobel/Canny edges."""
     label: int
     area_px: int
     area_m2: float
-    height_above_pallet: float       # robust top-height of the plateau
+    height_above_pallet: float
     height_std_m: float
     aspect_ratio: float
     centroid_px: tuple[float, float]
+    global_id: int | None = None
+    footprint_xy_cam: tuple[float, float, float, float] | None = None
+    mask: np.ndarray | None = None
+    points_3d: np.ndarray | None = None
 
 
 @dataclass
@@ -534,6 +537,491 @@ def _empty_ring(
     return ring
 
 
+def _plateau_filter_cfg(config: dict, section: str) -> dict:
+    """Merge plateau-filter keys; global section falls back to gradient_neighbor."""
+    cfg = dict(config.get(section, {}))
+    base = config.get("gradient_neighbor", {})
+    for key in (
+        "min_plateau_area_px",
+        "min_plateau_area_m2",
+        "max_plateau_z_std_m",
+        "min_aspect_ratio",
+        "use_dominant_height_band",
+        "slab_m",
+        "height_percentile",
+    ):
+        if key not in cfg:
+            cfg[key] = base.get(key)
+    return cfg
+
+
+def _build_gradient_search_base_mask(
+    depth: np.ndarray,
+    sobel_edges: np.ndarray,
+    workspace_mask: np.ndarray | None,
+    exclude_masks: list[np.ndarray] | None,
+    *,
+    edge_dilate_px: int,
+    exclude_dilate_px: int,
+) -> np.ndarray:
+    """Workspace minus SAM3D parcels and Sobel edges — same basis as Stage-5 viz."""
+    H, W = depth.shape
+    if workspace_mask is not None:
+        search = np.asarray(workspace_mask, dtype=bool).copy()
+    else:
+        search = np.ones((H, W), dtype=bool)
+    search &= np.asarray(depth, dtype=np.float64) > 0
+
+    if exclude_masks:
+        union = np.zeros((H, W), dtype=np.uint8)
+        for m in exclude_masks:
+            if m is None:
+                continue
+            union |= (np.asarray(m, dtype=np.uint8) > 0).astype(np.uint8)
+        if exclude_dilate_px > 0 and union.any():
+            k = cv2.getStructuringElement(
+                cv2.MORPH_RECT,
+                (2 * exclude_dilate_px + 1, 2 * exclude_dilate_px + 1),
+            )
+            union = cv2.dilate(union, k, iterations=1)
+        search &= ~(union > 0)
+
+    edges = np.asarray(sobel_edges, dtype=np.uint8) > 0
+    if edge_dilate_px > 0 and edges.any():
+        k = cv2.getStructuringElement(
+            cv2.MORPH_RECT, (2 * edge_dilate_px + 1, 2 * edge_dilate_px + 1),
+        )
+        edges = cv2.dilate(edges.astype(np.uint8), k, iterations=1) > 0
+    search &= ~edges
+    return search
+
+
+def _enumerate_gradient_plateaus(
+    plateau_mask: np.ndarray,
+    depth: np.ndarray,
+    plane: tuple[float, float, float, float],
+    params: dict,
+    *,
+    id_offset: int = 0,
+    store_masks: bool = False,
+) -> tuple[list[GradientPlateau], dict, int]:
+    """Connected components on `plateau_mask` → list of GradientPlateau."""
+    min_plateau_area_px = int(params.get("min_plateau_area_px", 300))
+    min_plateau_area_m2 = float(params.get("min_plateau_area_m2", 0.005))
+    max_plateau_z_std = float(params.get("max_plateau_z_std_m", 0.015))
+    min_aspect = float(params.get("min_aspect_ratio", 0.25))
+    use_dominant = bool(params.get("use_dominant_height_band", True))
+    slab_m = float(params.get("slab_m", 0.005))
+    height_percentile = float(params.get("height_percentile", 95.0))
+
+    depth = np.asarray(depth, dtype=np.float64)
+    if not plateau_mask.any():
+        return [], {}, 0
+
+    n_labels, labels, stats, _ = cv2.connectedComponentsWithStats(
+        plateau_mask.astype(np.uint8), connectivity=8,
+    )
+
+    plateaus: list[GradientPlateau] = []
+    rej = {"area_px": 0, "aspect": 0, "area_m2": 0, "z_std": 0}
+    next_gid = id_offset
+
+    for li in range(1, n_labels):
+        area_px = int(stats[li, cv2.CC_STAT_AREA])
+        if area_px < min_plateau_area_px:
+            rej["area_px"] += 1
+            continue
+
+        w_px = int(stats[li, cv2.CC_STAT_WIDTH])
+        h_px = int(stats[li, cv2.CC_STAT_HEIGHT])
+        aspect = min(w_px, h_px) / max(max(w_px, h_px), 1)
+        if aspect < min_aspect:
+            rej["aspect"] += 1
+            continue
+
+        ys, xs = np.where(labels == li)
+        pts = _backproject_pixels(ys, xs, depth)
+        heights = heights_above_plane(pts, plane)
+
+        mean_z_cam = float(np.median(pts[:, 2]))
+        area_m2 = area_px * (mean_z_cam / FX) * (mean_z_cam / FY)
+        if area_m2 < min_plateau_area_m2:
+            rej["area_m2"] += 1
+            continue
+
+        sigma_h = float(np.std(heights))
+        if sigma_h > max_plateau_z_std:
+            rej["z_std"] += 1
+            continue
+
+        if use_dominant:
+            top = _dominant_height(heights, slab_m)
+        else:
+            top = float(np.percentile(heights, height_percentile))
+
+        xy = pts[:, :2]
+        footprint = (
+            float(xy[:, 0].min()),
+            float(xy[:, 1].min()),
+            float(xy[:, 0].max()),
+            float(xy[:, 1].max()),
+        )
+        sub_mask = None
+        sub_pts = None
+        if store_masks:
+            H, W = depth.shape
+            sub_mask = np.zeros((H, W), dtype=bool)
+            sub_mask[ys, xs] = True
+            sub_pts = pts.copy()
+
+        plateaus.append(
+            GradientPlateau(
+                label=li,
+                area_px=area_px,
+                area_m2=area_m2,
+                height_above_pallet=top,
+                height_std_m=sigma_h,
+                aspect_ratio=aspect,
+                centroid_px=(float(xs.mean()), float(ys.mean())),
+                global_id=next_gid,
+                footprint_xy_cam=footprint,
+                mask=sub_mask,
+                points_3d=sub_pts,
+            )
+        )
+        next_gid += 1
+
+    return plateaus, rej, n_labels - 1
+
+
+def _plateaus_from_cc_height_bands(
+    ys: np.ndarray,
+    xs: np.ndarray,
+    depth: np.ndarray,
+    plane: tuple[float, float, float, float],
+    params: dict,
+    *,
+    min_band_pixels: int,
+    min_band_fraction: float,
+    store_masks: bool,
+    id_start: int,
+) -> list[GradientPlateau]:
+    """Split one Sobel-connected region into several plateaus by height band.
+
+    Without this, a large white floor patch in front of multiple boxes becomes
+    a single plateau; per-box matching then only sees one shared surface.
+    """
+    H, W = depth.shape
+    pts = _backproject_pixels(ys, xs, depth)
+    heights = heights_above_plane(pts, plane)
+    n_cc = heights.size
+    if n_cc == 0:
+        return []
+
+    min_component_px = int(params.get("min_plateau_area_px", 80))
+    slab_m = float(params.get("slab_m", 0.005))
+    h_min, h_max = float(heights.min()), float(heights.max())
+    if h_max - h_min < slab_m:
+        hist = np.array([n_cc])
+        edges_h = np.array([h_min, h_max + slab_m])
+    else:
+        n_bins = max(1, int(np.ceil((h_max - h_min) / slab_m)))
+        hist, edges_h = np.histogram(heights, bins=n_bins)
+
+    threshold = max(min_band_pixels, int(min_band_fraction * n_cc))
+    out: list[GradientPlateau] = []
+    next_gid = id_start
+
+    for bi in range(len(hist)):
+        if hist[bi] < threshold:
+            continue
+        lo, hi = float(edges_h[bi]), float(edges_h[bi + 1])
+        in_band = (heights >= lo) & (heights <= hi)
+        if not in_band.any():
+            continue
+
+        band_mask = np.zeros((H, W), dtype=np.uint8)
+        band_mask[ys[in_band], xs[in_band]] = 1
+        n_sl, sub_labels, sub_stats, _ = cv2.connectedComponentsWithStats(
+            band_mask, connectivity=8,
+        )
+        if n_sl <= 1:
+            continue
+
+        for sli in range(1, n_sl):
+            area_px = int(sub_stats[sli, cv2.CC_STAT_AREA])
+            if area_px < min_component_px:
+                continue
+            w_px = int(sub_stats[sli, cv2.CC_STAT_WIDTH])
+            h_px = int(sub_stats[sli, cv2.CC_STAT_HEIGHT])
+            aspect = min(w_px, h_px) / max(max(w_px, h_px), 1)
+            if aspect < float(params.get("min_aspect_ratio", 0.05)):
+                continue
+
+            sub_ys, sub_xs = np.where(sub_labels == sli)
+            sub_pts = _backproject_pixels(sub_ys, sub_xs, depth)
+            sub_heights = heights_above_plane(sub_pts, plane)
+            sigma_h = float(np.std(sub_heights))
+            if sigma_h > float(params.get("max_plateau_z_std_m", 0.025)):
+                continue
+
+            mean_z_cam = float(np.median(sub_pts[:, 2]))
+            area_m2 = area_px * (mean_z_cam / FX) * (mean_z_cam / FY)
+            if area_m2 < float(params.get("min_plateau_area_m2", 0.001)):
+                continue
+
+            if bool(params.get("use_dominant_height_band", True)):
+                top = _dominant_height(sub_heights, slab_m)
+            else:
+                top = float(np.percentile(
+                    sub_heights, float(params.get("height_percentile", 95.0)),
+                ))
+
+            xy = sub_pts[:, :2]
+            footprint = (
+                float(xy[:, 0].min()), float(xy[:, 1].min()),
+                float(xy[:, 0].max()), float(xy[:, 1].max()),
+            )
+            sub_mask = None
+            sub_pts_store = None
+            if store_masks:
+                sub_mask = np.zeros((H, W), dtype=bool)
+                sub_mask[sub_ys, sub_xs] = True
+                sub_pts_store = sub_pts.copy()
+
+            out.append(
+                GradientPlateau(
+                    label=sli,
+                    area_px=area_px,
+                    area_m2=area_m2,
+                    height_above_pallet=top,
+                    height_std_m=sigma_h,
+                    aspect_ratio=aspect,
+                    centroid_px=(float(sub_xs.mean()), float(sub_ys.mean())),
+                    global_id=next_gid,
+                    footprint_xy_cam=footprint,
+                    mask=sub_mask,
+                    points_3d=sub_pts_store,
+                )
+            )
+            next_gid += 1
+
+    return out
+
+
+def detect_global_gradient_plateaus(
+    depth: np.ndarray,
+    sobel_edges: np.ndarray,
+    workspace_mask: np.ndarray | None,
+    exclude_masks: list[np.ndarray] | None,
+    plane: tuple[float, float, float, float],
+    config: dict,
+) -> list[GradientPlateau]:
+    """Once per scene: all Sobel-separated plateaus in the workspace.
+
+    Uses the same edge map as the gradient visualisation (Stage 5/6).
+    SAM3D parcel masks are excluded so parcel tops are not counted as
+    neighbour surfaces.  Per-parcel bottom inference then queries this
+    catalogue instead of re-segmenting only a narrow ring.
+    """
+    cfg = config.get("global_gradient_plateaus", {})
+    if not cfg.get("enabled", True):
+        return []
+
+    edge_dilate = int(cfg.get("edge_dilate_px", config.get("gradient_neighbor", {}).get("edge_dilate_px", 1)))
+    exclude_dilate = int(cfg.get("exclude_dilate_px", 4))
+    params = _plateau_filter_cfg(config, "global_gradient_plateaus")
+
+    min_cc_px = int(cfg.get("min_component_px", 80))
+    min_band_pixels = int(cfg.get("min_band_pixels", 40))
+    min_band_fraction = float(cfg.get("min_band_fraction", 0.02))
+    split_bands = bool(cfg.get("split_height_bands", True))
+
+    search = _build_gradient_search_base_mask(
+        depth, sobel_edges, workspace_mask, exclude_masks,
+        edge_dilate_px=edge_dilate, exclude_dilate_px=exclude_dilate,
+    )
+    depth_arr = np.asarray(depth, dtype=np.float64)
+    H, W = depth_arr.shape
+
+    if not split_bands:
+        plateaus, _, _ = _enumerate_gradient_plateaus(
+            search, depth_arr, plane, params, id_offset=0, store_masks=True,
+        )
+        return plateaus
+
+    n_labels, labels, stats, _ = cv2.connectedComponentsWithStats(
+        search.astype(np.uint8), connectivity=8,
+    )
+    plateaus: list[GradientPlateau] = []
+    next_id = 0
+    for li in range(1, n_labels):
+        if int(stats[li, cv2.CC_STAT_AREA]) < min_cc_px:
+            continue
+        ys, xs = np.where(labels == li)
+        bands = _plateaus_from_cc_height_bands(
+            ys, xs, depth_arr, plane, params,
+            min_band_pixels=min_band_pixels,
+            min_band_fraction=min_band_fraction,
+            store_masks=True,
+            id_start=next_id,
+        )
+        plateaus.extend(bands)
+        next_id += len(bands)
+
+    return plateaus
+
+
+def _target_footprint_xy(target: CandidateOut) -> tuple[float, float, float, float]:
+    if len(target.points_3d) > 0:
+        xy = np.asarray(target.points_3d, dtype=np.float64)[:, :2]
+        return (
+            float(xy[:, 0].min()),
+            float(xy[:, 1].min()),
+            float(xy[:, 0].max()),
+            float(xy[:, 1].max()),
+        )
+    return (0.0, 0.0, 0.0, 0.0)
+
+
+def _xy_overlap_min_area(
+    fp_a: tuple[float, float, float, float],
+    fp_b: tuple[float, float, float, float],
+) -> float:
+    ax0, ay0, ax1, ay1 = fp_a
+    bx0, by0, bx1, by1 = fp_b
+    ix0 = max(ax0, bx0)
+    iy0 = max(ay0, by0)
+    ix1 = min(ax1, bx1)
+    iy1 = min(ay1, by1)
+    inter = max(0.0, ix1 - ix0) * max(0.0, iy1 - iy0)
+    area_a = max(1e-9, (ax1 - ax0) * (ay1 - ay0))
+    area_b = max(1e-9, (bx1 - bx0) * (by1 - by0))
+    return inter / max(min(area_a, area_b), 1e-9)
+
+
+@dataclass
+class GlobalGradientMatchResult:
+    z_highest_neighbor: float | None
+    chosen_global_id: int | None
+    matching_plateaus: list[GradientPlateau]
+    rejection_counts: dict | None = None
+
+
+def _build_target_search_mask(
+    target: CandidateOut,
+    depth: np.ndarray,
+    search_pad_m: float,
+) -> np.ndarray:
+    """Dilated 2D search region: SAM mask + pad so front/side neighbour planes count."""
+    target_mask = np.asarray(target.mask_2d, dtype=np.uint8) > 0
+    H, W = depth.shape
+    if target_mask.sum() == 0 or search_pad_m <= 0:
+        return target_mask
+
+    td = depth[target_mask]
+    valid = td[td > 0]
+    mean_z = float(np.median(valid)) if valid.size > 0 else 1.0
+    pad_px = max(5, int(round(search_pad_m * FX / max(mean_z, 0.1))))
+    kernel = cv2.getStructuringElement(
+        cv2.MORPH_ELLIPSE, (2 * pad_px + 1, 2 * pad_px + 1),
+    )
+    dilated = cv2.dilate(target_mask.astype(np.uint8), kernel, iterations=1) > 0
+    return dilated
+
+
+def _expanded_footprint(
+    fp: tuple[float, float, float, float],
+    pad_m: float,
+) -> tuple[float, float, float, float]:
+    return (fp[0] - pad_m, fp[1] - pad_m, fp[2] + pad_m, fp[3] + pad_m)
+
+
+def find_neighbor_from_gradient_catalog(
+    target: CandidateOut,
+    catalog: list[GradientPlateau],
+    z_visible_min: float,
+    config: dict,
+    depth: np.ndarray | None = None,
+) -> GlobalGradientMatchResult:
+    """Query the global gradient catalogue for the best supporting surface.
+
+    Spatial match (any one is enough):
+      - pixel overlap between plateau mask and dilated target mask
+      - XY footprint overlap with padded target footprint
+      - plateau centroid within max_centroid_dist_m of target centre
+
+    Height: plateau top must be strictly below z_visible_min - tolerance.
+    """
+    cfg = config.get("global_gradient_plateaus", {})
+    tol = float(config.get("tolerance_m", 0.008))
+    min_overlap = float(cfg.get("min_overlap", 0.02))
+    max_centroid_dist_m = float(cfg.get("max_centroid_dist_m", 0.45))
+    search_pad_m = float(cfg.get("search_pad_m", 0.25))
+
+    if not catalog:
+        return GlobalGradientMatchResult(None, None, [], {"no_catalog": 1})
+
+    tgt_fp = _target_footprint_xy(target)
+    tgt_fp_pad = _expanded_footprint(tgt_fp, search_pad_m)
+    if len(target.points_3d) > 0:
+        tgt_center = np.asarray(target.points_3d, dtype=np.float64)[:, :2].mean(axis=0)
+    else:
+        tgt_center = np.array([
+            0.5 * (tgt_fp[0] + tgt_fp[2]),
+            0.5 * (tgt_fp[1] + tgt_fp[3]),
+        ])
+
+    search_mask = None
+    if depth is not None:
+        search_mask = _build_target_search_mask(target, depth, search_pad_m)
+
+    rej = {"too_high": 0, "no_overlap": 0}
+    matching: list[GradientPlateau] = []
+
+    for p in catalog:
+        if p.footprint_xy_cam is None:
+            continue
+        if p.height_above_pallet >= z_visible_min - tol:
+            rej["too_high"] += 1
+            continue
+
+        spatial_ok = False
+
+        if search_mask is not None and p.mask is not None and p.mask.any():
+            if (p.mask & search_mask).any():
+                spatial_ok = True
+
+        if not spatial_ok:
+            overlap = _xy_overlap_min_area(tgt_fp_pad, p.footprint_xy_cam)
+            if overlap >= min_overlap:
+                spatial_ok = True
+
+        if not spatial_ok:
+            cx = 0.5 * (p.footprint_xy_cam[0] + p.footprint_xy_cam[2])
+            cy = 0.5 * (p.footprint_xy_cam[1] + p.footprint_xy_cam[3])
+            dist = float(np.hypot(cx - tgt_center[0], cy - tgt_center[1]))
+            if dist <= max_centroid_dist_m:
+                spatial_ok = True
+
+        if not spatial_ok:
+            rej["no_overlap"] += 1
+            continue
+
+        matching.append(p)
+
+    if not matching:
+        return GlobalGradientMatchResult(None, None, [], rej)
+
+    best = max(matching, key=lambda p: p.height_above_pallet)
+    return GlobalGradientMatchResult(
+        z_highest_neighbor=best.height_above_pallet,
+        chosen_global_id=best.global_id,
+        matching_plateaus=matching,
+        rejection_counts=rej,
+    )
+
+
 def find_neighbor_via_gradient(
     target: CandidateOut,
     depth: np.ndarray,
@@ -567,14 +1055,8 @@ def find_neighbor_via_gradient(
     radius_m_min = cfg.get("neighbor_radius_m", None)
     adaptive_factor = float(cfg.get("adaptive_radius_factor", 1.0))
     max_radius_m = float(cfg.get("max_radius_m", 1.0))
-    min_plateau_area_px = int(cfg.get("min_plateau_area_px", 300))
-    min_plateau_area_m2 = float(cfg.get("min_plateau_area_m2", 0.005))
-    max_plateau_z_std = float(cfg.get("max_plateau_z_std_m", 0.015))
-    min_aspect = float(cfg.get("min_aspect_ratio", 0.25))
-    use_dominant = bool(cfg.get("use_dominant_height_band", True))
-    slab_m = float(cfg.get("slab_m", 0.005))
     edge_dilate_px = int(cfg.get("edge_dilate_px", 1))
-    height_percentile = float(cfg.get("height_percentile", 95.0))
+    params = _plateau_filter_cfg(config, "gradient_neighbor")
     tol = float(config.get("tolerance_m", 0.008))
 
     target_mask = np.asarray(target.mask_2d, dtype=np.uint8) > 0
@@ -623,64 +1105,14 @@ def find_neighbor_via_gradient(
             None, None, [], n_ring, 0, {}, effective_radius_m, radius_px,
         )
 
-    n_labels, labels, stats, _ = cv2.connectedComponentsWithStats(
-        plateau_mask.astype(np.uint8), connectivity=8
+    plateaus, rej, n_components = _enumerate_gradient_plateaus(
+        plateau_mask, depth, plane, params,
     )
-
-    plateaus: list[GradientPlateau] = []
-    rej = {"area_px": 0, "aspect": 0, "area_m2": 0, "z_std": 0}
-
-    for li in range(1, n_labels):
-        area_px = int(stats[li, cv2.CC_STAT_AREA])
-        if area_px < min_plateau_area_px:
-            rej["area_px"] += 1
-            continue
-
-        w_px = int(stats[li, cv2.CC_STAT_WIDTH])
-        h_px = int(stats[li, cv2.CC_STAT_HEIGHT])
-        aspect = min(w_px, h_px) / max(max(w_px, h_px), 1)
-        if aspect < min_aspect:
-            rej["aspect"] += 1
-            continue
-
-        ys, xs = np.where(labels == li)
-        pts = _backproject_pixels(ys, xs, depth)
-        heights = heights_above_plane(pts, plane)
-
-        mean_z_cam = float(np.median(pts[:, 2]))
-        area_m2 = area_px * (mean_z_cam / FX) * (mean_z_cam / FY)
-        if area_m2 < min_plateau_area_m2:
-            rej["area_m2"] += 1
-            continue
-
-        sigma_h = float(np.std(heights))
-        if sigma_h > max_plateau_z_std:
-            rej["z_std"] += 1
-            continue
-
-        if use_dominant:
-            top = _dominant_height(heights, slab_m)
-        else:
-            top = float(np.percentile(heights, height_percentile))
-
-        cx_px = float(xs.mean())
-        cy_px = float(ys.mean())
-        plateaus.append(
-            GradientPlateau(
-                label=li,
-                area_px=area_px,
-                area_m2=area_m2,
-                height_above_pallet=top,
-                height_std_m=sigma_h,
-                aspect_ratio=aspect,
-                centroid_px=(cx_px, cy_px),
-            )
-        )
 
     qualifying = [p for p in plateaus if p.height_above_pallet < z_visible_min - tol]
     if not qualifying:
         return GradientNeighborResult(
-            None, None, plateaus, n_ring, n_labels - 1, rej,
+            None, None, plateaus, n_ring, n_components, rej,
             effective_radius_m, radius_px,
         )
 
@@ -690,7 +1122,7 @@ def find_neighbor_via_gradient(
         chosen_label=best.label,
         plateaus=plateaus,
         n_ring_pixels=n_ring,
-        n_components_total=n_labels - 1,
+        n_components_total=n_components,
         rejection_counts=rej,
         effective_radius_m=effective_radius_m,
         radius_px=radius_px,

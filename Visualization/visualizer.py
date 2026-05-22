@@ -287,6 +287,76 @@ def _height_to_rgb(h: float, h_min: float = 0.0, h_max: float = 0.6) -> list[flo
     return [t, 0.45 + 0.4 * (1.0 - abs(2 * t - 1.0)), 1.0 - t]
 
 
+_NEIGHBOR_PLANE_COLORS = [
+    [1.0, 0.15, 0.15],
+    [0.15, 0.95, 0.25],
+    [0.2, 0.55, 1.0],
+    [1.0, 0.85, 0.1],
+    [0.95, 0.2, 0.95],
+    [0.15, 0.9, 0.9],
+]
+
+
+def _gradient_plateau_geometries(
+    gradient_plateaus,
+    candidates=None,
+    h_range: tuple[float, float] | None = None,
+):
+    """Gradient-Referenzflächen: pro Paket alle zugeordneten Nachbar-Plateaus farbig.
+
+    Wenn `candidates` übergeben wird, werden pro Box alle Einträge aus
+    `debug['gradient_global_matched_ids']` in einer eigenen Farbe gezeichnet.
+    Übrige Katalog-Plateaus erscheinen ausgegraut.
+    """
+    if not gradient_plateaus:
+        return []
+
+    catalog_by_id = {
+        p.global_id: p for p in gradient_plateaus if p.global_id is not None
+    }
+    matched_ids: set[int] = set()
+    geoms = []
+
+    if candidates:
+        for i, cand in enumerate(candidates):
+            ids = cand.debug.get("gradient_global_matched_ids") or []
+            if not ids:
+                continue
+            color = _NEIGHBOR_PLANE_COLORS[i % len(_NEIGHBOR_PLANE_COLORS)]
+            label = cand.debug.get("label", cand.candidate_id[:6])
+            for gid in ids:
+                matched_ids.add(int(gid))
+                p = catalog_by_id.get(int(gid))
+                if p is None or p.points_3d is None or len(p.points_3d) == 0:
+                    continue
+                pcd = o3d.geometry.PointCloud()
+                pcd.points = o3d.utility.Vector3dVector(_camera_to_o3d(p.points_3d))
+                if len(p.points_3d) > 400:
+                    pcd = pcd.voxel_down_sample(voxel_size=0.004)
+                pcd.paint_uniform_color(color)
+                geoms.append(pcd)
+            print(
+                f"  [BOTTOM-VIZ] Paket '{label}': {len(ids)} Nachbar-Fläche(n) markiert "
+                f"(ids={ids})"
+            )
+
+    dim = [0.35, 0.32, 0.30]
+    for p in gradient_plateaus:
+        if p.global_id is not None and int(p.global_id) in matched_ids:
+            continue
+        pts = p.points_3d
+        if pts is None or len(pts) == 0:
+            continue
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(_camera_to_o3d(pts))
+        if len(pts) > 600:
+            pcd = pcd.voxel_down_sample(voxel_size=0.005)
+        pcd.paint_uniform_color(dim)
+        geoms.append(pcd)
+
+    return geoms
+
+
 def _scene_plane_geometries(
     scene_planes,
     candidates,
@@ -328,13 +398,14 @@ def visualize_bottom_inference_3d(
     window_name: str = "Bottom-Plane Inference",
     session_context=None,
     scene_planes=None,
+    gradient_plateaus=None,
 ):
     """
-    3D-Ansicht: extrudierte Paket-OBBs nach Stage 2.5 (Top-Fläche + inferierte Bodenhöhe).
+    3D-Ansicht: extrudierte Paket-OBBs nach Bottom-Inference.
 
-    Zusätzlich werden – sofern `scene_planes` übergeben wird – alle global
-    detektierten Referenz-Flächen eingezeichnet, eingefärbt nach Höhe
-    (blau = nahe Palette, rot = nahe Top).
+    - gradient_plateaus (braun): globaler Sobel-Katalog — dieselben Flächen
+      wie in der Gradienten-Analyse (Stage 5/6)
+    - scene_planes (optional, blau–rot): histogramm-basierte Referenzflächen
     """
     if not candidates:
         print("[VIZ] Bottom-Inference: keine Kandidaten – übersprungen.")
@@ -346,10 +417,22 @@ def visualize_bottom_inference_3d(
     bg.colors = o3d.utility.Vector3dVector(base_colors * 0.45)
     geoms: list = [bg]
 
-    if scene_planes:
+    if gradient_plateaus:
+        gg_geoms = _gradient_plateau_geometries(gradient_plateaus, candidates=candidates)
+        geoms.extend(gg_geoms)
+        n_matched = sum(
+            len(c.debug.get("gradient_global_matched_ids") or [])
+            for c in (candidates or [])
+            if c.bottom is not None
+        )
+        print(
+            f"[BOTTOM-VIZ] Gradient-Katalog: {len(gradient_plateaus)} Plateaus, "
+            f"{n_matched} Nachbar-Zuordnungen markiert (pro Paket eigene Farbe)"
+        )
+    elif scene_planes:
         sp_geoms = _scene_plane_geometries(scene_planes, candidates)
         geoms.extend(sp_geoms)
-        print(f"[BOTTOM-VIZ] zeichne {len(sp_geoms)} Referenz-Flächen (scene_planes)")
+        print(f"[BOTTOM-VIZ] zeichne {len(sp_geoms)} scene_planes (Fallback)")
 
     if session_context is not None:
         z_pal = float(session_context.z_pallet_m)
@@ -486,6 +569,150 @@ def visualize_selected_target_3d(
             print(f"             '{lab}': {reason}")
 
     o3d.visualization.draw_geometries(geoms, window_name=title)
+
+
+def _score_to_grasp_color(score: float, score_min: float, score_max: float) -> list[float]:
+    import colorsys
+
+    if score_max <= score_min:
+        t = 1.0
+    else:
+        t = float(np.clip((score - score_min) / (score_max - score_min), 0.0, 1.0))
+    r, g, b = colorsys.hsv_to_rgb(0.15 + 0.35 * t, 0.95, 0.95)
+    return [float(r), float(g), float(b)]
+
+
+def visualize_suction_grasps_3d(
+    session_path,
+    candidates,
+    selection_result,
+    grasp_result,
+    window_name: str = "Suction Grasps",
+    session_context=None,
+    scene_planes=None,
+    normal_arrow_length: float = 0.06,
+    grasps_override: list | None = None,
+    single_grasp: bool = False,
+):
+    """Stage 11/12: selected parcel + suction grasp points and normals."""
+    if grasp_result is None or not grasp_result.grasps:
+        print("[VIZ] Suction grasps: keine Greifpunkte – übersprungen.")
+        return
+    if selection_result is None or selection_result.primary is None:
+        print("[VIZ] Suction grasps: kein Selected Target – übersprungen.")
+        return
+
+    primary_id = selection_result.primary.candidate.candidate_id
+    primary_color = [1.0, 0.15, 0.15]
+
+    all_points, _, _, _, base_colors, _ = _load_pcd_for_viz(session_path, session_context)
+    bg = o3d.geometry.PointCloud()
+    bg.points = o3d.utility.Vector3dVector(all_points)
+    bg.colors = o3d.utility.Vector3dVector(base_colors * 0.30)
+    geoms: list = [bg]
+
+    if scene_planes:
+        for sp in scene_planes:
+            pts = sp.points_3d
+            if pts is None or len(pts) == 0:
+                continue
+            pcd = o3d.geometry.PointCloud()
+            pcd.points = o3d.utility.Vector3dVector(_camera_to_o3d(pts))
+            if len(pts) > 800:
+                pcd = pcd.voxel_down_sample(voxel_size=0.005)
+            pcd.paint_uniform_color([0.30, 0.30, 0.30])
+            geoms.append(pcd)
+
+    for cand in candidates or []:
+        if cand.bottom is None:
+            continue
+        is_primary = cand.candidate_id == primary_id
+        color = primary_color if is_primary else [0.50, 0.50, 0.50]
+        corners = np.asarray(cand.bottom.parcel_obb["corners_3d"], dtype=np.float64)
+        shade = 0.45 if is_primary else 0.12
+        geoms.append(_make_obb_solid_mesh(corners, color, shade=shade))
+        if is_primary:
+            geoms.extend(_make_obb_thick_edges(corners, color, radius=0.008))
+
+    shown = grasps_override if grasps_override is not None else grasp_result.grasps
+    if not shown:
+        print("[VIZ] Suction grasps: keine Greifpunkte zum Anzeigen – übersprungen.")
+        return
+
+    scores = [g.score for g in shown]
+    s_min, s_max = min(scores), max(scores)
+    sphere_r = 0.018 if single_grasp else 0.012
+    arrow_r = 0.006 if single_grasp else 0.004
+    arrow_len = 0.08 if single_grasp else normal_arrow_length
+
+    for g in shown:
+        pos_o3d = _camera_to_o3d(g.position.reshape(1, 3))[0]
+        color = [0.15, 0.95, 0.25] if single_grasp else _score_to_grasp_color(g.score, s_min, s_max)
+        sphere = o3d.geometry.TriangleMesh.create_sphere(radius=sphere_r)
+        sphere.translate(pos_o3d)
+        sphere.paint_uniform_color(color)
+        sphere.compute_vertex_normals()
+        geoms.append(sphere)
+
+        normal_cam = np.asarray(g.normal, dtype=np.float64)
+        tip_cam = g.position + normal_cam * arrow_len
+        tip_o3d = _camera_to_o3d(tip_cam.reshape(1, 3))[0]
+        arrow = _make_cylinder_edge(pos_o3d, tip_o3d, radius=arrow_r, color=color)
+        if arrow is not None:
+            geoms.append(arrow)
+
+    p_label = selection_result.primary.candidate.debug.get(
+        "label", selection_result.primary.candidate.candidate_id[:6]
+    )
+    best = shown[0]
+    if single_grasp:
+        title = (
+            f"{window_name}: '{p_label}' "
+            f"(best grasp score={best.score:.3f}, backend={grasp_result.backend})"
+        )
+        print(
+            f"[GRASP-VIZ] best grasp #{best.rank}: score={best.score:.3f} "
+            f"pos=({best.position[0]:.3f},{best.position[1]:.3f},{best.position[2]:.3f}) "
+            f"pixel=({best.row},{best.col}) backend={grasp_result.backend}"
+        )
+    else:
+        title = (
+            f"{window_name}: '{p_label}' "
+            f"({len(shown)} grasps, backend={grasp_result.backend})"
+        )
+        print(
+            f"[GRASP-VIZ] {len(shown)} suction points "
+            f"(backend={grasp_result.backend}, score range {s_min:.3f}–{s_max:.3f})"
+        )
+        for g in shown[:8]:
+            print(
+                f"             #{g.rank}: score={g.score:.3f} "
+                f"pos=({g.position[0]:.3f},{g.position[1]:.3f},{g.position[2]:.3f})"
+            )
+    o3d.visualization.draw_geometries(geoms, window_name=title)
+
+
+def visualize_best_suction_grasp_3d(
+    session_path,
+    candidates,
+    selection_result,
+    grasp_result,
+    window_name: str = "Best Suction Grasp",
+    session_context=None,
+    scene_planes=None,
+):
+    """Stage 12: selected parcel + single best grasp (grasps[0] only)."""
+    visualize_suction_grasps_3d(
+        session_path,
+        candidates,
+        selection_result,
+        grasp_result,
+        window_name=window_name,
+        session_context=session_context,
+        scene_planes=scene_planes,
+        grasps_override=[grasp_result.grasps[0]],
+        single_grasp=True,
+    )
 
 
 def visualize_3d_colored(
@@ -1483,7 +1710,7 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
                  sam3d_masks=None, sam3d_labels=None,
                  closed_matches=None, excluded_matches=None,
                  session_context=None, candidates=None, scene_planes=None,
-                 selection_result=None):
+                 gradient_plateaus=None, selection_result=None, grasp_result=None):
     """
     Hauptfunktion: Zeigt alle Debug-Visualisierungen nacheinander.
 
@@ -1497,14 +1724,24 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
     7. Alle Stage-5-Matches inkl. dedup-excluded (Nachbar-Pool für Stage 8)
     8. SAM3D Segmente (eigener Output, optional)
     9. Bottom-Plane Inference (extrudierte OBBs, optional)
-   10. Selected Target (Box mit kleinster Z-Ausdehnung, optional)
+   10. Selected Target (optional)
+   11. Suction grasp points on selected target (optional)
+   12. Best suction grasp only — grasps[0] (optional)
     """
     has_sam3d = sam3d_masks is not None and sam3d_labels is not None
     has_bottom = candidates is not None and len(candidates) > 0
     has_all_matches = bool(closed_matches) or bool(excluded_matches)
     has_selection = selection_result is not None and selection_result.primary is not None
+    has_grasp = grasp_result is not None and len(grasp_result.grasps) > 0
+    has_best_grasp = has_grasp
     total_steps = (
-        6 + int(has_all_matches) + int(has_sam3d) + int(has_bottom) + int(has_selection)
+        6
+        + int(has_all_matches)
+        + int(has_sam3d)
+        + int(has_bottom)
+        + int(has_selection)
+        + int(has_grasp)
+        + int(has_best_grasp)
     )
     print(f"\n[VIZ] Starte {total_steps}-fache Debug-Visualisierung...")
     
@@ -1573,20 +1810,21 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
         next_step += 1
 
     if has_bottom:
-        step = total_steps - int(has_selection)
-        n_planes = len(scene_planes or [])
-        suffix = f" + {n_planes} Referenz-Flächen" if n_planes else ""
-        print(f"[VIZ] {step}/{total_steps}: Bottom-Plane Inference (extrudierte Volumen){suffix}...")
+        step = total_steps - int(has_selection) - int(has_grasp) - int(has_best_grasp)
+        n_gg = len(gradient_plateaus or [])
+        suffix = f" + {n_gg} Gradient-Flächen" if n_gg else ""
+        print(f"[VIZ] {step}/{total_steps}: Bottom-Plane Inference (OBB + Referenz-Ebenen){suffix}...")
         visualize_bottom_inference_3d(
             session_path,
             candidates,
-            window_name=f"{step}/{total_steps}: Bottom-Plane Inference (OBB + Bodenhöhe){suffix}",
+            window_name=f"{step}/{total_steps}: Bottom-Plane Inference (braun=Gradient-Ebenen){suffix}",
             session_context=session_context,
             scene_planes=scene_planes,
+            gradient_plateaus=gradient_plateaus,
         )
 
     if has_selection:
-        step = total_steps
+        step = total_steps - int(has_grasp) - int(has_best_grasp)
         primary = selection_result.primary
         p_label = primary.candidate.debug.get(
             "label", primary.candidate.candidate_id[:6]
@@ -1603,7 +1841,42 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
             session_context=session_context,
             scene_planes=scene_planes,
         )
-    
+
+    if has_grasp:
+        step = total_steps - int(has_best_grasp)
+        n_grasps = len(grasp_result.grasps)
+        backend = grasp_result.backend
+        print(
+            f"[VIZ] {step}/{total_steps}: Suction Grasps "
+            f"({n_grasps} points, backend={backend})..."
+        )
+        visualize_suction_grasps_3d(
+            session_path,
+            candidates,
+            selection_result,
+            grasp_result,
+            window_name=f"{step}/{total_steps}: Suction Grasps (Stage 11)",
+            session_context=session_context,
+            scene_planes=scene_planes,
+        )
+
+    if has_best_grasp:
+        step = total_steps
+        best = grasp_result.grasps[0]
+        print(
+            f"[VIZ] {step}/{total_steps}: Best Suction Grasp "
+            f"(score={best.score:.3f}, backend={grasp_result.backend})..."
+        )
+        visualize_best_suction_grasp_3d(
+            session_path,
+            candidates,
+            selection_result,
+            grasp_result,
+            window_name=f"{step}/{total_steps}: Best Suction Grasp (Stage 12)",
+            session_context=session_context,
+            scene_planes=scene_planes,
+        )
+
     print(f"[VIZ] Alle {total_steps} Visualisierungen abgeschlossen.\n")
     return {}
 

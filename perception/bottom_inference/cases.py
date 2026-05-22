@@ -71,6 +71,7 @@ def decide_bottom(
 
     if z_highest_neighbor < z_lowest_visible - delta:
         confidence = {
+            "gradient_global": 0.92,
             "gradient": 0.90,
             "histogram": 0.85,
             "scene_plane": 0.88,

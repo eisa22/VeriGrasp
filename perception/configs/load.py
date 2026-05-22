@@ -17,6 +17,22 @@ _DEFAULT_CONFIG: dict[str, Any] = {
     "tolerance_m": 0.008,
     "pallet_height_tolerance": 0.030,
     "edge_distance_m": 0.05,
+    "global_gradient_plateaus": {
+        "enabled": True,
+        "split_height_bands": True,
+        "edge_dilate_px": 1,
+        "exclude_dilate_px": 4,
+        "min_component_px": 60,
+        "min_band_pixels": 30,
+        "min_band_fraction": 0.01,
+        "min_plateau_area_px": 40,
+        "min_plateau_area_m2": 0.0005,
+        "max_plateau_z_std_m": 0.030,
+        "min_aspect_ratio": 0.03,
+        "search_pad_m": 0.35,
+        "min_overlap": 0.01,
+        "max_centroid_dist_m": 0.55,
+    },
     "gradient_neighbor": {
         "neighbor_radius_m": 0.30,
         "adaptive_radius_factor": 1.0,
@@ -88,6 +104,37 @@ def load_bottom_inference_config(path: Path | str | None = None) -> dict[str, An
     """Load config from YAML, merged over documented defaults."""
     cfg = copy.deepcopy(_DEFAULT_CONFIG)
     config_path = Path(path) if path is not None else _CONFIG_PATH
+    if config_path.exists():
+        with open(config_path, encoding="utf-8") as f:
+            loaded = yaml.safe_load(f) or {}
+        cfg = _deep_merge(cfg, loaded)
+    return cfg
+
+
+_DEFAULT_SUCTION_GRASP_CONFIG: dict[str, Any] = {
+    "backend": "normal_std",
+    "max_grasps": 20,
+    "min_score": 0.3,
+    "grid_down_rate": 10,
+    "grid_topk": 1024,
+    "heatmap_kernel_size": 15,
+    "min_separation_m": 0.04,
+    "normal_knn": 224,
+    "normal_std_filter_size": 25,
+    "fx": 437.04,
+    "fy": 437.04,
+    "model": "deeplabv3plus_resnet101",
+    "checkpoint_path": None,
+    "depth_clamp_max_m": 3.0,
+}
+
+_SUCTION_GRASP_CONFIG_PATH = Path(__file__).resolve().parent / "suction_grasp.yaml"
+
+
+def load_suction_grasp_config(path: Path | str | None = None) -> dict[str, Any]:
+    """Load suction grasp config from YAML, merged over documented defaults."""
+    cfg = copy.deepcopy(_DEFAULT_SUCTION_GRASP_CONFIG)
+    config_path = Path(path) if path is not None else _SUCTION_GRASP_CONFIG_PATH
     if config_path.exists():
         with open(config_path, encoding="utf-8") as f:
             loaded = yaml.safe_load(f) or {}

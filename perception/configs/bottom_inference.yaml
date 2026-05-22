@@ -6,6 +6,21 @@ height_tolerance: 0.005
 tolerance_m: 0.008
 pallet_height_tolerance: 0.030
 edge_distance_m: 0.05
+global_gradient_plateaus:
+  enabled: true                    # full-workspace Sobel plateau catalogue (Stage 5/6 edges)
+  split_height_bands: true         # split large Sobel-CCs by height (separate front patches per box)
+  edge_dilate_px: 1
+  exclude_dilate_px: 4             # widen SAM3D masks before subtracting
+  min_component_px: 60             # min Sobel-CC size before height split
+  min_band_pixels: 30              # min pixels per height band inside a CC
+  min_band_fraction: 0.01          # OR 1% of CC pixels
+  min_plateau_area_px: 40          # per sub-plateau after split
+  min_plateau_area_m2: 0.0005      # 5 cm² — very small neighbour patches OK
+  max_plateau_z_std_m: 0.030
+  min_aspect_ratio: 0.03           # thin strips in front of each box
+  search_pad_m: 0.35               # dilate target mask for spatial match (front neighbours)
+  min_overlap: 0.01                # padded XY footprint overlap
+  max_centroid_dist_m: 0.55        # OR centroid near target
 gradient_neighbor:
   neighbor_radius_m: 0.30          # minimum ring radius (metres)
   adaptive_radius_factor: 1.0      # adaptive: r = max(neighbor_radius_m, factor * obb_extent_xy_m)

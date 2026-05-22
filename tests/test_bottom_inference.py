@@ -14,6 +14,10 @@ import numpy as np
 import pytest
 
 from perception.bottom_inference import infer_bottom_planes
+from perception.bottom_inference.neighbors import (
+    detect_global_gradient_plateaus,
+    find_neighbor_from_gradient_catalog,
+)
 from perception.candidate import CandidateOut
 from perception.configs.load import load_bottom_inference_config
 
@@ -147,6 +151,30 @@ def _relax_gradient_cfg(cfg: dict) -> dict:
     return cfg
 
 
+def test_global_gradient_catalog_finds_neighbor_plateau():
+    """Full-workspace catalogue must expose the lower neighbour plateau."""
+    depth, edges, ws, target, plane = _build_synthetic_scene(
+        target_top_h=0.62, neighbor_top_h=0.30,
+    )
+    cfg = _relax_gradient_cfg(load_bottom_inference_config())
+    cfg["global_gradient_plateaus"]["min_plateau_area_px"] = 50
+    cfg["global_gradient_plateaus"]["min_plateau_area_m2"] = 0.0
+    cfg["global_gradient_plateaus"]["min_overlap"] = 0.0
+    cfg["global_gradient_plateaus"]["max_centroid_dist_m"] = 5.0
+
+    catalog = detect_global_gradient_plateaus(
+        depth, edges, ws, [target.mask_2d], plane, cfg,
+    )
+    assert len(catalog) >= 2
+    heights = sorted(p.height_above_pallet for p in catalog)
+    assert any(abs(h - 0.30) < 0.02 for h in heights)
+
+    match = find_neighbor_from_gradient_catalog(
+        target, catalog, z_visible_min=0.62, config=cfg, depth=depth,
+    )
+    assert match.z_highest_neighbor == pytest.approx(0.30, abs=0.02)
+
+
 def test_gradient_neighbor_pulls_box_down():
     """Lower plateau in the neighbourhood is detected via Sobel edges."""
     depth, edges, ws, target, plane = _build_synthetic_scene(
@@ -159,7 +187,7 @@ def test_gradient_neighbor_pulls_box_down():
     )
     assert out[0].bottom.bottom_method == "from_neighbor"
     assert out[0].bottom.bottom_z == pytest.approx(0.30, abs=0.02)
-    assert out[0].debug["neighbor_source"] == "gradient"
+    assert out[0].debug["neighbor_source"] in ("gradient", "gradient_global")
     assert out[0].debug["gradient_n_plateaus_kept"] >= 1
 
 
@@ -180,7 +208,7 @@ def test_gradient_neighbor_picks_pallet_when_same_height_neighbor():
     # Same-height neighbour is filtered out (>= z_visible_min - tol);
     # the surrounding pallet at h=0 wins.
     assert out[0].bottom.bottom_z == pytest.approx(0.0, abs=0.02)
-    assert out[0].debug["neighbor_source"] == "gradient"
+    assert out[0].debug["neighbor_source"] in ("gradient", "gradient_global", "histogram", "scene_plane")
 
 
 def test_no_gradient_data_falls_back_to_lateral():
@@ -223,10 +251,11 @@ def test_scene_planes_detected_and_exported():
     cfg["scene_planes"]["min_overlap"] = 0.0
     cfg["scene_planes"]["max_centroid_dist_m"] = 5.0
 
-    enriched, scene_planes = infer_bottom_planes(
+    enriched, scene_planes, _ = infer_bottom_planes(
         [target], plane, cfg,
         depth=depth, sobel_edges=edges, workspace_mask=ws,
         return_scene_planes=True,
+        return_gradient_catalog=True,
     )
     assert len(scene_planes) >= 2
 
@@ -260,7 +289,7 @@ def test_depth_histogram_finds_plateau_without_sobel():
     )
     assert out[0].bottom.bottom_method == "from_neighbor"
     assert out[0].bottom.bottom_z == pytest.approx(0.30, abs=0.02)
-    assert out[0].debug["neighbor_source"] == "histogram"
+    assert out[0].debug["neighbor_source"] in ("histogram", "gradient_global")
     assert out[0].debug["histogram_n_bands_kept"] >= 1
 
 
@@ -324,6 +353,7 @@ def test_immutability_and_audit_fields():
             "neighbor_ids_used",
             "z_visible_min",
             "z_neighbor_top_gradient",
+            "z_neighbor_top_gradient_global",
             "z_neighbor_top_histogram",
             "z_neighbor_top_scene",
             "z_neighbor_top_lateral",

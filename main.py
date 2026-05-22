@@ -16,7 +16,8 @@ from Visualization.visualizer import (
 from LLMOrchestrator.orchestrator import run_orchestrator
 from path_utils import get_all_session_paths
 from config import DEBUG, DINO_MODEL_ID, MATCH_CLOSURE_RATIO, MATCH_BORDER_TOUCH_RATIO
-from perception.configs.load import load_bottom_inference_config
+from perception.configs.load import load_bottom_inference_config, load_suction_grasp_config
+from perception.grasp_generation import compute_suction_grasps
 from perception.adapter import (
     build_candidates_from_closed_matches,
     build_candidates_from_sam3d,
@@ -159,6 +160,7 @@ def process_session(session_path, dino_model=None, dino_processor=None):
     # Plateau (Top unter z_visible_min) liefert den Box-Boden.
     candidates = []
     scene_planes = []
+    gradient_plateaus = []
     if sam3d_masks:
         bottom_cfg = load_bottom_inference_config()
         candidates = build_candidates_from_sam3d(
@@ -171,7 +173,7 @@ def process_session(session_path, dino_model=None, dino_processor=None):
         )
         pallet_plane = tuple(float(x) for x in session_context.plane_model)
         sobel_edges = sobel_viz_data.get("edges") if sobel_viz_data else None
-        candidates, scene_planes = infer_bottom_planes(
+        candidates, scene_planes, gradient_plateaus = infer_bottom_planes(
             candidates,
             pallet_plane,
             bottom_cfg,
@@ -179,6 +181,7 @@ def process_session(session_path, dino_model=None, dino_processor=None):
             sobel_edges=sobel_edges,
             workspace_mask=session_context.workspace_mask,
             return_scene_planes=True,
+            return_gradient_catalog=True,
         )
         method_counts: dict[str, int] = {}
         for c in candidates:
@@ -242,6 +245,39 @@ def process_session(session_path, dino_model=None, dino_processor=None):
             except Exception as e:
                 print(f"[SELECT] WARN could not write handover JSON: {e}")
 
+    grasp_result = None
+    if selection_result and selection_result.primary and session_context is not None:
+        grasp_cfg = load_suction_grasp_config()
+        grasp_result = compute_suction_grasps(
+            selection_result, session_context, config=grasp_cfg
+        )
+        n_grasps = len(grasp_result.grasps)
+        print(
+            f"[GRASP] backend={grasp_result.backend} "
+            f"candidate={grasp_result.candidate_id[:8] if grasp_result.candidate_id else '?'} "
+            f"n_grasps={n_grasps}"
+        )
+        if n_grasps > 0:
+            top = grasp_result.grasps[0]
+            print(
+                f"[GRASP] best score={top.score:.3f} "
+                f"pos=({top.position[0]:.3f},{top.position[1]:.3f},{top.position[2]:.3f})"
+            )
+            for g in grasp_result.grasps[:5]:
+                print(
+                    f"         #{g.rank}: score={g.score:.3f} "
+                    f"pixel=({g.row},{g.col})"
+                )
+        elif grasp_result.debug.get("error"):
+            print(f"[GRASP] WARN: {grasp_result.debug['error']}")
+        try:
+            grasp_path = os.path.join(session_path, "stage11_suction_grasps.json")
+            with open(grasp_path, "w", encoding="utf-8") as fp:
+                json.dump(grasp_result.to_serializable(), fp, indent=2)
+            print(f"[GRASP] wrote handover JSON: {grasp_path}")
+        except Exception as e:
+            print(f"[GRASP] WARN could not write handover JSON: {e}")
+
     # Phase 4: Visualisierung
     results = None
     if DEBUG:
@@ -260,7 +296,9 @@ def process_session(session_path, dino_model=None, dino_processor=None):
             session_context=session_context,
             candidates=candidates if candidates else None,
             scene_planes=scene_planes if scene_planes else None,
+            gradient_plateaus=gradient_plateaus if gradient_plateaus else None,
             selection_result=selection_result,
+            grasp_result=grasp_result,
         )
     
     # Phase 5: Screenshots (optional)
@@ -272,6 +310,7 @@ def process_session(session_path, dino_model=None, dino_processor=None):
     return {
         "visualization": results,
         "candidates": candidates,
+        "grasp_result": grasp_result,
     }
 
 

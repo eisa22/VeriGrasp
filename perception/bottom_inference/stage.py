@@ -9,7 +9,9 @@ import numpy as np
 from perception.bottom_inference.cases import decide_bottom
 from perception.bottom_inference.neighbors import (
     build_geometry_index,
+    detect_global_gradient_plateaus,
     find_lateral_neighbors,
+    find_neighbor_from_gradient_catalog,
     find_neighbor_via_depth_histogram,
     find_neighbor_via_gradient,
 )
@@ -24,13 +26,22 @@ from perception.candidate import BottomInference, CandidateOut
 def _resolve_neighbor_z(
     gradient_z: float | None,
     gradient_label: int | None,
+    gradient_global_z: float | None,
+    gradient_global_id: int | None,
     histogram_z: float | None,
     scene_z: float | None,
     scene_id: int | None,
     lateral_info,
 ) -> tuple[float | None, str | None, str]:
-    """Pick the highest valid neighbour across all four sources."""
+    """Pick the highest valid neighbour across all sources."""
     candidates_z: list[tuple[float, str | None, str]] = []
+    if gradient_global_z is not None:
+        gid = (
+            f"global_plateau_{gradient_global_id}"
+            if gradient_global_id is not None
+            else "global_plateau"
+        )
+        candidates_z.append((gradient_global_z, gid, "gradient_global"))
     if gradient_z is not None:
         gid = f"plateau_{gradient_label}" if gradient_label is not None else "plateau"
         candidates_z.append((gradient_z, gid, "gradient"))
@@ -62,6 +73,7 @@ def infer_bottom_planes(
     match_neighbors: list | None = None,
     scene_pcd: np.ndarray | None = None,
     return_scene_planes: bool = False,
+    return_gradient_catalog: bool = False,
 ) -> list[CandidateOut]:
     """
     Enrich each candidate with bottom-plane inference.
@@ -123,8 +135,36 @@ def infer_bottom_planes(
     else:
         scene_planes = []
 
+    global_gradient_catalog: list = []
+    if gradient_enabled:
+        exclude_masks = [c.mask_2d for c in candidates]
+        global_gradient_catalog = detect_global_gradient_plateaus(
+            depth=depth,
+            sobel_edges=sobel_edges,
+            workspace_mask=workspace_mask,
+            exclude_masks=exclude_masks,
+            plane=plane,
+            config=config,
+        )
+        print(
+            f"[BOTTOM-GG] global gradient catalogue: "
+            f"{len(global_gradient_catalog)} plateaus (full workspace, Sobel-split)"
+        )
+        for gp in sorted(
+            global_gradient_catalog, key=lambda p: -p.height_above_pallet,
+        )[:12]:
+            print(
+                f"             id={gp.global_id} h={gp.height_above_pallet:+.3f}m "
+                f"A={gp.area_m2*1e4:.0f}cm² σ={gp.height_std_m*1000:.0f}mm "
+                f"ar={gp.aspect_ratio:.2f}"
+            )
+
     for c in candidates:
         g = geom_index[c.candidate_id]
+        gradient_global_z = None
+        gradient_global_id = None
+        gradient_global_matches: list = []
+        gg_rej: dict = {}
 
         if gradient_enabled:
             grad_result = find_neighbor_via_gradient(
@@ -168,6 +208,39 @@ def infer_bottom_planes(
             gradient_ring_px = 0
             gradient_components = 0
             gradient_rej = {}
+
+        if global_gradient_catalog:
+            gg_result = find_neighbor_from_gradient_catalog(
+                c, global_gradient_catalog, g.z_visible_min, config,
+                depth=depth,
+            )
+            gradient_global_z = gg_result.z_highest_neighbor
+            gradient_global_id = gg_result.chosen_global_id
+            gradient_global_matches = gg_result.matching_plateaus
+            gg_rej = gg_result.rejection_counts or {}
+            match_summary = ", ".join(
+                f"id{p.global_id}@{p.height_above_pallet:+.3f}m"
+                for p in sorted(
+                    gradient_global_matches,
+                    key=lambda x: -x.height_above_pallet,
+                )[:6]
+            ) or "-"
+            picked_gg = (
+                "None" if gradient_global_z is None else f"{gradient_global_z:.3f}m"
+            )
+            print(
+                f"[BOTTOM-GG] {c.candidate_id[:8]} z_min={g.z_visible_min:.3f}m "
+                f"catalog={len(global_gradient_catalog)} "
+                f"matched={len(gradient_global_matches)} "
+                f"rej[high={gg_rej.get('too_high', 0)} "
+                f"nooverlap={gg_rej.get('no_overlap', 0)}] "
+                f"hits=[{match_summary}] -> picked={picked_gg}"
+            )
+        else:
+            gradient_global_z = None
+            gradient_global_id = None
+            gradient_global_matches = []
+            gg_rej = {}
 
         if histogram_enabled:
             hist_result = find_neighbor_via_depth_histogram(
@@ -250,8 +323,9 @@ def infer_bottom_planes(
             )
 
         z_highest_neighbor, highest_id, source = _resolve_neighbor_z(
-            gradient_z, gradient_label, histogram_z,
-            scene_z, scene_id, lateral_info,
+            gradient_z, gradient_label,
+            gradient_global_z, gradient_global_id,
+            histogram_z, scene_z, scene_id, lateral_info,
         )
 
         decision = decide_bottom(
@@ -285,6 +359,13 @@ def infer_bottom_planes(
         debug["neighbor_ids_used"] = list(decision.used_neighbor_ids)
         debug["z_visible_min"] = g.z_visible_min
         debug["z_neighbor_top_gradient"] = gradient_z
+        debug["z_neighbor_top_gradient_global"] = gradient_global_z
+        debug["gradient_global_id_chosen"] = gradient_global_id
+        debug["gradient_global_matched_ids"] = [
+            p.global_id for p in gradient_global_matches if p.global_id is not None
+        ]
+        debug["gradient_global_n_matched"] = len(gradient_global_matches)
+        debug["gradient_global_rejections"] = dict(gg_rej)
         debug["z_neighbor_top_histogram"] = histogram_z
         debug["z_neighbor_top_scene"] = scene_z
         debug["scene_plane_id_chosen"] = scene_id
@@ -346,6 +427,10 @@ def infer_bottom_planes(
         from perception.bottom_inference.debug import visualize_bottom_inference
         visualize_bottom_inference(enriched, plane)
 
+    if return_scene_planes and return_gradient_catalog:
+        return enriched, scene_planes, global_gradient_catalog
     if return_scene_planes:
         return enriched, scene_planes
+    if return_gradient_catalog:
+        return enriched, global_gradient_catalog
     return enriched
