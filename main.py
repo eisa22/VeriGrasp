@@ -23,6 +23,7 @@ from perception.adapter import (
     build_scene_pcd_from_depth,
 )
 from perception.bottom_inference import infer_bottom_planes
+from perception.selection import select_target_smallest_z
 import json
 import torch
 import numpy as np
@@ -194,6 +195,53 @@ def process_session(session_path, dino_model=None, dino_processor=None):
         dist = ", ".join(f"{k}={v}" for k, v in sorted(method_counts.items()))
         print(f"[BOTTOM] method distribution: {dist}")
 
+    selection_result = None
+    if candidates:
+        selection_result = select_target_smallest_z(candidates)
+        if selection_result.primary is None:
+            print("[SELECT] no eligible target after bottom-inference.")
+        else:
+            p = selection_result.primary
+            p_label = p.candidate.debug.get("label", p.candidate.candidate_id[:6])
+            print(
+                f"[SELECT] policy=highest_tier_smallest_extent_fewest_neighbors "
+                f"max_top={selection_result.max_top_m:.3f}m "
+                f"band={selection_result.top_band_m:.3f}m "
+                f"neighbor_r={selection_result.neighbor_radius_m:.2f}m"
+            )
+            print(
+                f"[SELECT] PRIMARY '{p_label}' id={p.candidate.candidate_id[:8]} "
+                f"z_extent={p.score:.3f}m "
+                f"peers={p.n_lateral_peers} "
+                f"top={p.candidate.top_surface_height:.3f}m "
+                f"bottom={p.candidate.bottom.bottom_z:.3f}m "
+                f"method={p.candidate.bottom.bottom_method} "
+                f"conf={p.candidate.bottom.bottom_confidence:.2f}"
+            )
+            print(
+                f"[SELECT] top-tier ranking ({len(selection_result.ranking)} in band):"
+            )
+            for t in selection_result.ranking[:5]:
+                lab = t.candidate.debug.get("label", t.candidate.candidate_id[:6])
+                marker = "  <-- PRIMARY" if t.rank == 0 else ""
+                print(
+                    f"         #{t.rank}: '{lab}' top={t.candidate.top_surface_height:.3f}m "
+                    f"z_extent={t.score:.3f}m peers={t.n_lateral_peers}{marker}"
+                )
+            if selection_result.rejected:
+                below = [
+                    r for _, r in selection_result.rejected if "below_top_tier" in r
+                ]
+                if below:
+                    print(f"[SELECT] below top tier: {len(below)} parcel(s)")
+            try:
+                out_path = os.path.join(session_path, "stage10_selected_target.json")
+                with open(out_path, "w", encoding="utf-8") as fp:
+                    json.dump(selection_result.to_serializable(), fp, indent=2)
+                print(f"[SELECT] wrote handover JSON: {out_path}")
+            except Exception as e:
+                print(f"[SELECT] WARN could not write handover JSON: {e}")
+
     # Phase 4: Visualisierung
     results = None
     if DEBUG:
@@ -212,6 +260,7 @@ def process_session(session_path, dino_model=None, dino_processor=None):
             session_context=session_context,
             candidates=candidates if candidates else None,
             scene_planes=scene_planes if scene_planes else None,
+            selection_result=selection_result,
         )
     
     # Phase 5: Screenshots (optional)

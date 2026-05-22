@@ -398,6 +398,96 @@ def visualize_bottom_inference_3d(
     o3d.visualization.draw_geometries(geoms, window_name=title)
 
 
+def visualize_selected_target_3d(
+    session_path,
+    candidates,
+    selection_result,
+    window_name: str = "Selected Target",
+    session_context=None,
+    scene_planes=None,
+):
+    """Stage 10: hebt die selektierte Box hervor.
+
+    Alle übrigen Boxen werden ausgegraut/transparent gezeichnet, die
+    selektierte Box bekommt eine kräftige Farbe und dickere Edges.
+    Im Titel steht der Selektor-Grund und der Score.
+    """
+    if not candidates:
+        print("[VIZ] Selection: keine Kandidaten – übersprungen.")
+        return
+    if selection_result is None or selection_result.primary is None:
+        print("[VIZ] Selection: kein Ziel ausgewählt – übersprungen.")
+        return
+
+    primary_id = selection_result.primary.candidate.candidate_id
+    primary_color = [1.0, 0.15, 0.15]
+    other_color = [0.55, 0.55, 0.55]
+
+    all_points, _, _, _, base_colors, _ = _load_pcd_for_viz(session_path, session_context)
+    bg = o3d.geometry.PointCloud()
+    bg.points = o3d.utility.Vector3dVector(all_points)
+    bg.colors = o3d.utility.Vector3dVector(base_colors * 0.35)
+    geoms: list = [bg]
+
+    if scene_planes:
+        for sp in scene_planes:
+            pts = sp.points_3d
+            if pts is None or len(pts) == 0:
+                continue
+            pcd = o3d.geometry.PointCloud()
+            pcd.points = o3d.utility.Vector3dVector(_camera_to_o3d(pts))
+            if len(pts) > 800:
+                pcd = pcd.voxel_down_sample(voxel_size=0.005)
+            pcd.paint_uniform_color([0.30, 0.30, 0.30])
+            geoms.append(pcd)
+
+    for cand in candidates:
+        if cand.bottom is None:
+            continue
+        is_primary = cand.candidate_id == primary_id
+        color = primary_color if is_primary else other_color
+        edge_radius = 0.008 if is_primary else 0.003
+        corner_radius = 0.014 if is_primary else 0.006
+
+        corners = np.asarray(cand.bottom.parcel_obb["corners_3d"], dtype=np.float64)
+
+        if is_primary:
+            geoms.append(_make_obb_solid_mesh(corners, color, shade=0.50))
+        else:
+            geoms.append(_make_obb_solid_mesh(corners, color, shade=0.15))
+
+        geoms.extend(_make_obb_thick_edges(corners, color, radius=edge_radius))
+        geoms.extend(_make_obb_corner_markers(corners, color, radius=corner_radius))
+
+    primary = selection_result.primary
+    p_cand = primary.candidate
+    p_label = p_cand.debug.get("label", p_cand.candidate_id[:6])
+    title = (
+        f"{window_name}: '{p_label}' "
+        f"({primary.score_name}={primary.score:.3f}m, reason={primary.reason})"
+    )
+    print(
+        f"[SELECT-VIZ] primary='{p_label}' id={p_cand.candidate_id[:8]} "
+        f"{primary.score_name}={primary.score:.3f}m "
+        f"top={p_cand.top_surface_height:.3f}m bottom={p_cand.bottom.bottom_z:.3f}m"
+    )
+    print(f"[SELECT-VIZ] ranking ({len(selection_result.ranking)} eligible):")
+    for t in selection_result.ranking[:8]:
+        lab = t.candidate.debug.get("label", t.candidate.candidate_id[:6])
+        marker = " <-- PRIMARY" if t.rank == 0 else ""
+        print(
+            f"             #{t.rank}: '{lab}' "
+            f"z_extent={t.score:.3f}m{marker}"
+        )
+    if selection_result.rejected:
+        print(f"[SELECT-VIZ] rejected: {len(selection_result.rejected)}")
+        for c, reason in selection_result.rejected[:5]:
+            lab = c.debug.get("label", c.candidate_id[:6])
+            print(f"             '{lab}': {reason}")
+
+    o3d.visualization.draw_geometries(geoms, window_name=title)
+
+
 def visualize_3d_colored(
     session_path, masks, labels, window_name="Segmentierte Objekte", session_context=None
 ):
@@ -1392,7 +1482,8 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
                  original_masks=None, original_labels=None, dino_debug=None,
                  sam3d_masks=None, sam3d_labels=None,
                  closed_matches=None, excluded_matches=None,
-                 session_context=None, candidates=None, scene_planes=None):
+                 session_context=None, candidates=None, scene_planes=None,
+                 selection_result=None):
     """
     Hauptfunktion: Zeigt alle Debug-Visualisierungen nacheinander.
 
@@ -1406,11 +1497,15 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
     7. Alle Stage-5-Matches inkl. dedup-excluded (Nachbar-Pool für Stage 8)
     8. SAM3D Segmente (eigener Output, optional)
     9. Bottom-Plane Inference (extrudierte OBBs, optional)
+   10. Selected Target (Box mit kleinster Z-Ausdehnung, optional)
     """
     has_sam3d = sam3d_masks is not None and sam3d_labels is not None
     has_bottom = candidates is not None and len(candidates) > 0
     has_all_matches = bool(closed_matches) or bool(excluded_matches)
-    total_steps = 6 + int(has_all_matches) + int(has_sam3d) + int(has_bottom)
+    has_selection = selection_result is not None and selection_result.primary is not None
+    total_steps = (
+        6 + int(has_all_matches) + int(has_sam3d) + int(has_bottom) + int(has_selection)
+    )
     print(f"\n[VIZ] Starte {total_steps}-fache Debug-Visualisierung...")
     
     # 1. RGBD mit Original-Farben
@@ -1478,7 +1573,7 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
         next_step += 1
 
     if has_bottom:
-        step = total_steps
+        step = total_steps - int(has_selection)
         n_planes = len(scene_planes or [])
         suffix = f" + {n_planes} Referenz-Flächen" if n_planes else ""
         print(f"[VIZ] {step}/{total_steps}: Bottom-Plane Inference (extrudierte Volumen){suffix}...")
@@ -1486,6 +1581,25 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
             session_path,
             candidates,
             window_name=f"{step}/{total_steps}: Bottom-Plane Inference (OBB + Bodenhöhe){suffix}",
+            session_context=session_context,
+            scene_planes=scene_planes,
+        )
+
+    if has_selection:
+        step = total_steps
+        primary = selection_result.primary
+        p_label = primary.candidate.debug.get(
+            "label", primary.candidate.candidate_id[:6]
+        )
+        print(
+            f"[VIZ] {step}/{total_steps}: Selected Target "
+            f"('{p_label}', z_extent={primary.score:.3f}m)..."
+        )
+        visualize_selected_target_3d(
+            session_path,
+            candidates,
+            selection_result,
+            window_name=f"{step}/{total_steps}: Selected Target (Stage 10)",
             session_context=session_context,
             scene_planes=scene_planes,
         )
