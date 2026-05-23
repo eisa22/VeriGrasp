@@ -1,0 +1,100 @@
+{
+  "scene": 17,
+  "camera": {
+    "position": [
+      0.0,
+      0.0,
+      3.2720000743865967
+    ],
+    "direction": "-Z",
+    "lens_mm": 18.0,
+    "resolution_px": [
+      1280,
+      1024
+    ]
+  },
+  "pallet": {
+    "name": "Asset_Pallet"
+  },
+  "num_boxes": 3,
+  "boxes": [
+    {
+      "id": 5,
+      "name": "Box_L1_005",
+      "template": "Asset_Large_cartoon_Box",
+      "layer": 1,
+      "center": [
+        0.21,
+        0.3025,
+        0.3146
+      ],
+      "size": [
+        0.42,
+        0.6048,
+        0.3411
+      ],
+      "bbox_min": [
+        -0.0,
+        0.0001,
+        0.1441
+      ],
+      "bbox_max": [
+        0.42,
+        0.6049,
+        0.4851
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Box_L1_003",
+      "template": "Asset_Large_cartoon_Box",
+      "layer": 1,
+      "center": [
+        -0.21,
+        0.3025,
+        0.3146
+      ],
+      "size": [
+        0.42,
+        0.6048,
+        0.3411
+      ],
+      "bbox_min": [
+        -0.42,
+        0.0001,
+        0.1441
+      ],
+      "bbox_max": [
+        0.0,
+        0.6049,
+        0.4851
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Box_L1_004",
+      "template": "Asset_Large_cartoon_Box",
+      "layer": 1,
+      "center": [
+        0.21,
+        -0.3025,
+        0.3146
+      ],
+      "size": [
+        0.42,
+        0.6048,
+        0.3411
+      ],
+      "bbox_min": [
+        -0.0,
+        -0.6049,
+        0.1441
+      ],
+      "bbox_max": [
+        0.42,
+        -0.0001,
+        0.4851
+      ]
+    }
+  ]
+}

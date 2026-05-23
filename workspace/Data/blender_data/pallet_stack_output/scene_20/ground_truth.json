@@ -1,0 +1,21 @@
+{
+  "scene": 20,
+  "camera": {
+    "position": [
+      0.0,
+      0.0,
+      3.2720000743865967
+    ],
+    "direction": "-Z",
+    "lens_mm": 18.0,
+    "resolution_px": [
+      1280,
+      1024
+    ]
+  },
+  "pallet": {
+    "name": "Asset_Pallet"
+  },
+  "num_boxes": 0,
+  "boxes": []
+}

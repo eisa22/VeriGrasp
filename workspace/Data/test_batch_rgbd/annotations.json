@@ -1,0 +1,43 @@
+{
+  "images": [
+    {
+      "id": 1,
+      "file_name": "rgb_0000.png",
+      "width": 512,
+      "height": 512,
+      "frame_id": "pallet_Replicator_07",
+      "source": "pallet_rgbd"
+    },
+    {
+      "id": 2,
+      "file_name": "rgb_0000.png",
+      "width": 512,
+      "height": 512,
+      "frame_id": "pallet_Replicator_14",
+      "source": "pallet_rgbd"
+    },
+    {
+      "id": 3,
+      "file_name": "230703_150000.jpg",
+      "width": 1280,
+      "height": 720,
+      "frame_id": "box_230703_150000",
+      "source": "box_is"
+    },
+    {
+      "id": 4,
+      "file_name": "230816_150726.jpg",
+      "width": 1280,
+      "height": 720,
+      "frame_id": "box_230816_150726",
+      "source": "box_is"
+    }
+  ],
+  "annotations": [],
+  "categories": [
+    {
+      "id": 1,
+      "name": "parcel"
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+{
+  "frame_id": "pallet_Replicator_07",
+  "timestamp_utc": "2026-05-15T10:38:51.091755+00:00",
+  "pipeline_version": "8c7b49b",
+  "config": {
+    "mode": "gdino_sobel",
+    "prompts": [
+      "cardboard box",
+      "small cardboard box",
+      "shipping box",
+      "parcel"
+    ],
+    "gdino": {
+      "box_threshold": 0.3,
+      "text_threshold": 0.25,
+      "max_box_area_ratio": 0.12,
+      "relative_iou_nms_thresh": 0.3
+    },
+    "sam": {
+      "model": "vit_b",
+      "points_per_side": 32,
+      "pred_iou_thresh": 0.86,
+      "use_grid": true,
+      "grid_size": 16,
+      "grid_min_area_px": 500,
+      "grid_on_roi_area_frac": 0.04,
+      "grid_dedup_iou": 0.85
+    },
+    "use_dedup": false,
+    "dedup_iou_threshold": 0.9,
+    "use_depth_fusion": false,
+    "depth_fusion": {
+      "sobel_kernel": 5,
+      "depth_gap_percentile": 85.0,
+      "min_segment_area_px": 200
+    },
+    "quality_gates": {
+      "min_area_px": 200,
+      "max_area_frac": 0.8,
+      "split_disconnected": true
+    },
+    "method": "watershed",
+    "depth_blur_sigma": 1.5
+  },
+  "model_revisions": {
+    "grounding_dino": "see config DINO_MODEL_ID",
+    "sam": "facebook/sam-vit-base"
+  },
+  "timings_ms": {
+    "gdino_ms": 10359.162083012052,
+    "box_masks_ms": 379.5559999998659,
+    "sobel_ms": 39.222874998813495,
+    "mode_total_ms": 10778.830041002948,
+    "quality_gates_ms": 6.651999981841072,
+    "total_ms": 10793.039166019298
+  },
+  "num_predictions": 6,
+  "filter_log": [
+    {
+      "mask_index": 1,
+      "reason": "min_area",
+      "score": 0.38329002261161804,
+      "area": 27
+    }
+  ]
+}

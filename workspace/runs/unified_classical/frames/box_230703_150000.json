@@ -1,0 +1,47 @@
+{
+  "frame_id": "box_230703_150000",
+  "timestamp_utc": "2026-05-15T08:23:35.917465+00:00",
+  "pipeline_version": "8c7b49b",
+  "config": {
+    "mode": "classical",
+    "prompts": [
+      "box"
+    ],
+    "gdino": {
+      "box_threshold": 0.3,
+      "text_threshold": 0.25
+    },
+    "sam": {
+      "model": "vit_b",
+      "points_per_side": 32,
+      "pred_iou_thresh": 0.86
+    },
+    "use_dedup": false,
+    "dedup_iou_threshold": 0.9,
+    "use_depth_fusion": false,
+    "depth_fusion": {
+      "sobel_kernel": 5,
+      "depth_gap_percentile": 85.0,
+      "min_segment_area_px": 200
+    },
+    "quality_gates": {
+      "min_area_px": 200,
+      "max_area_frac": 0.8,
+      "split_disconnected": true
+    },
+    "method": "watershed",
+    "depth_blur_sigma": 1.5
+  },
+  "model_revisions": {
+    "grounding_dino": "see config DINO_MODEL_ID",
+    "sam": "facebook/sam-vit-base"
+  },
+  "timings_ms": {
+    "classical_ms": 17.016375000821427,
+    "mode_total_ms": 18.337166984565556,
+    "quality_gates_ms": 3.240999998524785,
+    "total_ms": 24.9265419843141
+  },
+  "num_predictions": 1,
+  "filter_log": []
+}
