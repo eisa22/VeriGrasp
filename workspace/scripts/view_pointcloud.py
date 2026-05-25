@@ -14,14 +14,20 @@ import plotly.graph_objects as go
 
 from convert_pointclouds import resolve_data_dir
 
-DEFAULT_MAX_POINTS = 80_000
+DEFAULT_MAX_POINTS = 100_000
+VOXEL_FOR_VIEW_M = 0.006
 
 
-def subsample_pcd(pcd: o3d.geometry.PointCloud, max_points: int, seed: int = 0) -> o3d.geometry.PointCloud:
+def prepare_for_view(
+    pcd: o3d.geometry.PointCloud, max_points: int, voxel: float = VOXEL_FOR_VIEW_M
+) -> o3d.geometry.PointCloud:
+    """Voxel-downsample to preserve structure, then cap point count."""
+    if voxel > 0 and len(pcd.points) > 0:
+        pcd = pcd.voxel_down_sample(voxel)
     n = len(pcd.points)
     if n <= max_points:
         return pcd
-    rng = np.random.default_rng(seed)
+    rng = np.random.default_rng(0)
     idx = rng.choice(n, size=max_points, replace=False)
     out = o3d.geometry.PointCloud()
     pts = np.asarray(pcd.points)[idx]
@@ -32,13 +38,32 @@ def subsample_pcd(pcd: o3d.geometry.PointCloud, max_points: int, seed: int = 0) 
     return out
 
 
-def pcd_to_figure(pcd: o3d.geometry.PointCloud, title: str) -> go.Figure:
+def pcd_to_figure(pcd: o3d.geometry.PointCloud, title: str, top_down: bool = True) -> go.Figure:
     pts = np.asarray(pcd.points)
     if pcd.has_colors():
         rgb = (np.asarray(pcd.colors) * 255).clip(0, 255).astype(np.uint8)
         color = [f"rgb({r},{g},{b})" for r, g, b in rgb]
     else:
         color = "rgb(180,180,180)"
+
+    n = len(pts)
+    marker_size = max(1.0, min(4.0, 80000 / max(n, 1)))
+
+    scene: dict = dict(
+        xaxis_title="X (m)",
+        yaxis_title="Y (m)",
+        zaxis_title="Z (m)",
+        aspectmode="data",
+        bgcolor="rgb(20,20,24)",
+    )
+    if top_down and n > 0:
+        cx, cy, cz = pts.mean(axis=0)
+        span = max(float(np.ptp(pts[:, 0])), float(np.ptp(pts[:, 1])), 0.5)
+        scene["camera"] = dict(
+            eye=dict(x=cx, y=cy, z=cz + span * 2.5),
+            center=dict(x=cx, y=cy, z=cz),
+            up=dict(x=0, y=1, z=0),
+        )
 
     fig = go.Figure(
         data=[
@@ -47,20 +72,14 @@ def pcd_to_figure(pcd: o3d.geometry.PointCloud, title: str) -> go.Figure:
                 y=pts[:, 1],
                 z=pts[:, 2],
                 mode="markers",
-                marker=dict(size=1.5, color=color, opacity=0.9),
+                marker=dict(size=marker_size, color=color, opacity=0.95),
                 hovertemplate="X=%{x:.3f} m<br>Y=%{y:.3f} m<br>Z=%{z:.3f} m<extra></extra>",
             )
         ]
     )
     fig.update_layout(
         title=title,
-        scene=dict(
-            xaxis_title="X (m)",
-            yaxis_title="Y (m)",
-            zaxis_title="Z (m)",
-            aspectmode="data",
-            bgcolor="rgb(20,20,24)",
-        ),
+        scene=scene,
         paper_bgcolor="rgb(20,20,24)",
         font=dict(color="white"),
         margin=dict(l=0, r=0, t=40, b=0),
@@ -110,6 +129,11 @@ def main() -> int:
         action="store_true",
         help="Open the HTML file in the default browser",
     )
+    parser.add_argument(
+        "--no-top-down",
+        action="store_true",
+        help="Use default 3D camera instead of bird's-eye view",
+    )
     args = parser.parse_args()
 
     data_dir = resolve_data_dir(args.data)
@@ -131,8 +155,10 @@ def main() -> int:
     print(f"Loading {ply_path} ...")
     pcd = o3d.io.read_point_cloud(str(ply_path))
     n_total = len(pcd.points)
-    pcd = subsample_pcd(pcd, args.max_points)
-    print(f"  {n_total:,} points -> showing {len(pcd.points):,} in browser")
+    pcd = prepare_for_view(pcd, args.max_points)
+    pts = np.asarray(pcd.points)
+    z_rng = f"z=[{pts[:,2].min():.2f},{pts[:,2].max():.2f}]" if len(pts) else ""
+    print(f"  {n_total:,} points -> showing {len(pcd.points):,} in browser {z_rng}")
 
     out_path = args.out
     if out_path is None:
@@ -142,7 +168,11 @@ def main() -> int:
     else:
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    fig = pcd_to_figure(pcd, title=f"{label} ({len(pcd.points):,} / {n_total:,} points)")
+    fig = pcd_to_figure(
+        pcd,
+        title=f"{label} — Top-Down ({len(pcd.points):,} / {n_total:,} pts)",
+        top_down=not args.no_top_down,
+    )
     fig.write_html(str(out_path), include_plotlyjs="cdn")
     print(f"Saved: {out_path.resolve()}")
 

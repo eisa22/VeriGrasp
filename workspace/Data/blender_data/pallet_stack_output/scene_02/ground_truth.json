@@ -1,6 +1,10 @@
 {
   "scene": 2,
   "camera": {
+    "fx": 640.0,
+    "fy": 640.0,
+    "cx": 640.0,
+    "cy": 512.0,
     "position": [
       0.0,
       0.0,
@@ -13,6 +17,8 @@
       1024
     ]
   },
+  "depth_channel": 0,
+  "depth_note": "EXR R-channel = depth in meters. Ground at ~3.272m.",
   "pallet": {
     "name": "Asset_Pallet"
   },
