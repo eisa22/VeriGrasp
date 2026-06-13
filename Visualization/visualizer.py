@@ -16,6 +16,10 @@ from Segmentation.sobel_refinement import (
     select_frontmost_segment,
 )
 from config import (
+    CAMERA_CX,
+    CAMERA_CY,
+    CAMERA_FX,
+    CAMERA_FY,
     Z_ALIGN_MIN_KEEP_RATIO,
     MATCH_CLOSURE_RATIO,
     MATCH_BORDER_TOUCH_RATIO,
@@ -32,6 +36,18 @@ from config import (
     MATCH_DEDUP_USE_BBOX,
     MATCH_DEDUP_KEEP_CLOSER,
 )
+from path_utils import get_depth_path, get_rgb_path, load_session_depth
+
+
+def _intrinsics_for_session(session_context, width: int, height: int) -> tuple[float, float, float, float]:
+    if session_context is not None:
+        return (
+            float(session_context.fx),
+            float(session_context.fy),
+            float(session_context.cx),
+            float(session_context.cy),
+        )
+    return CAMERA_FX, CAMERA_FY, float(width) / 2.0, float(height) / 2.0
 
 
 def visualize_2d(orig_image, boxes, masks, labels, scores):
@@ -114,22 +130,15 @@ def _dim_colors_outside_workspace(colors, workspace_mask):
 
 def _load_pointcloud_data(session_path, session_context=None):
     """Lädt RGB, Depth und erstellt die 3D-Punktwolke."""
-    rgb_path = os.path.join(session_path, "rgb", "rgb_0000.png")
+    rgb_path = get_rgb_path(session_path)
     rgb = np.array(Image.open(rgb_path))[:, :, :3]
     if session_context is not None:
         depth = session_context.depth_abs
     else:
-        depth_path = os.path.join(
-            session_path,
-            "distance_to_image_plane",
-            "distance_to_image_plane_0000.npy",
-        )
-        depth = np.load(depth_path)
+        depth = load_session_depth(session_path)
     H, W = depth.shape
     
-    # Kamera-Intrinsics
-    fx = fy = 437.04
-    cx, cy = W / 2, H / 2
+    fx, fy, cx, cy = _intrinsics_for_session(session_context, W, H)
     
     # Vollständige Punktwolke erstellen
     u, v = np.meshgrid(np.arange(W), np.arange(H))
@@ -762,6 +771,429 @@ def visualize_best_suction_grasp_3d(
     )
 
 
+_VERIF_PASS_COLOR = [0.15, 0.92, 0.30]
+_VERIF_FAIL_COLOR = [0.95, 0.20, 0.20]
+
+
+def _verif_stage(verification_result, stage_idx):
+    for st in verification_result.stages:
+        if st.stage == stage_idx:
+            return st
+    return None
+
+
+def _verif_check(stage, name):
+    if stage is None:
+        return None
+    for c in stage.checks:
+        if c.name == name:
+            return c
+    return None
+
+
+def _verif_status_color(passed: bool) -> list[float]:
+    return _VERIF_PASS_COLOR if passed else _VERIF_FAIL_COLOR
+
+
+def _height_to_cam_z(z_pallet_m: float, height: float) -> float:
+    """Map a height-above-pallet back to a camera-frame depth z."""
+    return float(z_pallet_m) - float(height)
+
+
+def _make_ring_cam(center_cam, radius, color, n=48):
+    c = np.asarray(center_cam, dtype=np.float64).reshape(3)
+    theta = np.linspace(0, 2 * np.pi, n, endpoint=False)
+    pts = np.stack(
+        [c[0] + radius * np.cos(theta), c[1] + radius * np.sin(theta), np.full(n, c[2])],
+        axis=1,
+    )
+    pts_o3d = _camera_to_o3d(pts)
+    ls = o3d.geometry.LineSet()
+    ls.points = o3d.utility.Vector3dVector(pts_o3d)
+    ls.lines = o3d.utility.Vector2iVector(
+        np.asarray([[i, (i + 1) % n] for i in range(n)], dtype=np.int32)
+    )
+    ls.paint_uniform_color(color)
+    return ls
+
+
+def _make_gripper_footprint_rect(
+    p_g_cam: np.ndarray,
+    half_w: float,
+    half_l: float,
+    plane: tuple[float, float, float, float],
+    color: list[float],
+) -> o3d.geometry.LineSet:
+    """Rectangular gripper outline centred on the grasp (pallet plane)."""
+    from perception.geometry.plane import heights_above_plane, unproject_from_plane_xy
+
+    h = float(heights_above_plane(np.asarray(p_g_cam, dtype=np.float64).reshape(1, 3), plane)[0])
+    corners_xy = np.array(
+        [
+            [-half_w, -half_l],
+            [half_w, -half_l],
+            [half_w, half_l],
+            [-half_w, half_l],
+        ],
+        dtype=np.float64,
+    )
+    corners_cam = unproject_from_plane_xy(corners_xy, plane, heights=h)
+    pts_o3d = _camera_to_o3d(corners_cam)
+    ls = o3d.geometry.LineSet()
+    ls.points = o3d.utility.Vector3dVector(pts_o3d)
+    ls.lines = o3d.utility.Vector2iVector(np.asarray([[0, 1], [1, 2], [2, 3], [3, 0]], dtype=np.int32))
+    ls.paint_uniform_color(color)
+    return ls
+
+
+def _make_corridor_box_wireframe(
+    p_g_cam: np.ndarray,
+    half_w: float,
+    half_l: float,
+    plane: tuple[float, float, float, float],
+    z_bottom_h: float,
+    z_top_h: float,
+    color: list[float],
+) -> list:
+    """Lift corridor = gripper rectangle extruded between two heights above pallet."""
+    from perception.geometry.plane import unproject_from_plane_xy
+
+    corners_xy = np.array(
+        [
+            [-half_w, -half_l],
+            [half_w, -half_l],
+            [half_w, half_l],
+            [-half_w, half_l],
+        ],
+        dtype=np.float64,
+    )
+    bot = _camera_to_o3d(unproject_from_plane_xy(corners_xy, plane, heights=z_bottom_h))
+    top = _camera_to_o3d(unproject_from_plane_xy(corners_xy, plane, heights=z_top_h))
+    pts = np.vstack([bot, top])
+    lines = (
+        [(0, 1), (1, 2), (2, 3), (3, 0)]
+        + [(4, 5), (5, 6), (6, 7), (7, 4)]
+        + [(i, i + 4) for i in range(4)]
+    )
+    ls = o3d.geometry.LineSet()
+    ls.points = o3d.utility.Vector3dVector(pts)
+    ls.lines = o3d.utility.Vector2iVector(np.asarray(lines, dtype=np.int32))
+    ls.paint_uniform_color(color)
+    return [ls]
+
+
+def _make_corridor_wireframe(center_xy_cam, z_bottom_cam, z_top_cam, radius, color, n=24):
+    """Two rings (bottom/top) + vertical edges = open lift cylinder."""
+    cx, cy = float(center_xy_cam[0]), float(center_xy_cam[1])
+    geoms = [
+        _make_ring_cam([cx, cy, z_bottom_cam], radius, color, n=n),
+        _make_ring_cam([cx, cy, z_top_cam], radius, color, n=n),
+    ]
+    theta = np.linspace(0, 2 * np.pi, 8, endpoint=False)
+    for t in theta:
+        x = cx + radius * np.cos(t)
+        y = cy + radius * np.sin(t)
+        p0 = _camera_to_o3d(np.array([x, y, z_bottom_cam]))[0]
+        p1 = _camera_to_o3d(np.array([x, y, z_top_cam]))[0]
+        edge = _make_cylinder_edge(p0, p1, radius=0.002, color=color)
+        if edge is not None:
+            geoms.append(edge)
+    return geoms
+
+
+def visualize_verification_3d(
+    session_path,
+    selection_result,
+    grasp_result,
+    verification_result,
+    session_context=None,
+    candidates=None,
+):
+    """Stage 13: zeigt pro Verifikationsstufe ein eigenes 3D-Fenster.
+
+    Stufe 1: BBox-Punkte (Top-Cluster vs. Rest) + z_top-Referenz.
+    Stufe 2: Greifer-Footprint (Inlier/Outlier), gefittete Normale vs. Anflugachse.
+    Stufe 3: Anflugkorridor (Rechteck) + blockierende Nachbarpunkte.
+    Jede Stufe ist grün (PASS) oder rot (FAIL) markiert; Details im Titel/Log.
+    """
+    if verification_result is None or not verification_result.stages:
+        print("[VERIFY-VIZ] Keine Verifikationsergebnisse – übersprungen.")
+        return
+    if (
+        selection_result is None
+        or selection_result.primary is None
+        or grasp_result is None
+    ):
+        print("[VERIFY-VIZ] Kein Ziel/Greifpunkt – übersprungen.")
+        return
+
+    grasp = grasp_result.primary_grasp or (
+        grasp_result.grasps[0] if grasp_result.grasps else None
+    )
+    if grasp is None:
+        print("[VERIFY-VIZ] Kein Greifpunkt – übersprungen.")
+        return
+
+    from verification.config import load_verification_config, resolve_gripper
+    from verification.geometry import (
+        Intrinsics,
+        full_pointcloud,
+        target_pointcloud,
+        gather_bbox_points,
+        gather_gripper_points,
+        robust_plane_fit,
+    )
+    from perception.geometry.plane import heights_above_plane
+
+    candidate = selection_result.primary.candidate
+    cfg = load_verification_config()
+    grip = resolve_gripper(cfg)
+    intr = Intrinsics.from_session(session_context)
+    depth = np.asarray(session_context.depth_abs)
+    plane = tuple(float(x) for x in session_context.plane_model)
+    z_pallet = float(getattr(session_context, "z_pallet_m", 0.0))
+    p_g = np.asarray(grasp.position, dtype=np.float64)
+
+    p_full = full_pointcloud(depth, intr)
+    p_target = target_pointcloud(depth, candidate.mask_2d, intr)
+    if p_target.size == 0:
+        p_target, _, _ = gather_bbox_points(depth, candidate.bbox_2d, intr)
+    verdict = verification_result.verdict
+    n_stages = len(verification_result.stages)
+
+    print(
+        f"\n[VERIFY-VIZ] Verdikt={verdict} – zeige {n_stages} Stufe(n) "
+        f"(grün=PASS, rot=FAIL)..."
+    )
+
+    base_points, _, _, _, base_colors, _ = _load_pcd_for_viz(
+        session_path, session_context
+    )
+
+    def _base_cloud(dim=0.30):
+        bg = o3d.geometry.PointCloud()
+        bg.points = o3d.utility.Vector3dVector(base_points)
+        bg.colors = o3d.utility.Vector3dVector(base_colors * dim)
+        return bg
+
+    def _grasp_sphere(color, radius=0.012):
+        s = o3d.geometry.TriangleMesh.create_sphere(radius=radius)
+        s.translate(_camera_to_o3d(p_g.reshape(1, 3))[0])
+        s.paint_uniform_color(color)
+        s.compute_vertex_normals()
+        return s
+
+    # ------------------------------------------------------------------ Stage 1
+    st1 = _verif_stage(verification_result, 1)
+    if st1 is not None:
+        geoms = [_base_cloud()]
+        p_bbox, _, _ = gather_bbox_points(depth, candidate.bbox_2d, intr)
+        z_top = st1.outputs.get("z_top")
+        if len(p_bbox):
+            top_mask = st1.outputs.get("top_mask")
+            if top_mask is not None and len(np.asarray(top_mask)) == len(p_bbox):
+                top_sel = np.asarray(top_mask, dtype=bool)
+            elif z_top is not None:
+                heights = heights_above_plane(p_bbox, plane)
+                gap = float(cfg["stage1"]["plateau_gap_m"])
+                top_sel = heights >= (z_top - gap)
+            else:
+                top_sel = np.ones(len(p_bbox), dtype=bool)
+            top_pcd = o3d.geometry.PointCloud()
+            top_pcd.points = o3d.utility.Vector3dVector(_camera_to_o3d(p_bbox[top_sel]))
+            top_pcd.paint_uniform_color([0.20, 0.90, 0.35])
+            geoms.append(top_pcd)
+            if np.any(~top_sel):
+                rest_pcd = o3d.geometry.PointCloud()
+                rest_pcd.points = o3d.utility.Vector3dVector(
+                    _camera_to_o3d(p_bbox[~top_sel])
+                )
+                rest_pcd.paint_uniform_color([1.0, 0.55, 0.10])
+                geoms.append(rest_pcd)
+            # z_top reference ring around the grasp.
+            ext = float(
+                max(
+                    p_bbox[:, 0].max() - p_bbox[:, 0].min(),
+                    p_bbox[:, 1].max() - p_bbox[:, 1].min(),
+                    grip.width_m,
+                    grip.length_m,
+                )
+            )
+            if z_top is not None:
+                z_cam_top = _height_to_cam_z(z_pallet, z_top)
+                geoms.append(
+                    _make_ring_cam(
+                        [p_g[0], p_g[1], z_cam_top], 0.5 * ext, [0.2, 0.85, 1.0]
+                    )
+                )
+        geoms.append(_grasp_sphere(_verif_status_color(st1.passed)))
+
+        vr = _verif_check(st1, "valid_ratio")
+        tc = _verif_check(st1, "top_cluster")
+        so = _verif_check(st1, "single_object")
+        ns = _verif_check(st1, "no_seam")
+        flag = "PASS (gruen)" if st1.passed else "FAIL (rot)"
+        title = (
+            f"STUFE 1/3 BBox-Gueltigkeit: {flag}  |  "
+            f"valid={_fmt_chk(vr)} top={_fmt_chk(tc)} "
+            f"single={_fmt_chk(so)} seam={_fmt_chk(ns)}"
+        )
+        print(f"[VERIFY-VIZ] Stufe 1 ({flag}):")
+        for c in st1.checks:
+            print(
+                f"             {('OK ' if c.passed else 'FAIL')} {c.name}: "
+                f"raw={c.raw_value:.4f} thr={c.threshold:.4f} margin={c.margin:.4f}"
+            )
+        o3d.visualization.draw_geometries(geoms, window_name=title)
+
+    # ------------------------------------------------------------------ Stage 2
+    st2 = _verif_stage(verification_result, 2)
+    if st2 is not None:
+        geoms = [_base_cloud()]
+        p_grip, rel = gather_gripper_points(
+            p_target, p_g, grip.half_w_m, grip.half_l_m, plane
+        )
+        if len(p_grip) >= int(cfg["stage2"]["robust_fit"]["min_points"]):
+            _, normal, _, inlier_mask = robust_plane_fit(
+                p_grip,
+                max_iter=int(cfg["stage2"]["robust_fit"]["max_iter"]),
+                mad_scale=float(cfg["stage2"]["robust_fit"]["mad_scale"]),
+                min_points=int(cfg["stage2"]["robust_fit"]["min_points"]),
+            )
+            inl = o3d.geometry.PointCloud()
+            inl.points = o3d.utility.Vector3dVector(_camera_to_o3d(p_grip[inlier_mask]))
+            inl.paint_uniform_color([0.20, 0.90, 0.35])
+            geoms.append(inl)
+            if np.any(~inlier_mask):
+                out = o3d.geometry.PointCloud()
+                out.points = o3d.utility.Vector3dVector(
+                    _camera_to_o3d(p_grip[~inlier_mask])
+                )
+                out.paint_uniform_color([0.95, 0.20, 0.20])
+                geoms.append(out)
+            # Fitted normal (blue) vs. approach axis (gray) at the grasp.
+            arrow_len = 0.08
+            tip_n = _camera_to_o3d((p_g + normal * arrow_len).reshape(1, 3))[0]
+            base_o3d = _camera_to_o3d(p_g.reshape(1, 3))[0]
+            edge_n = _make_cylinder_edge(base_o3d, tip_n, 0.004, [0.2, 0.45, 1.0])
+            if edge_n is not None:
+                geoms.append(edge_n)
+            axis = np.asarray(cfg.get("approach_axis", [0.0, 0.0, -1.0]), dtype=np.float64)
+            tip_a = _camera_to_o3d((p_g + axis * arrow_len).reshape(1, 3))[0]
+            edge_a = _make_cylinder_edge(base_o3d, tip_a, 0.003, [0.7, 0.7, 0.7])
+            if edge_a is not None:
+                geoms.append(edge_a)
+        geoms.append(
+            _make_gripper_footprint_rect(
+                p_g, grip.half_w_m, grip.half_l_m, plane, color=[0.2, 0.85, 1.0]
+            )
+        )
+        geoms.append(_grasp_sphere(_verif_status_color(st2.passed), radius=0.010))
+
+        pl = _verif_check(st2, "planarity")
+        na = _verif_check(st2, "normal_angle")
+        sc = _verif_check(st2, "normal_scatter")
+        ar = _verif_check(st2, "suction_area")
+        ec = _verif_check(st2, "edge_clearance")
+        flag = "PASS (gruen)" if st2.passed else "FAIL (rot)"
+        title = (
+            f"STUFE 2/3 Saugbarkeit: {flag}  |  "
+            f"gripper={grip.width_m*1000:.0f}x{grip.length_m*1000:.0f}mm "
+            f"rmse={_fmt_chk(pl)} angle={_fmt_chk(na)} "
+            f"scatter={_fmt_chk(sc)} area={_fmt_chk(ar)} edge={_fmt_chk(ec)}"
+        )
+        print(f"[VERIFY-VIZ] Stufe 2 ({flag}):")
+        for c in st2.checks:
+            print(
+                f"             {('OK ' if c.passed else 'FAIL')} {c.name}: "
+                f"raw={c.raw_value:.4f} thr={c.threshold:.4f} margin={c.margin:.4f}"
+            )
+        o3d.visualization.draw_geometries(geoms, window_name=title)
+
+    # ------------------------------------------------------------------ Stage 3
+    st3 = _verif_stage(verification_result, 3)
+    if st3 is not None:
+        geoms = [_base_cloud()]
+        cc = _verif_check(st3, "corridor_clear")
+        detail = cc.detail if cc is not None else {}
+        hw = float(
+            detail.get("corridor_half_w_m", grip.half_w_m + grip.safety_margin_m)
+        )
+        hl = float(
+            detail.get("corridor_half_l_m", grip.half_l_m + grip.safety_margin_m)
+        )
+        z_top = float(detail.get("z_top_m", st1.outputs.get("z_top") if st1 else 0.0))
+        approach_h = float(
+            cfg["stage3"]["approach_height_m"]
+            if cfg["stage3"]["approach_height_m"] is not None
+            else grip.approach_height_m
+        )
+        top_band = float(cfg["stage3"]["top_band_m"])
+
+        # Target OBB for context.
+        if candidate.bottom is not None:
+            corners = np.asarray(candidate.bottom.parcel_obb["corners_3d"], dtype=np.float64)
+            geoms.append(_make_obb_solid_mesh(corners, [0.5, 0.5, 0.5], shade=0.15))
+            geoms.extend(_make_obb_thick_edges(corners, [0.6, 0.6, 0.6], radius=0.004))
+
+        # Blocking points = above the grasp surface inside the corridor.
+        heights_full = heights_above_plane(p_full, plane)
+        from perception.geometry.plane import project_to_plane_xy
+
+        xy = project_to_plane_xy(p_full, plane)
+        g_xy = project_to_plane_xy(p_g.reshape(1, 3), plane)[0]
+        rel = xy - g_xy[None, :]
+        block = (
+            (heights_full > (z_top + top_band))
+            & (np.abs(rel[:, 0]) <= hw)
+            & (np.abs(rel[:, 1]) <= hl)
+        )
+        if np.any(block):
+            blk = o3d.geometry.PointCloud()
+            blk.points = o3d.utility.Vector3dVector(_camera_to_o3d(p_full[block]))
+            blk.paint_uniform_color([0.95, 0.10, 0.10])
+            geoms.append(blk)
+
+        geoms.extend(
+            _make_corridor_box_wireframe(
+                p_g,
+                hw,
+                hl,
+                plane,
+                z_top,
+                z_top + approach_h,
+                _verif_status_color(st3.passed),
+            )
+        )
+        geoms.append(_grasp_sphere(_verif_status_color(st3.passed), radius=0.010))
+
+        n_block = int(detail.get("n_blocking_points", 0))
+        clear_h = float(detail.get("clearance_height_m", 0.0))
+        flag = "PASS (gruen)" if st3.passed else "FAIL (rot)"
+        title = (
+            f"STUFE 3/3 Anflugkorridor: {flag}  |  "
+            f"blocking_pts={n_block} (tol={detail.get('noise_tolerance', '?')}) "
+            f"clearance={clear_h:.3f}m "
+            f"corr={hw*2000:.0f}x{hl*2000:.0f}mm"
+        )
+        print(f"[VERIFY-VIZ] Stufe 3 ({flag}):")
+        for c in st3.checks:
+            print(
+                f"             {('OK ' if c.passed else 'FAIL')} {c.name}: "
+                f"raw={c.raw_value:.4f} thr={c.threshold:.4f} margin={c.margin:.4f}"
+            )
+        o3d.visualization.draw_geometries(geoms, window_name=title)
+
+    print(f"[VERIFY-VIZ] Verifikations-Visualisierung abgeschlossen (Verdikt={verdict}).")
+
+
+def _fmt_chk(check) -> str:
+    if check is None:
+        return "n/a"
+    mark = "OK" if check.passed else "X"
+    return f"{check.raw_value:.3f}/{check.threshold:.3f}[{mark}]"
+
+
 def visualize_3d_colored(
     session_path, masks, labels, window_name="Segmentierte Objekte", session_context=None
 ):
@@ -840,17 +1272,9 @@ def visualize_dino_boxes(session_path, dino_debug, stage="raw", session_context=
     if session_context is not None:
         depth = session_context.depth_abs
     else:
-        depth = np.load(
-            os.path.join(
-                session_path,
-                "distance_to_image_plane",
-                "distance_to_image_plane_0000.npy",
-            )
-        )
+        depth = load_session_depth(session_path)
     
-    # Kamera-Intrinsics (identisch zu _load_pointcloud_data)
-    fx = fy = 437.04
-    cx, cy = W / 2, H / 2
+    fx, fy, cx, cy = _intrinsics_for_session(session_context, W, H)
     
     # Wähle die richtige Box-Liste
     if stage == "raw":
@@ -960,10 +1384,23 @@ def visualize_dino_boxes(session_path, dino_debug, stage="raw", session_context=
     o3d.visualization.draw_geometries(geoms, window_name=window_title)
 
 
-def _build_dino_box_wireframes(boxes, depth, H, W, box_colors=None, z_planes=None):
+def _build_dino_box_wireframes(
+    boxes,
+    depth,
+    H,
+    W,
+    box_colors=None,
+    z_planes=None,
+    fx: float = CAMERA_FX,
+    fy: float = CAMERA_FY,
+    cx: float | None = None,
+    cy: float | None = None,
+):
     """Erstellt 3D-LineSets für Bounding Boxes (optional feste Z-Ebene pro Box)."""
-    fx = fy = 437.04
-    cx, cy = W / 2, H / 2
+    if cx is None:
+        cx = W / 2.0
+    if cy is None:
+        cy = H / 2.0
 
     if box_colors is None:
         box_colors = _generate_unique_colors(len(boxes))
@@ -1757,7 +2194,8 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
                  sam3d_masks=None, sam3d_labels=None,
                  closed_matches=None, excluded_matches=None,
                  session_context=None, candidates=None, scene_planes=None,
-                 gradient_plateaus=None, selection_result=None, grasp_result=None):
+                 gradient_plateaus=None, selection_result=None, grasp_result=None,
+                 verification_result=None):
     """
     Hauptfunktion: Zeigt alle Debug-Visualisierungen nacheinander.
 
@@ -1922,6 +2360,20 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
             window_name=f"{step}/{total_steps}: Best Suction Grasp (Stage 12)",
             session_context=session_context,
             scene_planes=scene_planes,
+        )
+
+    if verification_result is not None and getattr(verification_result, "stages", None):
+        print(
+            f"[VIZ] Verifikation (Stage 13): {len(verification_result.stages)} Stufe(n) "
+            f"– Verdikt={verification_result.verdict}..."
+        )
+        visualize_verification_3d(
+            session_path,
+            selection_result,
+            grasp_result,
+            verification_result,
+            session_context=session_context,
+            candidates=candidates,
         )
 
     print(f"[VIZ] Alle {total_steps} Visualisierungen abgeschlossen.\n")

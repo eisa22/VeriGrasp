@@ -13,3 +13,5 @@ env/
 .vscode/
 .config/
 LocalModels/
+Data/
+examples/

@@ -1,0 +1,44 @@
+# Verification module (Stage 13) configuration.
+# Overrides the documented defaults in verification/config.py.
+# All thresholds are exposed here for the RQ4 sensitivity analysis.
+
+mode: cascade            # cascade | full  (full computes every check for ROC)
+approach_axis: [0.0, 0.0, -1.0]   # strictly vertical world-up (camera frame)
+seed: 0
+
+# Rectangular suction gripper — centred on the grasp point (not a separate pose).
+gripper:
+  width_m: 0.120        # pallet-plane u-axis extent (120 mm)
+  length_m: 0.060       # pallet-plane v-axis extent (60 mm)
+  approach_height_m: 0.150
+  safety_margin_m: 0.005
+
+stage1:
+  tau_valid: 0.60
+  hist_bin_m: 0.005
+  top_cluster_min_fraction: 0.35
+  plateau_gap_m: 0.015
+  depth_edge_step_m: 0.020
+  depth_edge_span_ratio: 0.70
+
+stage2:
+  plane_rmse_max_m: 0.0025
+  normal_angle_max_deg: 30.0
+  normal_scatter_max: 0.20
+  min_area_ratio: 0.95          # tolerate small sensor gaps at the footprint rim
+  edge_clearance_min_m: null    # null => min(half_width, half_length)
+  raster_m: 0.008               # >= depth sampling (~depth/fx ≈ 5 mm) else cells stay empty
+  robust_fit:
+    max_iter: 5
+    mad_scale: 2.5
+    min_points: 12
+
+stage3:
+  corridor_half_w_m: null      # null => gripper half_width + safety_margin
+  corridor_half_l_m: null      # null => gripper half_length + safety_margin
+  approach_height_m: null      # null => gripper.approach_height_m
+  noise_point_tolerance: 5
+  top_band_m: 0.005
+
+soft_score:
+  accept_threshold: 0.0

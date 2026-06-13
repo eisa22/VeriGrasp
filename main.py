@@ -25,6 +25,7 @@ from perception.adapter import (
 )
 from perception.bottom_inference import infer_bottom_planes
 from perception.selection import select_target_smallest_z
+from verification import verify_grasp, load_verification_config
 import json
 import torch
 import numpy as np
@@ -69,6 +70,171 @@ def _save_stage5_matches(session_path: str, kept: list, excluded: list) -> None:
         print(f"[STAGE-5] gespeichert -> {out_path}")
     except OSError as exc:
         print(f"[STAGE-5] Speichern fehlgeschlagen ({out_path}): {exc}")
+
+
+def _run_verification(
+    session_path: str,
+    session_context,
+    selection_result,
+    grasp_result,
+    config=None,
+) -> tuple[dict | None, object | None]:
+    """Stage 13: Deterministische Verifikation des primären Greifpunkts.
+
+    Annotiert nur (kein Fallback): schreibt verification_result.json und gibt
+    ``(payload, result)`` zurück. ``payload`` (serialisierbar) wird in
+    pipeline_result.json eingebettet, ``result`` (VerificationResult) speist die
+    Stufen-Visualisierung. Der gewählte Greifpunkt wird nicht ersetzt.
+    """
+    if (
+        session_context is None
+        or selection_result is None
+        or selection_result.primary is None
+        or grasp_result is None
+    ):
+        return None, None
+
+    grasp = grasp_result.primary_grasp or (
+        grasp_result.grasps[0] if grasp_result.grasps else None
+    )
+    if grasp is None:
+        return None, None
+
+    candidate = selection_result.primary.candidate
+    cfg = config if config is not None else load_verification_config()
+
+    try:
+        result = verify_grasp(grasp, candidate, session_context, config=cfg)
+    except Exception as exc:  # verification must never crash the pipeline
+        print(f"[VERIFY] WARN Verifikation fehlgeschlagen: {exc}")
+        return {"verdict": "ERROR", "error": str(exc)}, None
+
+    payload = result.to_serializable()
+    out_path = os.path.join(session_path, "verification_result.json")
+    try:
+        with open(out_path, "w", encoding="utf-8") as fp:
+            json.dump(payload, fp, indent=2, ensure_ascii=False)
+        print(f"[VERIFY] Audit -> {out_path}")
+    except OSError as exc:
+        print(f"[VERIFY] Speichern fehlgeschlagen ({out_path}): {exc}")
+
+    decisive = (
+        f"stage{result.decisive_stage}/{result.decisive_check}"
+        if result.decisive_check
+        else "-"
+    )
+    soft = f"{result.soft_score:.3f}" if result.soft_score is not None else "n/a"
+    print(
+        f"[VERIFY] verdict={result.verdict} mode={result.mode} "
+        f"decisive={decisive} soft_score={soft}"
+    )
+    for st in result.stages:
+        failed = st.first_failed()
+        flag = "PASS" if st.passed else f"FAIL@{failed.name}" if failed else "FAIL"
+        print(f"[VERIFY]   stage{st.stage} {st.name}: {flag}")
+
+    # Für die Visualisierung immer ALLE drei Stufen auswerten, auch wenn der
+    # produktive cascade-Modus früh abbricht (sonst fehlt z. B. Stufe 3 in der
+    # Anzeige). Das gespeicherte Verdikt bleibt das cascade-Ergebnis.
+    viz_result = result
+    if len(result.stages) < 3:
+        try:
+            full_cfg = {**cfg, "mode": "full"}
+            viz_result = verify_grasp(grasp, candidate, session_context, config=full_cfg)
+        except Exception as exc:
+            print(f"[VERIFY] WARN Full-Mode für Visualisierung fehlgeschlagen: {exc}")
+            viz_result = result
+
+    return payload, viz_result
+
+
+def _save_final_handover(
+    session_path: str,
+    selection_result,
+    grasp_result,
+    verification=None,
+) -> dict | None:
+    """Stage 12: Konsolidierte Ausgabe — 3D/2D Bounding Box + Greifkandidat."""
+    scene_name = os.path.basename(session_path.rstrip(os.sep))
+
+    payload: dict = {
+        "scene": scene_name,
+        "session_path": session_path,
+        "status": "incomplete",
+        "bounding_box": None,
+        "grasp_candidate": None,
+        "verification": verification,
+    }
+
+    if selection_result is None or selection_result.primary is None:
+        payload["status"] = "no_target"
+        out_path = os.path.join(session_path, "pipeline_result.json")
+        try:
+            with open(out_path, "w", encoding="utf-8") as fp:
+                json.dump(payload, fp, indent=2, ensure_ascii=False)
+            print(f"[OUTPUT] Kein Zielpaket — gespeichert -> {out_path}")
+        except OSError as exc:
+            print(f"[OUTPUT] Speichern fehlgeschlagen ({out_path}): {exc}")
+        return payload
+
+    cand = selection_result.primary.candidate
+    bottom = cand.bottom
+    bbox_2d = [int(v) for v in cand.bbox_2d]
+
+    bounding_box = {
+        "candidate_id": cand.candidate_id,
+        "label": str(cand.debug.get("label", "")),
+        "bbox_2d": bbox_2d,
+        "top_surface_height_m": float(cand.top_surface_height),
+        "centroid_3d": list(map(float, cand.centroid_3d.tolist())),
+    }
+    if bottom is not None:
+        bounding_box.update({
+            "bottom_z_m": float(bottom.bottom_z),
+            "height_m": float(bottom.height_m),
+            "bottom_method": bottom.bottom_method,
+            "bottom_confidence": float(bottom.bottom_confidence),
+            "parcel_obb": bottom.parcel_obb,
+        })
+
+    payload["bounding_box"] = bounding_box
+
+    if grasp_result is None or not grasp_result.grasps:
+        payload["status"] = "no_grasp"
+        err = grasp_result.debug.get("error") if grasp_result else "grasp_skipped"
+        payload["grasp_error"] = err
+    else:
+        primary = grasp_result.primary_grasp or grasp_result.grasps[0]
+        payload["status"] = "success"
+        payload["grasp_candidate"] = primary.to_serializable()
+        payload["grasp_candidates"] = [g.to_serializable() for g in grasp_result.grasps]
+
+    out_path = os.path.join(session_path, "pipeline_result.json")
+    try:
+        with open(out_path, "w", encoding="utf-8") as fp:
+            json.dump(payload, fp, indent=2, ensure_ascii=False)
+        print(f"[OUTPUT] Bounding box + Greifkandidat -> {out_path}")
+    except OSError as exc:
+        print(f"[OUTPUT] Speichern fehlgeschlagen ({out_path}): {exc}")
+
+    print(f"[OUTPUT] --- {scene_name} ---")
+    print(
+        f"[OUTPUT] bbox_2d={bbox_2d}  "
+        f"label='{bounding_box['label']}'  "
+        f"h={bounding_box.get('height_m', float('nan')):.3f}m"
+    )
+    if payload["grasp_candidate"]:
+        g = payload["grasp_candidate"]
+        pos = g["position"]
+        print(
+            f"[OUTPUT] grasp score={g['score']:.3f}  "
+            f"pos=({pos[0]:.3f},{pos[1]:.3f},{pos[2]:.3f})  "
+            f"pixel=({g['pixel'][0]},{g['pixel'][1]})"
+        )
+    else:
+        print(f"[OUTPUT] grasp=NONE ({payload.get('grasp_error', 'unknown')})")
+
+    return payload
 
 
 def convert_boxes_to_masks(boxes, height, width):
@@ -289,6 +455,15 @@ def process_session(session_path, dino_model=None, dino_processor=None):
         except Exception as e:
             print(f"[GRASP] WARN could not write handover JSON: {e}")
 
+    # Stage 13: Verifikation des primären Greifpunkts (nur Annotation).
+    verification, verification_result = _run_verification(
+        session_path, session_context, selection_result, grasp_result
+    )
+
+    pipeline_result = _save_final_handover(
+        session_path, selection_result, grasp_result, verification=verification
+    )
+
     # Phase 4: Visualisierung
     results = None
     if DEBUG:
@@ -310,6 +485,7 @@ def process_session(session_path, dino_model=None, dino_processor=None):
             gradient_plateaus=gradient_plateaus if gradient_plateaus else None,
             selection_result=selection_result,
             grasp_result=grasp_result,
+            verification_result=verification_result,
         )
     
     # Phase 5: Screenshots (optional)
@@ -322,6 +498,7 @@ def process_session(session_path, dino_model=None, dino_processor=None):
         "visualization": results,
         "candidates": candidates,
         "grasp_result": grasp_result,
+        "pipeline_result": pipeline_result,
     }
 
 

@@ -7,8 +7,8 @@ heatmap_kernel_size: 15
 min_separation_m: 0.04
 normal_knn: 224
 normal_std_filter_size: 25
-fx: 437.04
-fy: 437.04
+fx: 497.77777777777777
+fy: 497.77777777777777
 # neural (optional, requires checkpoint_path)
 model: deeplabv3plus_resnet101
 checkpoint_path: null

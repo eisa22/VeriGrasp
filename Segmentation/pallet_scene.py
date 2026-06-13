@@ -10,6 +10,10 @@ import os
 import numpy as np
 
 from config import (
+    CAMERA_CX,
+    CAMERA_CY,
+    CAMERA_FX,
+    CAMERA_FY,
     PALLET_MAX_NORMAL_ANGLE_DEG,
     PALLET_MIN_INLIER_RATIO,
     PALLET_RANSAC_DISTANCE_M,
@@ -21,10 +25,8 @@ from config import (
     WORKSPACE_X_MARGIN_LEFT,
     WORKSPACE_X_MARGIN_RIGHT,
 )
-from path_utils import get_depth_path
-
-FX = FY = 437.04
-
+from path_utils import get_depth_path, load_session_depth
+from camera_intrinsics import load_camera_intrinsics
 
 @dataclass
 class SessionContext:
@@ -34,7 +36,10 @@ class SessionContext:
     plane_model: np.ndarray
     z_pallet_m: float
     x_range: tuple[int, int]
-
+    fx: float = CAMERA_FX
+    fy: float = CAMERA_FY
+    cx: float = CAMERA_CX
+    cy: float = CAMERA_CY
 
 def build_workspace_mask(H: int, W: int) -> tuple[np.ndarray, tuple[int, int]]:
     """True im zentralen X-Bereich; links/rechts ausgeschlossen."""
@@ -50,9 +55,18 @@ def build_workspace_mask(H: int, W: int) -> tuple[np.ndarray, tuple[int, int]]:
 def _build_ransac_mask(
     depth: np.ndarray,
     workspace_mask: np.ndarray,
+    session_path: str | None = None,
 ) -> np.ndarray:
     H, W = depth.shape
     valid = (depth > 0) & workspace_mask
+    if session_path is not None:
+        inst_path = os.path.join(session_path, "instance_mask.npy")
+        if os.path.exists(inst_path):
+            inst = np.load(inst_path)
+            if inst.shape == depth.shape:
+                pallet = inst == -2
+                if pallet.any():
+                    return pallet & valid
     if PALLET_RANSAC_Y_MIN_RATIO > 0:
         y_min = int(H * PALLET_RANSAC_Y_MIN_RATIO)
         valid &= np.arange(H)[:, None] >= y_min
@@ -79,6 +93,11 @@ def _normal_angle_to_z_deg(plane_model: np.ndarray) -> float:
 def estimate_pallet_plane_ransac(
     depth: np.ndarray,
     workspace_mask: np.ndarray,
+    fx: float = CAMERA_FX,
+    fy: float = CAMERA_FY,
+    cx: float | None = None,
+    cy: float | None = None,
+    session_path: str | None = None,
 ) -> tuple[np.ndarray, float, float] | None:
     """
     RANSAC-Ebenenschätzung auf der Palette (nur Workspace-Punkte).
@@ -87,8 +106,11 @@ def estimate_pallet_plane_ransac(
         (plane_model [a,b,c,d], z_pallet_m, inlier_ratio) oder None
     """
     H, W = depth.shape
-    cx, cy = W / 2.0, H / 2.0
-    ransac_mask = _build_ransac_mask(depth, workspace_mask)
+    if cx is None:
+        cx = W / 2.0
+    if cy is None:
+        cy = H / 2.0
+    ransac_mask = _build_ransac_mask(depth, workspace_mask, session_path=session_path)
     if ransac_mask.sum() < 500:
         print("[PALLET] Zu wenig Punkte für RANSAC.")
         return None
@@ -98,8 +120,8 @@ def estimate_pallet_plane_ransac(
     ys = ys[::stride]
     xs = xs[::stride]
     z = depth[ys, xs]
-    x = (xs - cx) * z / FX
-    y = (ys - cy) * z / FY
+    x = (xs - cx) * z / fx
+    y = (ys - cy) * z / fy
     points = np.stack([x, y, z], axis=1)
 
     import open3d as o3d
@@ -137,16 +159,23 @@ def depth_to_pallet_relative(
     depth: np.ndarray,
     plane_model: np.ndarray,
     workspace_mask: np.ndarray,
+    fx: float = CAMERA_FX,
+    fy: float = CAMERA_FY,
+    cx: float | None = None,
+    cy: float | None = None,
 ) -> np.ndarray:
     """
     Höhe über der Palettenebene (m). Positiv = näher zur Kamera / über der Palette.
     """
     H, W = depth.shape
-    cx, cy = W / 2.0, H / 2.0
+    if cx is None:
+        cx = W / 2.0
+    if cy is None:
+        cy = H / 2.0
     u, v = np.meshgrid(np.arange(W), np.arange(H))
     z = depth.astype(np.float64)
-    x = (u - cx) * z / FX
-    y = (v - cy) * z / FY
+    x = (u - cx) * z / fx
+    y = (v - cy) * z / fy
     a, b, c, d = plane_model
     norm = np.sqrt(a * a + b * b + c * c)
     signed = (a * x + b * y + c * z + d) / norm
@@ -203,6 +232,19 @@ def filter_boxes_by_workspace(boxes, scores, labels, ctx: SessionContext):
     return kept_boxes, kept_scores, kept_labels
 
 
+def _mask_blender_background(depth_abs: np.ndarray, session_path: str) -> np.ndarray:
+    """Setzt Blender-Hintergrund (-1 in instance_mask) auf 0."""
+    inst_path = os.path.join(session_path, "instance_mask.npy")
+    if not os.path.exists(inst_path):
+        return depth_abs
+    inst = np.load(inst_path)
+    if inst.shape != depth_abs.shape:
+        return depth_abs
+    masked = depth_abs.copy()
+    masked[inst == -1] = 0.0
+    return masked
+
+
 def prepare_session_context(session_path: str) -> SessionContext | None:
     """Einmal pro Session: Workspace + RANSAC-Palettenebene."""
     depth_path = get_depth_path(session_path)
@@ -210,8 +252,14 @@ def prepare_session_context(session_path: str) -> SessionContext | None:
         print(f"[PALLET] Depth nicht gefunden: {depth_path}")
         return None
 
-    depth_abs = np.load(depth_path).astype(np.float32)
+    depth_abs = _mask_blender_background(load_session_depth(session_path), session_path)
     H, W = depth_abs.shape
+    try:
+        cam = load_camera_intrinsics(session_path)
+        fx, fy = float(cam["fx"]), float(cam["fy"])
+        cx, cy = float(cam["cx"]), float(cam["cy"])
+    except (FileNotFoundError, KeyError):
+        fx, fy, cx, cy = CAMERA_FX, CAMERA_FY, CAMERA_CX, CAMERA_CY
     workspace_mask, x_range = build_workspace_mask(H, W)
     x_min, x_max = x_range
 
@@ -221,17 +269,23 @@ def prepare_session_context(session_path: str) -> SessionContext | None:
         f"{WORKSPACE_X_MARGIN_RIGHT*100:.0f}% rechts ignoriert)"
     )
 
-    result = estimate_pallet_plane_ransac(depth_abs, workspace_mask)
+    result = estimate_pallet_plane_ransac(
+        depth_abs, workspace_mask, fx=fx, fy=fy, cx=cx, cy=cy, session_path=session_path
+    )
     if result is None:
         print("[PALLET] Fallback: keine Ebene – depth_rel = absolute Tiefe")
         depth_rel = depth_abs.copy()
         depth_rel[depth_abs <= 0] = 0.0
         depth_rel[~workspace_mask] = 0.0
         plane_model = np.array([0.0, 0.0, 1.0, 0.0], dtype=np.float64)
-        z_pallet_m = float(np.median(depth_abs[(depth_abs > 0) & workspace_mask]))
+        z_pallet_m = float(
+            np.median(depth_abs[(depth_abs > 0) & workspace_mask])
+        )
     else:
         plane_model, z_pallet_m, inlier_ratio = result
-        depth_rel = depth_to_pallet_relative(depth_abs, plane_model, workspace_mask)
+        depth_rel = depth_to_pallet_relative(
+            depth_abs, plane_model, workspace_mask, fx=fx, fy=fy, cx=cx, cy=cy
+        )
         a, b, c, d = plane_model
         print(
             f"[PALLET] RANSAC: inliers={inlier_ratio*100:.1f}%, "
@@ -245,4 +299,8 @@ def prepare_session_context(session_path: str) -> SessionContext | None:
         plane_model=plane_model,
         z_pallet_m=z_pallet_m,
         x_range=x_range,
+        fx=fx,
+        fy=fy,
+        cx=cx,
+        cy=cy,
     )

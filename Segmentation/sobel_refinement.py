@@ -475,15 +475,13 @@ def apply_sobel_refinement(session_path, masks, labels, boxes=None, session_cont
         from Segmentation.pallet_scene import get_working_depth
         depth = get_working_depth(session_context)
     else:
-        depth_path = os.path.join(
-            session_path,
-            "distance_to_image_plane",
-            "distance_to_image_plane_0000.npy",
-        )
+        from path_utils import get_depth_path, load_session_depth
+
+        depth_path = get_depth_path(session_path)
         if not os.path.exists(depth_path):
             print("[ERROR] Depth map not found.")
             return masks, labels, None
-        depth = np.load(depth_path)
+        depth = load_session_depth(session_path)
     H, W = depth.shape
     
     # 2. PARAMETERFREI: Erstelle tiefengefilterte Masken mit IQR pro Box

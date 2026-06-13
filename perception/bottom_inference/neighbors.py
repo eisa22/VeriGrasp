@@ -11,8 +11,11 @@ from scipy.spatial import cKDTree
 from perception.candidate import CandidateOut
 from perception.geometry.plane import heights_above_plane, project_to_plane_xy
 
-# Default intrinsics – kept in sync with perception.adapter.FX/FY.
-FX = FY = 437.04
+from config import CAMERA_FX, CAMERA_FY
+
+# Default intrinsics – kept in sync with config.CAMERA_FX/CAMERA_FY.
+FX = CAMERA_FX
+FY = CAMERA_FY
 
 
 @dataclass

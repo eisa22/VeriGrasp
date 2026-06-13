@@ -7,11 +7,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from config import CAMERA_CX, CAMERA_CY, CAMERA_FX, CAMERA_FY
 from perception.candidate import CandidateOut
 from perception.geometry.plane import heights_above_plane, project_to_plane_xy
-
-FX = FY = 437.04
-
 
 @dataclass
 class MatchNeighbor:
@@ -52,13 +50,15 @@ def _backproject_mask(
     depth: np.ndarray,
     cx: float,
     cy: float,
+    fx: float = CAMERA_FX,
+    fy: float = CAMERA_FY,
 ) -> np.ndarray:
     ys, xs = np.where((mask > 0) & (depth > 0))
     if len(xs) == 0:
         return np.zeros((0, 3), dtype=np.float64)
     z = depth[ys, xs].astype(np.float64)
-    x = (xs.astype(np.float64) - cx) * z / FX
-    y = (ys.astype(np.float64) - cy) * z / FY
+    x = (xs.astype(np.float64) - cx) * z / fx
+    y = (ys.astype(np.float64) - cy) * z / fy
     return np.stack([x, y, z], axis=1)
 
 
@@ -73,10 +73,17 @@ def build_scene_pcd_from_depth(
     depth: np.ndarray,
     workspace_mask: np.ndarray | None = None,
     stride: int = 4,
+    fx: float = CAMERA_FX,
+    fy: float = CAMERA_FY,
+    cx: float | None = None,
+    cy: float | None = None,
 ) -> np.ndarray:
     """Subsampled scene point cloud in camera coordinates."""
     H, W = depth.shape
-    cx, cy = W / 2.0, H / 2.0
+    if cx is None:
+        cx = W / 2.0
+    if cy is None:
+        cy = H / 2.0
     valid = depth > 0
     if workspace_mask is not None:
         valid &= workspace_mask
@@ -86,9 +93,20 @@ def build_scene_pcd_from_depth(
     if len(xs) == 0:
         return np.zeros((0, 3), dtype=np.float64)
     z = depth[ys, xs].astype(np.float64)
-    x = (xs.astype(np.float64) - cx) * z / FX
-    y = (ys.astype(np.float64) - cy) * z / FY
+    x = (xs.astype(np.float64) - cx) * z / fx
+    y = (ys.astype(np.float64) - cy) * z / fy
     return np.stack([x, y, z], axis=1)
+
+
+def _intrinsics_from_context(session_context) -> tuple[float, float, float, float]:
+    if session_context is None:
+        return CAMERA_FX, CAMERA_FY, CAMERA_CX, CAMERA_CY
+    return (
+        float(getattr(session_context, "fx", CAMERA_FX)),
+        float(getattr(session_context, "fy", CAMERA_FY)),
+        float(getattr(session_context, "cx", CAMERA_CX)),
+        float(getattr(session_context, "cy", CAMERA_CY)),
+    )
 
 
 def _build_candidate(
@@ -100,9 +118,11 @@ def _build_candidate(
     cx: float,
     cy: float,
     surface_normal: np.ndarray,
+    fx: float = CAMERA_FX,
+    fy: float = CAMERA_FY,
 ) -> CandidateOut | None:
     """Common builder used by both closed_matches and SAM3D mask adapters."""
-    points_3d = _backproject_mask(mask, depth, cx, cy)
+    points_3d = _backproject_mask(mask, depth, cx, cy, fx=fx, fy=fy)
     if len(points_3d) < 10:
         return None
 
@@ -112,7 +132,7 @@ def _build_candidate(
 
     pixel_count = int((mask > 0).sum())
     mean_z = float(np.mean(points_3d[:, 2]))
-    surface_area_m2 = pixel_count * (mean_z / FX) * (mean_z / FY)
+    surface_area_m2 = pixel_count * (mean_z / fx) * (mean_z / fy)
 
     cid = _stable_candidate_id(label, list(bbox), top_h)
 
@@ -142,8 +162,7 @@ def build_candidates_from_closed_matches(
     session_context=None,
 ) -> list[CandidateOut]:
     """Build CandidateOut list from visualizer closed_matches entries."""
-    H, W = depth.shape
-    cx, cy = W / 2.0, H / 2.0
+    fx, fy, cx, cy = _intrinsics_from_context(session_context)
     plane = tuple(float(x) for x in plane_model)
     surface_normal = _surface_normal_from_plane(plane)
 
@@ -152,7 +171,9 @@ def build_candidates_from_closed_matches(
         mask = np.asarray(match["mask"], dtype=np.uint8)
         bbox = tuple(int(v) for v in match["matched_box"])
         label = str(match.get("label", "parcel"))
-        cand = _build_candidate(mask, label, bbox, depth, plane, cx, cy, surface_normal)
+        cand = _build_candidate(
+            mask, label, bbox, depth, plane, cx, cy, surface_normal, fx=fx, fy=fy
+        )
         if cand is not None:
             candidates.append(cand)
 
@@ -219,8 +240,7 @@ def build_candidates_from_sam3d(
     session_context=None,
 ) -> list[CandidateOut]:
     """Build CandidateOut list from SAM3D-refined masks."""
-    H, W = depth.shape
-    cx, cy = W / 2.0, H / 2.0
+    fx, fy, cx, cy = _intrinsics_from_context(session_context)
     plane = tuple(float(x) for x in plane_model)
     surface_normal = _surface_normal_from_plane(plane)
 
@@ -231,7 +251,9 @@ def build_candidates_from_sam3d(
             bbox = tuple(int(v) for v in sam3d_boxes[idx])
         else:
             bbox = _mask_bbox(mask)
-        cand = _build_candidate(mask, str(label), bbox, depth, plane, cx, cy, surface_normal)
+        cand = _build_candidate(
+            mask, str(label), bbox, depth, plane, cx, cy, surface_normal, fx=fx, fy=fy
+        )
         if cand is not None:
             candidates.append(cand)
 

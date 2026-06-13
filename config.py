@@ -1,18 +1,37 @@
 # config.py
+from pathlib import Path
 
-# config.py
+PROJECT_ROOT = Path(__file__).resolve().parent
 
-# Basis-Pfad zu deiner Datenquelle (Ordner der Session)
-BASE_PATH = "/home/samuel/Thesis/VisionPipeline/Data/pallet_rgbd_data/Replicator_07"
+# Blender RGB-D Datensatz (scene_* Unterordner)
+BASE_PATH = str(PROJECT_ROOT / "Data" / "blender_dataset")
 
-# Session-Pfad zeigt standardmäßig auf denselben Ordner
-SESSION_PATH = BASE_PATH  
+# Session-Pfad: erste Szene im Datensatz (wird von path_utils aufgelöst)
+SESSION_PATH = BASE_PATH
+
+# Kamera-Intrinsics aus dataset_meta.json (synthetic_depal / blender_dataset)
+try:
+    from camera_intrinsics import load_camera_intrinsics
+
+    _CAM = load_camera_intrinsics(data_root=BASE_PATH)
+    CAMERA_FX = float(_CAM["fx"])
+    CAMERA_FY = float(_CAM["fy"])
+    CAMERA_CX = float(_CAM["cx"])
+    CAMERA_CY = float(_CAM["cy"])
+    CAMERA_WIDTH = int(_CAM["width"])
+    CAMERA_HEIGHT = int(_CAM["height"])
+except (FileNotFoundError, KeyError, TypeError):
+    CAMERA_FX = CAMERA_FY = 497.77777777777777
+    CAMERA_CX = 320.0
+    CAMERA_CY = 240.0
+    CAMERA_WIDTH = 640
+    CAMERA_HEIGHT = 480
 
 # Debug-Modus für Visualisierung
 DEBUG = True
 
-# DINO_MODEL_ID = "IDEA-Research/grounding-dino-base"
-DINO_MODEL_ID = "/home/samuel/Thesis/VisionPipeline/LocalModels/GroundingDINO"
+_LOCAL_DINO = PROJECT_ROOT / "LocalModels" / "GroundingDINO"
+DINO_MODEL_ID = str(_LOCAL_DINO) if _LOCAL_DINO.is_dir() else "IDEA-Research/grounding-dino-base"
 SAM_MODEL_ID  = "facebook/sam-vit-base"
 
 TEXT_PROMPT = [

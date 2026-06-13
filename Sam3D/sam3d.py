@@ -10,6 +10,7 @@ from PIL import Image
 from sklearn.cluster import DBSCAN
 import os
 from config import *
+from path_utils import get_depth_path, get_rgb_path
 
 
 def refine_masks_3d(masks, boxes, scores, labels, session_path, session_context=None):
@@ -29,27 +30,26 @@ def refine_masks_3d(masks, boxes, scores, labels, session_path, session_context=
     print(f"[SAM3D] Strategie: Selektives Splitting (nur große/mehrschichtige Masken)")
     print(f"[SAM3D] Challenge-Threshold: {SAM3D_CHALLENGE_THRESHOLD*100:.1f}% Bildfläche oder Z-Range > {SAM3D_Z_RANGE_THRESHOLD*1000:.0f}mm")
     
-    rgb_path = os.path.join(session_path, "rgb", "rgb_0000.png")
+    rgb_path = get_rgb_path(session_path)
     rgb = np.array(Image.open(rgb_path))[:, :, :3]
 
     if session_context is not None:
         from Segmentation.pallet_scene import get_working_depth
         depth = get_working_depth(session_context)
         depth_geom = session_context.depth_abs
+        fx = float(session_context.fx)
+        fy = float(session_context.fy)
+        cx = float(session_context.cx)
+        cy = float(session_context.cy)
     else:
-        depth_path = os.path.join(
-            session_path,
-            "distance_to_image_plane",
-            "distance_to_image_plane_0000.npy",
-        )
+        depth_path = get_depth_path(session_path)
         depth = np.load(depth_path)
         depth_geom = depth
+        H, W = depth.shape
+        fx = fy = CAMERA_FX
+        cx, cy = W / 2.0, H / 2.0
     H, W = depth.shape
     total_pixels = H * W
-    
-    # Kamera-Intrinsics
-    fx = fy = 437.04
-    cx, cy = W / 2, H / 2
     
     # Erstelle 3D-Punktwolke
     u, v = np.meshgrid(np.arange(W), np.arange(H))

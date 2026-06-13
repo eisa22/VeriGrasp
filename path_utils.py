@@ -1,48 +1,58 @@
 # path_utils.py
 import os
+from pathlib import Path
 
 import numpy as np
 
 from config import BASE_PATH
 
 
-def get_all_session_paths() -> list:
-    """Gibt eine Liste aller Session-Pfade zurück."""
-    data_dir = "/home/samuel/Thesis/VisionPipeline/Data/pallet_rgbd_data"
+def get_data_root() -> str:
+    """Root-Ordner des Blender-Datensatzes (enthält dataset_meta.json + scene_*)."""
+    return BASE_PATH
+
+
+def get_all_session_paths() -> list[str]:
+    """Gibt alle Szenenordner scene_* im Blender-Datensatz zurück."""
+    data_dir = Path(BASE_PATH).expanduser().resolve()
+    if not data_dir.is_dir():
+        raise FileNotFoundError(f"Datensatzordner nicht gefunden: {data_dir}")
+
     sessions = []
-    
-    # Alle Replicator_XX Ordner finden
-    for item in sorted(os.listdir(data_dir)):
-        item_path = os.path.join(data_dir, item)
-        if os.path.isdir(item_path) and item.startswith("Replicator_"):
-            sessions.append(item_path)
-    
+    for item in sorted(data_dir.iterdir()):
+        if item.is_dir() and item.name.startswith("scene_"):
+            sessions.append(str(item))
+    if not sessions:
+        raise FileNotFoundError(f"Keine scene_* Ordner in {data_dir}")
     return sessions
 
 
 def get_session_path() -> str:
-    """Gibt den Basis-Sessionpfad zurück (einfaches Wrapper)."""
-    return BASE_PATH
+    """Gibt den Basis-Sessionpfad zurück (erste Szene im Datensatz)."""
+    sessions = get_all_session_paths()
+    return sessions[0]
 
 
 def get_rgb_path(session_path: str = None) -> str:
-    """RGB Bildpfad für Frame 0."""
+    """RGB-Bildpfad (Blender: rgb.png im Szenenordner)."""
     if session_path is None:
-        session_path = BASE_PATH
-    return os.path.join(session_path, "rgb", "rgb_0000.png")
+        session_path = get_session_path()
+    return os.path.join(session_path, "rgb.png")
 
 
 def get_depth_path(session_path: str = None) -> str:
-    """Depth-NPY Pfad für Frame 0."""
+    """Depth-NPY Pfad (Blender: depth.npy im Szenenordner)."""
     if session_path is None:
-        session_path = BASE_PATH
-    return os.path.join(
-        session_path,
-        "distance_to_image_plane",
-        "distance_to_image_plane_0000.npy",
-    )
+        session_path = get_session_path()
+    return os.path.join(session_path, "depth.npy")
+
+
+def get_ground_truth_path(session_path: str = None) -> str:
+    if session_path is None:
+        session_path = get_session_path()
+    return os.path.join(session_path, "ground_truth.json")
 
 
 def load_session_depth(session_path: str = None) -> np.ndarray:
-    """Lädt das Tiefenbild einer Session (Meter, distance_to_image_plane)."""
-    return np.load(get_depth_path(session_path))
+    """Lädt das Tiefenbild einer Session (Meter, senkrechte z-Tiefe im Kameraframe)."""
+    return np.load(get_depth_path(session_path)).astype(np.float32)
