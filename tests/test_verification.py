@@ -120,6 +120,13 @@ def test_tilted_surface_rejects_stage2():
     assert res.decisive_stage == 2
 
 
+def test_safety_corridor_height_default_is_30cm():
+    from verification.config import resolve_corridor_height
+
+    cfg = load_verification_config()
+    assert resolve_corridor_height(cfg) >= 0.30
+
+
 def test_neighbor_in_corridor_rejects_stage3():
     depth, bbox, (r, c) = _scene_with_box(half=18)
     # Tall neighbor beside the (small) box: outside bbox + cup, inside corridor.
@@ -152,3 +159,13 @@ def test_determinism_full_mode():
     assert res_a.soft_score == pytest.approx(res_b.soft_score, abs=0.0)
     # Full mode computes all three stages regardless of pass/fail.
     assert len(res_a.stages) == 3
+
+
+def test_summary_serializable_omits_stage_outputs():
+    depth, bbox, (r, c) = _scene_with_box()
+    res = verify_grasp(_grasp(r, c, 1.0), _candidate(bbox), _session(depth))
+    summary = res.to_summary_serializable()
+    assert "stages" not in summary
+    assert summary["verdict"] == "ACCEPT"
+    stage_json = res.stages[0].to_serializable()
+    assert "outputs" not in stage_json

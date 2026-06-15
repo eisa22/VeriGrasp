@@ -12,11 +12,12 @@ import numpy as np
 from perception.geometry.plane import heights_above_plane, project_to_plane_xy
 from verification.geometry import (
     Intrinsics,
+    _gripper_rot,
     angle_between,
     gather_gripper_points,
     robust_plane_fit,
 )
-from verification.config import resolve_gripper
+from verification.config import resolve_corridor_height, resolve_gripper
 from verification.types import CheckRecord, StageResult
 
 _LARGE_MARGIN = 1.0
@@ -326,26 +327,32 @@ def run_stage2(
     plane: tuple[float, float, float, float],
     approach_axis: np.ndarray,
     cfg: dict,
+    long_dir_xy: np.ndarray | None = None,
 ) -> StageResult:
     """Stage 2 - is the grasp point suctionable (planar, aligned, sealed)?
 
     The grasp position is the centre of the configured rectangular gripper
     footprint. ``p_target`` must contain only points on the selected parcel.
+    ``long_dir_xy`` (pallet-plane unit vector) orients the gripper's long side
+    along the parcel's longer side; None falls back to the u axis.
     """
     s = cfg["stage2"]
     grip = resolve_gripper(cfg)
-    half_w = grip.half_w_m
-    half_l = grip.half_l_m
+    # Long side of the gripper aligns with the parcel long axis.
+    half_long = max(grip.half_w_m, grip.half_l_m)
+    half_short = min(grip.half_w_m, grip.half_l_m)
     rmse_max = float(s["plane_rmse_max_m"])
     angle_max = float(s["normal_angle_max_deg"])
     scatter_max = float(s["normal_scatter_max"])
     min_area_ratio = float(s["min_area_ratio"])
     raster_m = float(s["raster_m"])
     edge_min = s["edge_clearance_min_m"]
-    edge_min = float(edge_min) if edge_min is not None else min(half_w, half_l)
+    edge_min = float(edge_min) if edge_min is not None else half_short
     rf = s["robust_fit"]
 
-    p_grip, rel_xy = gather_gripper_points(p_target, p_g, half_w, half_l, plane)
+    p_grip, rel_xy = gather_gripper_points(
+        p_target, p_g, half_long, half_short, plane, long_dir_xy
+    )
 
     checks: list[CheckRecord] = []
     plane_point = p_g
@@ -429,7 +436,7 @@ def run_stage2(
 
     # 2c min suction area + edge clearance
     coverage, edge_clearance = _gripper_footprint_and_edge(
-        rel_xy, inlier_mask, half_w, half_l, raster_m
+        rel_xy, inlier_mask, half_long, half_short, raster_m
     )
     checks.append(
         CheckRecord(
@@ -466,22 +473,26 @@ def run_stage3(
     z_top: float,
     plane: tuple[float, float, float, float],
     cfg: dict,
+    long_dir_xy: np.ndarray | None = None,
 ) -> StageResult:
-    """Stage 3 - is the vertical lift corridor above the grasp clear?"""
+    """Stage 3 - is the vertical lift corridor above the grasp clear?
+
+    The corridor cross-section matches the (oriented) gripper footprint plus a
+    safety margin: long side along ``long_dir_xy``, short side perpendicular.
+    """
     s = cfg["stage3"]
     grip = resolve_gripper(cfg)
     safety = grip.safety_margin_m
-    hw = s.get("corridor_half_w_m")
-    hw = float(hw) if hw is not None else grip.half_w_m + safety
-    hl = s.get("corridor_half_l_m")
-    hl = float(hl) if hl is not None else grip.half_l_m + safety
-    approach_h = s["approach_height_m"]
-    approach_h = (
-        float(approach_h) if approach_h is not None else grip.approach_height_m
-    )
+    half_long = max(grip.half_w_m, grip.half_l_m)
+    half_short = min(grip.half_w_m, grip.half_l_m)
+    h_long = s.get("corridor_half_w_m")
+    h_long = float(h_long) if h_long is not None else half_long + safety
+    h_short = s.get("corridor_half_l_m")
+    h_short = float(h_short) if h_short is not None else half_short + safety
+    approach_h = resolve_corridor_height(cfg)
     top_band = float(s["top_band_m"])
     noise_tol = int(s["noise_point_tolerance"])
-    corridor_reach = float(np.hypot(hw, hl))
+    corridor_reach = float(np.hypot(h_long, h_short))
 
     if z_top is None:
         z_top = float(heights_above_plane(np.asarray(p_g).reshape(1, 3), plane)[0])
@@ -489,7 +500,7 @@ def run_stage3(
     heights = heights_above_plane(p_full, plane)
     xy = project_to_plane_xy(p_full, plane)
     g_xy = project_to_plane_xy(np.asarray(p_g, dtype=np.float64).reshape(1, 3), plane)[0]
-    rel = xy - g_xy[None, :]
+    rel = (xy - g_xy[None, :]) @ _gripper_rot(long_dir_xy)
 
     above = heights > (z_top + top_band)
     if not np.any(above):
@@ -497,7 +508,7 @@ def run_stage3(
     else:
         nearest_above_d = float(np.linalg.norm(rel[above], axis=1).min())
 
-    in_corridor = above & (np.abs(rel[:, 0]) <= hw) & (np.abs(rel[:, 1]) <= hl)
+    in_corridor = above & (np.abs(rel[:, 0]) <= h_long) & (np.abs(rel[:, 1]) <= h_short)
     n_block = int(in_corridor.sum())
 
     if n_block > 0:
@@ -524,11 +535,12 @@ def run_stage3(
             detail={
                 "n_blocking_points": n_block,
                 "noise_tolerance": noise_tol,
-                "corridor_half_w_m": hw,
-                "corridor_half_l_m": hl,
+                "corridor_half_long_m": h_long,
+                "corridor_half_short_m": h_short,
                 "gripper_width_m": grip.width_m,
                 "gripper_length_m": grip.length_m,
                 "clearance_height_m": clearance_height,
+                "safety_corridor_height_m": approach_h,
                 "z_top_m": float(z_top),
             },
         )

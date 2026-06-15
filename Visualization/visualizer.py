@@ -819,24 +819,20 @@ def _make_ring_cam(center_cam, radius, color, n=48):
 
 def _make_gripper_footprint_rect(
     p_g_cam: np.ndarray,
-    half_w: float,
-    half_l: float,
+    half_long: float,
+    half_short: float,
     plane: tuple[float, float, float, float],
     color: list[float],
+    long_dir_xy=None,
 ) -> o3d.geometry.LineSet:
     """Rectangular gripper outline centred on the grasp (pallet plane)."""
-    from perception.geometry.plane import heights_above_plane, unproject_from_plane_xy
+    from perception.geometry.plane import heights_above_plane, project_to_plane_xy, unproject_from_plane_xy
+    from verification.geometry import gripper_corners_plane_xy
 
-    h = float(heights_above_plane(np.asarray(p_g_cam, dtype=np.float64).reshape(1, 3), plane)[0])
-    corners_xy = np.array(
-        [
-            [-half_w, -half_l],
-            [half_w, -half_l],
-            [half_w, half_l],
-            [-half_w, half_l],
-        ],
-        dtype=np.float64,
-    )
+    p_g = np.asarray(p_g_cam, dtype=np.float64).reshape(1, 3)
+    h = float(heights_above_plane(p_g, plane)[0])
+    g_xy = project_to_plane_xy(p_g, plane)[0]
+    corners_xy = gripper_corners_plane_xy(g_xy, half_long, half_short, long_dir_xy)
     corners_cam = unproject_from_plane_xy(corners_xy, plane, heights=h)
     pts_o3d = _camera_to_o3d(corners_cam)
     ls = o3d.geometry.LineSet()
@@ -848,25 +844,20 @@ def _make_gripper_footprint_rect(
 
 def _make_corridor_box_wireframe(
     p_g_cam: np.ndarray,
-    half_w: float,
-    half_l: float,
+    half_long: float,
+    half_short: float,
     plane: tuple[float, float, float, float],
     z_bottom_h: float,
     z_top_h: float,
     color: list[float],
+    long_dir_xy=None,
 ) -> list:
     """Lift corridor = gripper rectangle extruded between two heights above pallet."""
-    from perception.geometry.plane import unproject_from_plane_xy
+    from perception.geometry.plane import project_to_plane_xy, unproject_from_plane_xy
+    from verification.geometry import gripper_corners_plane_xy
 
-    corners_xy = np.array(
-        [
-            [-half_w, -half_l],
-            [half_w, -half_l],
-            [half_w, half_l],
-            [-half_w, half_l],
-        ],
-        dtype=np.float64,
-    )
+    g_xy = project_to_plane_xy(np.asarray(p_g_cam, dtype=np.float64).reshape(1, 3), plane)[0]
+    corners_xy = gripper_corners_plane_xy(g_xy, half_long, half_short, long_dir_xy)
     bot = _camera_to_o3d(unproject_from_plane_xy(corners_xy, plane, heights=z_bottom_h))
     top = _camera_to_o3d(unproject_from_plane_xy(corners_xy, plane, heights=z_top_h))
     pts = np.vstack([bot, top])
@@ -934,10 +925,15 @@ def visualize_verification_3d(
         print("[VERIFY-VIZ] Kein Greifpunkt – übersprungen.")
         return
 
-    from verification.config import load_verification_config, resolve_gripper
+    from verification.config import (
+        load_verification_config,
+        resolve_corridor_height,
+        resolve_gripper,
+    )
     from verification.geometry import (
         Intrinsics,
         full_pointcloud,
+        long_axis_in_plane,
         target_pointcloud,
         gather_bbox_points,
         gather_gripper_points,
@@ -948,11 +944,18 @@ def visualize_verification_3d(
     candidate = selection_result.primary.candidate
     cfg = load_verification_config()
     grip = resolve_gripper(cfg)
+    half_long = max(grip.half_w_m, grip.half_l_m)
+    half_short = min(grip.half_w_m, grip.half_l_m)
     intr = Intrinsics.from_session(session_context)
     depth = np.asarray(session_context.depth_abs)
     plane = tuple(float(x) for x in session_context.plane_model)
     z_pallet = float(getattr(session_context, "z_pallet_m", 0.0))
     p_g = np.asarray(grasp.position, dtype=np.float64)
+
+    parcel_obb = None
+    if candidate.bottom is not None:
+        parcel_obb = getattr(candidate.bottom, "parcel_obb", None)
+    long_dir_xy = long_axis_in_plane(parcel_obb, plane)
 
     p_full = full_pointcloud(depth, intr)
     p_target = target_pointcloud(depth, candidate.mask_2d, intr)
@@ -1051,7 +1054,7 @@ def visualize_verification_3d(
     if st2 is not None:
         geoms = [_base_cloud()]
         p_grip, rel = gather_gripper_points(
-            p_target, p_g, grip.half_w_m, grip.half_l_m, plane
+            p_target, p_g, half_long, half_short, plane, long_dir_xy
         )
         if len(p_grip) >= int(cfg["stage2"]["robust_fit"]["min_points"]):
             _, normal, _, inlier_mask = robust_plane_fit(
@@ -1085,7 +1088,8 @@ def visualize_verification_3d(
                 geoms.append(edge_a)
         geoms.append(
             _make_gripper_footprint_rect(
-                p_g, grip.half_w_m, grip.half_l_m, plane, color=[0.2, 0.85, 1.0]
+                p_g, half_long, half_short, plane,
+                color=[0.2, 0.85, 1.0], long_dir_xy=long_dir_xy,
             )
         )
         geoms.append(_grasp_sphere(_verif_status_color(st2.passed), radius=0.010))
@@ -1116,17 +1120,15 @@ def visualize_verification_3d(
         geoms = [_base_cloud()]
         cc = _verif_check(st3, "corridor_clear")
         detail = cc.detail if cc is not None else {}
-        hw = float(
-            detail.get("corridor_half_w_m", grip.half_w_m + grip.safety_margin_m)
+        h_long = float(
+            detail.get("corridor_half_long_m", half_long + grip.safety_margin_m)
         )
-        hl = float(
-            detail.get("corridor_half_l_m", grip.half_l_m + grip.safety_margin_m)
+        h_short = float(
+            detail.get("corridor_half_short_m", half_short + grip.safety_margin_m)
         )
         z_top = float(detail.get("z_top_m", st1.outputs.get("z_top") if st1 else 0.0))
         approach_h = float(
-            cfg["stage3"]["approach_height_m"]
-            if cfg["stage3"]["approach_height_m"] is not None
-            else grip.approach_height_m
+            detail.get("safety_corridor_height_m", resolve_corridor_height(cfg))
         )
         top_band = float(cfg["stage3"]["top_band_m"])
 
@@ -1140,13 +1142,15 @@ def visualize_verification_3d(
         heights_full = heights_above_plane(p_full, plane)
         from perception.geometry.plane import project_to_plane_xy
 
+        from verification.geometry import _gripper_rot
+
         xy = project_to_plane_xy(p_full, plane)
         g_xy = project_to_plane_xy(p_g.reshape(1, 3), plane)[0]
-        rel = xy - g_xy[None, :]
+        rel = (xy - g_xy[None, :]) @ _gripper_rot(long_dir_xy)
         block = (
             (heights_full > (z_top + top_band))
-            & (np.abs(rel[:, 0]) <= hw)
-            & (np.abs(rel[:, 1]) <= hl)
+            & (np.abs(rel[:, 0]) <= h_long)
+            & (np.abs(rel[:, 1]) <= h_short)
         )
         if np.any(block):
             blk = o3d.geometry.PointCloud()
@@ -1157,12 +1161,13 @@ def visualize_verification_3d(
         geoms.extend(
             _make_corridor_box_wireframe(
                 p_g,
-                hw,
-                hl,
+                h_long,
+                h_short,
                 plane,
                 z_top,
                 z_top + approach_h,
                 _verif_status_color(st3.passed),
+                long_dir_xy=long_dir_xy,
             )
         )
         geoms.append(_grasp_sphere(_verif_status_color(st3.passed), radius=0.010))
@@ -1172,9 +1177,10 @@ def visualize_verification_3d(
         flag = "PASS (gruen)" if st3.passed else "FAIL (rot)"
         title = (
             f"STUFE 3/3 Anflugkorridor: {flag}  |  "
+            f"height={approach_h:.2f}m "
             f"blocking_pts={n_block} (tol={detail.get('noise_tolerance', '?')}) "
             f"clearance={clear_h:.3f}m "
-            f"corr={hw*2000:.0f}x{hl*2000:.0f}mm"
+            f"corr={h_long*2000:.0f}x{h_short*2000:.0f}mm"
         )
         print(f"[VERIFY-VIZ] Stufe 3 ({flag}):")
         for c in st3.checks:

@@ -5,12 +5,18 @@ validity, suctionability of the grasp point, and a clear vertical lift corridor.
 Every check yields a continuous margin and an audit record.
 """
 
-from verification.config import load_verification_config, resolve_gripper, GripperFootprint
+from verification.config import (
+    GripperFootprint,
+    load_verification_config,
+    resolve_corridor_height,
+    resolve_gripper,
+)
 from verification.verify import verify_grasp
 
 __all__ = [
     "verify_grasp",
     "load_verification_config",
+    "resolve_corridor_height",
     "resolve_gripper",
     "GripperFootprint",
     "VerificationResult",

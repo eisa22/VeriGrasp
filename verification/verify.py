@@ -11,7 +11,12 @@ from __future__ import annotations
 import numpy as np
 
 from verification.config import load_verification_config
-from verification.geometry import Intrinsics, full_pointcloud, target_pointcloud
+from verification.geometry import (
+    Intrinsics,
+    full_pointcloud,
+    long_axis_in_plane,
+    target_pointcloud,
+)
 from verification.stages import run_stage1, run_stage2, run_stage3
 from verification.types import StageResult, VerificationResult
 
@@ -88,6 +93,13 @@ def verify_grasp(
 
     p_g = np.asarray(grasp.position, dtype=np.float64)
 
+    # Orient the gripper so its long side follows the parcel's longer side.
+    parcel_obb = None
+    bottom = getattr(candidate, "bottom", None)
+    if bottom is not None:
+        parcel_obb = getattr(bottom, "parcel_obb", None)
+    long_dir_xy = long_axis_in_plane(parcel_obb, plane)
+
     h, w = depth.shape[:2]
     x1, y1, x2, y2 = _clamp_bbox(candidate.bbox_2d, h, w)
     sub_depth = depth[y1:y2, x1:x2]
@@ -107,7 +119,7 @@ def verify_grasp(
 
     # --- Stage 2 ---
     if run_rest:
-        st2 = run_stage2(p_target, p_g, plane, axis, cfg)
+        st2 = run_stage2(p_target, p_g, plane, axis, cfg, long_dir_xy=long_dir_xy)
         stages.append(st2)
         run_rest3 = st2.passed or not cascade
     else:
@@ -116,7 +128,7 @@ def verify_grasp(
 
     # --- Stage 3 ---
     if run_rest3:
-        st3 = run_stage3(p_full, p_g, z_top, plane, cfg)
+        st3 = run_stage3(p_full, p_g, z_top, plane, cfg, long_dir_xy=long_dir_xy)
         stages.append(st3)
 
     all_passed = all(st.passed for st in stages)

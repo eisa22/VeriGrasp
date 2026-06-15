@@ -58,7 +58,6 @@ class StageResult:
             "name": self.name,
             "passed": bool(self.passed),
             "checks": [c.to_serializable() for c in self.checks],
-            "outputs": _clean_detail(self.outputs),
         }
 
 
@@ -95,6 +94,18 @@ class VerificationResult:
             "candidate_id": self.candidate_id,
             "grasp_rank": self.grasp_rank,
             "stages": [s.to_serializable() for s in self.stages],
+        }
+
+    def to_summary_serializable(self) -> dict[str, Any]:
+        """Kompakte Verifikationsausgabe für Batch-Tests (ohne Stufen-Details)."""
+        return {
+            "verdict": self.verdict,
+            "mode": self.mode,
+            "decisive_stage": self.decisive_stage,
+            "decisive_check": self.decisive_check,
+            "soft_score": _safe_float(self.soft_score) if self.soft_score is not None else None,
+            "candidate_id": self.candidate_id,
+            "grasp_rank": self.grasp_rank,
         }
 
 

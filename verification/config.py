@@ -82,7 +82,9 @@ _DEFAULT_CONFIG: dict[str, Any] = {
         # Corridor half-extents default to gripper half-size + safety margin.
         "corridor_half_w_m": None,
         "corridor_half_l_m": None,
-        # Lift height to keep clear above the top face (defaults to gripper value).
+        # Vertical extent of the safety lift corridor above the grasp top face.
+        "safety_corridor_height_m": 0.30,
+        # Deprecated alias — used only when safety_corridor_height_m is absent.
         "approach_height_m": None,
         # Points strictly above the top face inside the corridor up to this many
         # are tolerated as sensor noise (must be > tolerance to reject).
@@ -138,6 +140,21 @@ class GripperFootprint:
     half_l_m: float
     approach_height_m: float
     safety_margin_m: float
+
+
+def resolve_corridor_height(cfg: dict[str, Any]) -> float:
+    """Vertical safety-corridor height above the grasp top (metres).
+
+    Priority: stage3.safety_corridor_height_m → stage3.approach_height_m
+    (legacy) → gripper.approach_height_m.
+    """
+    s3 = cfg["stage3"]
+    if s3.get("safety_corridor_height_m") is not None:
+        return float(s3["safety_corridor_height_m"])
+    approach_h = s3.get("approach_height_m")
+    if approach_h is not None:
+        return float(approach_h)
+    return resolve_gripper(cfg).approach_height_m
 
 
 def resolve_gripper(cfg: dict[str, Any]) -> GripperFootprint:

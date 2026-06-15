@@ -11,7 +11,73 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from perception.geometry.plane import project_to_plane_xy
+from perception.geometry.plane import plane_basis, project_to_plane_xy
+
+
+def long_axis_in_plane(
+    parcel_obb: dict | None,
+    plane: tuple[float, float, float, float],
+) -> np.ndarray | None:
+    """Unit 2D vector (pallet-plane u/v frame) of the parcel's longer side.
+
+    Returns None when no OBB is available; callers then fall back to the
+    axis-aligned u direction.
+    """
+    if not parcel_obb:
+        return None
+    try:
+        R = np.asarray(parcel_obb["R"], dtype=np.float64)  # cols: axis0, axis1, n
+        ext = np.asarray(parcel_obb["extents"], dtype=np.float64)
+    except (KeyError, TypeError, ValueError):
+        return None
+    _, u, v = plane_basis(plane)
+    a0 = R[:, 0]
+    a1 = R[:, 1]
+    d0 = np.array([float(a0 @ u), float(a0 @ v)])
+    d1 = np.array([float(a1 @ u), float(a1 @ v)])
+    n0 = np.linalg.norm(d0)
+    n1 = np.linalg.norm(d1)
+    if n0 < 1e-9 and n1 < 1e-9:
+        return None
+    # Pick the in-plane axis with the larger extent as the parcel "long" side.
+    long_dir = d0 if float(ext[0]) >= float(ext[1]) else d1
+    norm = np.linalg.norm(long_dir)
+    if norm < 1e-9:
+        return None
+    return long_dir / norm
+
+
+def _gripper_rot(long_dir_xy: np.ndarray | None) -> np.ndarray:
+    """2x2 matrix M with columns (long_dir, perp). plane = centre + g @ M.T."""
+    if long_dir_xy is None:
+        return np.eye(2, dtype=np.float64)
+    d = np.asarray(long_dir_xy, dtype=np.float64).reshape(2)
+    d = d / (np.linalg.norm(d) + 1e-12)
+    return np.array([[d[0], -d[1]], [d[1], d[0]]], dtype=np.float64)
+
+
+def gripper_corners_plane_xy(
+    g_xy: np.ndarray,
+    half_long: float,
+    half_short: float,
+    long_dir_xy: np.ndarray | None,
+) -> np.ndarray:
+    """Footprint corner coords (4, 2) in plane frame, centred on the grasp.
+
+    Long side (half_long) is aligned with `long_dir_xy`; short side is
+    perpendicular. Corner order: BL, BR, TR, TL in gripper frame.
+    """
+    corners_g = np.array(
+        [
+            [-half_long, -half_short],
+            [half_long, -half_short],
+            [half_long, half_short],
+            [-half_long, half_short],
+        ],
+        dtype=np.float64,
+    )
+    M = _gripper_rot(long_dir_xy)
+    return np.asarray(g_xy, dtype=np.float64).reshape(1, 2) + corners_g @ M.T
 
 
 @dataclass
@@ -106,16 +172,20 @@ def gather_bbox_points(
 def gather_gripper_points(
     points: np.ndarray,
     p_g: np.ndarray,
-    half_w_m: float,
-    half_l_m: float,
+    half_long_m: float,
+    half_short_m: float,
     plane: tuple[float, float, float, float],
+    long_dir_xy: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Points inside the rectangular gripper footprint centred on the grasp.
 
     The grasp position is the footprint centre (not a separate suction pose).
-    Footprint is axis-aligned in the pallet-plane (u, v) frame.
+    When ``long_dir_xy`` is given the footprint is rotated so its long side
+    (half_long_m) aligns with that pallet-plane direction; otherwise it is
+    axis-aligned in the (u, v) frame.
 
-    Returns (P_grip (K, 3), xy_local (K, 2) relative to the grasp centre).
+    Returns (P_grip (K, 3), xy_local (K, 2) in the gripper frame: column 0 =
+    along the long side, column 1 = along the short side).
     """
     points = np.asarray(points, dtype=np.float64)
     if points.size == 0:
@@ -124,11 +194,14 @@ def gather_gripper_points(
     xy = project_to_plane_xy(points, plane)
     g_xy = project_to_plane_xy(np.asarray(p_g, dtype=np.float64).reshape(1, 3), plane)[0]
     rel = xy - g_xy[None, :]
+    # Rotate plane-frame rel into the gripper frame (long axis -> x).
+    M = _gripper_rot(long_dir_xy)
+    rel_g = rel @ M
     inside = (
-        (np.abs(rel[:, 0]) <= half_w_m)
-        & (np.abs(rel[:, 1]) <= half_l_m)
+        (np.abs(rel_g[:, 0]) <= half_long_m)
+        & (np.abs(rel_g[:, 1]) <= half_short_m)
     )
-    return points[inside], rel[inside]
+    return points[inside], rel_g[inside]
 
 
 def robust_plane_fit(

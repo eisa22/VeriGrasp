@@ -3,6 +3,13 @@ main.py
 Hauptpipeline für Pallet-Segmentierung.
 
 Pipeline: DINO → Box-Masken → Sobel (parameterfrei) → Visualisierung (+ SAM3D parallel)
+
+Batch-Test ohne Visualisierung (alle Szenen, schlankes JSON in Results/):
+  python main.py --test
+  python main.py --test 40      # nur die ersten 40 Szenen
+  python main.py --test -40     # dasselbe (negatives N wird als Limit genutzt)
+
+Pro Szene in Results/: dino, sam3d, bounding_box, grasp_candidate, verification (Kurzform).
 """
 from GroundingSAM.grounding_sam import run_grounding_dino_only
 from Segmentation.pallet_scene import prepare_session_context
@@ -15,7 +22,7 @@ from Visualization.visualizer import (
 )
 from LLMOrchestrator.orchestrator import run_orchestrator
 from path_utils import get_all_session_paths
-from config import DEBUG, DINO_MODEL_ID, MATCH_CLOSURE_RATIO, MATCH_BORDER_TOUCH_RATIO
+from config import DEBUG, DINO_MODEL_ID, MATCH_CLOSURE_RATIO, MATCH_BORDER_TOUCH_RATIO, PROJECT_ROOT
 from perception.configs.load import load_bottom_inference_config, load_suction_grasp_config
 from perception.grasp_generation import compute_suction_grasps
 from perception.adapter import (
@@ -26,10 +33,13 @@ from perception.adapter import (
 from perception.bottom_inference import infer_bottom_planes
 from perception.selection import select_target_smallest_z
 from verification import verify_grasp, load_verification_config
+import argparse
 import json
 import torch
 import numpy as np
 import os
+from datetime import datetime
+from pathlib import Path
 from transformers import (
     AutoProcessor as DinoProcessor,
     AutoModelForZeroShotObjectDetection as DinoModel
@@ -237,6 +247,125 @@ def _save_final_handover(
     return payload
 
 
+RESULTS_DIR = PROJECT_ROOT / "Results"
+
+
+def _float_score(score) -> float:
+    if torch.is_tensor(score):
+        return float(score.item())
+    return float(score)
+
+
+def _serialize_dino_output(boxes, scores, labels) -> dict:
+    """Finale DINO-Detektionen (nach Filter/NMS), ohne Masken."""
+    return {
+        "boxes": [[int(v) for v in box] for box in boxes],
+        "labels": [str(label) for label in labels],
+        "scores": [_float_score(s) for s in scores],
+    }
+
+
+def _serialize_sam3d_output(
+    sam3d_boxes: list,
+    sam3d_labels: list,
+    sam3d_masks: list,
+) -> dict:
+    """SAM3D-Ausgabe: Boxen + Labels, ohne Masken."""
+    return {
+        "boxes": [[int(v) for v in box] for box in sam3d_boxes],
+        "labels": [str(label) for label in sam3d_labels],
+        "n_masks": len(sam3d_masks),
+    }
+
+
+def _verification_summary(verification: dict | None) -> dict | None:
+    if not verification:
+        return None
+    keys = (
+        "verdict",
+        "mode",
+        "decisive_stage",
+        "decisive_check",
+        "soft_score",
+        "candidate_id",
+        "grasp_rank",
+        "error",
+    )
+    return {k: verification[k] for k in keys if k in verification}
+
+
+def _build_test_session_entry(
+    *,
+    scene: str,
+    session_path: str,
+    index: int,
+    status: str,
+    dino: dict | None = None,
+    sam3d: dict | None = None,
+    pipeline_result: dict | None = None,
+    error: str | None = None,
+) -> dict:
+    """Schlanke Test-Ausgabe pro Szene für Results/<timestamp>.json."""
+    entry: dict = {
+        "scene": scene,
+        "session_path": session_path,
+        "index": index,
+        "status": status,
+        "dino": dino,
+        "sam3d": sam3d,
+        "bounding_box": None,
+        "grasp_candidate": None,
+        "verification": None,
+        "error": error,
+    }
+    if isinstance(pipeline_result, dict):
+        entry["bounding_box"] = pipeline_result.get("bounding_box")
+        entry["grasp_candidate"] = pipeline_result.get("grasp_candidate")
+        entry["verification"] = _verification_summary(
+            pipeline_result.get("verification")
+        )
+    return entry
+
+
+def _write_test_run_results(
+    session_entries: list[dict],
+    *,
+    device: str,
+    data_root: str,
+    limit: int | None = None,
+    n_available: int | None = None,
+) -> Path:
+    """Schreibt aggregierte Testergebnisse nach Results/<datum>_<uhrzeit>.json."""
+    RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now()
+    filename = timestamp.strftime("%Y-%m-%d_%H-%M-%S") + ".json"
+    out_path = RESULTS_DIR / filename
+
+    status_counts: dict[str, int] = {}
+    for entry in session_entries:
+        status = str(entry.get("status", "unknown"))
+        status_counts[status] = status_counts.get(status, 0) + 1
+
+    payload = {
+        "run_type": "test",
+        "timestamp": timestamp.isoformat(timespec="seconds"),
+        "device": device,
+        "data_root": data_root,
+        "limit": limit,
+        "n_available_sessions": n_available,
+        "n_sessions": len(session_entries),
+        "summary": status_counts,
+        "sessions": session_entries,
+    }
+
+    with open(out_path, "w", encoding="utf-8") as fp:
+        json.dump(payload, fp, indent=2, ensure_ascii=False)
+
+    print(f"\n[TEST] Ergebnisse gespeichert -> {out_path}")
+    print(f"[TEST] Zusammenfassung: {status_counts}")
+    return out_path
+
+
 def convert_boxes_to_masks(boxes, height, width):
     """
     Konvertiert Bounding Boxes in binäre Masken.
@@ -256,8 +385,15 @@ def convert_boxes_to_masks(boxes, height, width):
     return masks
 
 
-def process_session(session_path, dino_model=None, dino_processor=None):
+def process_session(
+    session_path,
+    dino_model=None,
+    dino_processor=None,
+    *,
+    visualize: bool | None = None,
+):
     """Verarbeitet eine Session durch die gesamte Pipeline."""
+    show_viz = DEBUG if visualize is None else visualize
     # Phase 0: Palettenebene (z=0) + Workspace
     session_context = prepare_session_context(session_path)
     if session_context is None:
@@ -466,7 +602,7 @@ def process_session(session_path, dino_model=None, dino_processor=None):
 
     # Phase 4: Visualisierung
     results = None
-    if DEBUG:
+    if show_viz:
         results = visualize_3d(
             session_path,
             refined_masks,
@@ -499,23 +635,122 @@ def process_session(session_path, dino_model=None, dino_processor=None):
         "candidates": candidates,
         "grasp_result": grasp_result,
         "pipeline_result": pipeline_result,
+        "dino": _serialize_dino_output(boxes, scores, labels),
+        "sam3d": _serialize_sam3d_output(sam3d_boxes, sam3d_labels, sam3d_masks),
     }
 
 
 def main():
     """Hauptfunktion: Orchestriert die Pipeline für alle Sessions."""
+    parser = argparse.ArgumentParser(description="Pallet-Segmentierung Pipeline")
+    parser.add_argument(
+        "--test",
+        nargs="?",
+        const=0,
+        default=None,
+        type=int,
+        metavar="N",
+        help=(
+            "Testlauf ohne Visualisierung; Ergebnis nach Results/<datum>_<uhrzeit>.json. "
+            "Optional N: nur die ersten N Szenen (z. B. --test 40 oder --test -40). "
+            "Ohne N: alle Szenen."
+        ),
+    )
+    args = parser.parse_args()
+
+    test_mode = args.test is not None
+    test_limit: int | None = None
+    if test_mode and args.test != 0:
+        test_limit = abs(args.test)
+        if test_limit <= 0:
+            parser.error("--test N: N muss größer als 0 sein.")
+
+    if test_mode:
+        import config as _cfg
+
+        _cfg.DEBUG = False
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Initialisiere Pipeline auf: {device}")
     print(f"Mode: PARAMETERFREI (Otsu-basierte Tiefentrennung)")
-    
+    if test_mode:
+        if test_limit is None:
+            print("Testlauf: Visualisierung aus, alle Szenen, Ergebnis -> Results/")
+        else:
+            print(f"Testlauf: Visualisierung aus, erste {test_limit} Szenen, Ergebnis -> Results/")
+
     # 1. DINO Laden
     print(f"Lade DINO Modell ({DINO_MODEL_ID})...")
     dino_processor = DinoProcessor.from_pretrained(DINO_MODEL_ID)
     dino_model = DinoModel.from_pretrained(DINO_MODEL_ID).to(device)
-    
-    sessions = get_all_session_paths()
-    for session_path in sessions:
-        process_session(session_path, dino_model, dino_processor)
+
+    all_sessions = get_all_session_paths()
+    n_available = len(all_sessions)
+    sessions = all_sessions if test_limit is None else all_sessions[:test_limit]
+    test_entries: list[dict] = []
+
+    for index, session_path in enumerate(sessions, start=1):
+        scene_name = os.path.basename(session_path.rstrip(os.sep))
+        print(f"\n{'=' * 72}")
+        print(f"[{index}/{len(sessions)}] {scene_name}")
+        print(f"{'=' * 72}")
+
+        try:
+            result = process_session(
+                session_path,
+                dino_model,
+                dino_processor,
+                visualize=not test_mode,
+            )
+        except Exception as exc:
+            print(f"[TEST] FEHLER in {scene_name}: {exc}")
+            if test_mode:
+                test_entries.append(
+                    _build_test_session_entry(
+                        scene=scene_name,
+                        session_path=session_path,
+                        index=index - 1,
+                        status="error",
+                        error=str(exc),
+                    )
+                )
+            continue
+
+        if test_mode:
+            if result is None:
+                entry = _build_test_session_entry(
+                    scene=scene_name,
+                    session_path=session_path,
+                    index=index - 1,
+                    status="skipped",
+                )
+            else:
+                pipeline_result = result.get("pipeline_result")
+                entry = _build_test_session_entry(
+                    scene=scene_name,
+                    session_path=session_path,
+                    index=index - 1,
+                    status=(
+                        pipeline_result.get("status", "unknown")
+                        if isinstance(pipeline_result, dict)
+                        else "completed"
+                    ),
+                    dino=result.get("dino"),
+                    sam3d=result.get("sam3d"),
+                    pipeline_result=pipeline_result,
+                )
+            test_entries.append(entry)
+
+    if test_mode:
+        from path_utils import get_data_root
+
+        _write_test_run_results(
+            test_entries,
+            device=device,
+            data_root=get_data_root(),
+            limit=test_limit,
+            n_available=n_available,
+        )
 
 
 if __name__ == "__main__":

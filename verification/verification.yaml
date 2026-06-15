@@ -36,7 +36,8 @@ stage2:
 stage3:
   corridor_half_w_m: null      # null => gripper half_width + safety_margin
   corridor_half_l_m: null      # null => gripper half_length + safety_margin
-  approach_height_m: null      # null => gripper.approach_height_m
+  safety_corridor_height_m: 0.30   # vertical lift corridor above grasp top (m)
+  approach_height_m: null      # deprecated — use safety_corridor_height_m
   noise_point_tolerance: 5
   top_band_m: 0.005
 
