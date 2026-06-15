@@ -9,7 +9,7 @@ Batch-Test ohne Visualisierung (alle Szenen, schlankes JSON in Results/):
   python main.py --test 40      # nur die ersten 40 Szenen
   python main.py --test -40     # dasselbe (negatives N wird als Limit genutzt)
 
-Pro Szene in Results/: dino, sam3d, bounding_box, grasp_candidate, verification (Kurzform).
+Pro Szene in Results/: dino, sam3d, bounding_box, grasp_candidate, verification (Kurzform), corridor (8 Eckpunkte).
 """
 from GroundingSAM.grounding_sam import run_grounding_dino_only
 from Segmentation.pallet_scene import prepare_session_context
@@ -31,8 +31,10 @@ from perception.adapter import (
     build_scene_pcd_from_depth,
 )
 from perception.bottom_inference import infer_bottom_planes
+from perception.extraction_corridor import compute_extraction_corridor
 from perception.selection import select_target_smallest_z
 from verification import verify_grasp, load_verification_config
+from verification.config import resolve_corridor_height
 import argparse
 import json
 import torch
@@ -82,11 +84,27 @@ def _save_stage5_matches(session_path: str, kept: list, excluded: list) -> None:
         print(f"[STAGE-5] Speichern fehlgeschlagen ({out_path}): {exc}")
 
 
+def _compute_extraction_corridor(candidate, session_context, config=None) -> dict | None:
+    """Stage 12b: Entnahmekorridor aus Paket-Footprint (breiteste Stelle)."""
+    if candidate is None or session_context is None:
+        return None
+    cfg = config if config is not None else load_verification_config()
+    plane = tuple(float(x) for x in session_context.plane_model)
+    margin = float(cfg.get("corridor", {}).get("safety_margin_m", 0.0))
+    return compute_extraction_corridor(
+        candidate,
+        plane,
+        lift_height_m=resolve_corridor_height(cfg),
+        safety_margin_m=margin,
+    )
+
+
 def _run_verification(
     session_path: str,
     session_context,
     selection_result,
     grasp_result,
+    extraction_corridor=None,
     config=None,
 ) -> tuple[dict | None, object | None]:
     """Stage 13: Deterministische Verifikation des primären Greifpunkts.
@@ -114,7 +132,13 @@ def _run_verification(
     cfg = config if config is not None else load_verification_config()
 
     try:
-        result = verify_grasp(grasp, candidate, session_context, config=cfg)
+        result = verify_grasp(
+            grasp,
+            candidate,
+            session_context,
+            config=cfg,
+            corridor=extraction_corridor,
+        )
     except Exception as exc:  # verification must never crash the pipeline
         print(f"[VERIFY] WARN Verifikation fehlgeschlagen: {exc}")
         return {"verdict": "ERROR", "error": str(exc)}, None
@@ -150,7 +174,13 @@ def _run_verification(
     if len(result.stages) < 3:
         try:
             full_cfg = {**cfg, "mode": "full"}
-            viz_result = verify_grasp(grasp, candidate, session_context, config=full_cfg)
+            viz_result = verify_grasp(
+                grasp,
+                candidate,
+                session_context,
+                config=full_cfg,
+                corridor=extraction_corridor,
+            )
         except Exception as exc:
             print(f"[VERIFY] WARN Full-Mode für Visualisierung fehlgeschlagen: {exc}")
             viz_result = result
@@ -163,6 +193,7 @@ def _save_final_handover(
     selection_result,
     grasp_result,
     verification=None,
+    extraction_corridor=None,
 ) -> dict | None:
     """Stage 12: Konsolidierte Ausgabe — 3D/2D Bounding Box + Greifkandidat."""
     scene_name = os.path.basename(session_path.rstrip(os.sep))
@@ -173,6 +204,7 @@ def _save_final_handover(
         "status": "incomplete",
         "bounding_box": None,
         "grasp_candidate": None,
+        "extraction_corridor": extraction_corridor,
         "verification": verification,
     }
 
@@ -278,6 +310,30 @@ def _serialize_sam3d_output(
     }
 
 
+def _extract_corridor(pipeline_result: dict | None) -> dict | None:
+    """Entnahmekorridor aus pipeline_result (vor Verifikation berechnet)."""
+    if not pipeline_result:
+        return None
+    corridor = pipeline_result.get("extraction_corridor")
+    if not corridor:
+        return None
+    corners_bottom = corridor.get("corners_bottom_3d")
+    corners_top = corridor.get("corners_top_3d")
+    if not corners_bottom or not corners_top:
+        return None
+    return {
+        "half_long_m": corridor.get("corridor_half_long_m"),
+        "half_short_m": corridor.get("corridor_half_short_m"),
+        "z_bottom_m": corridor.get("z_bottom_m", corridor.get("package_top_m")),
+        "z_top_m": corridor.get("corridor_z_top_m"),
+        "package_top_m": corridor.get("package_top_m"),
+        "safety_corridor_height_m": corridor.get("safety_corridor_height_m"),
+        "corners_bottom_3d": corners_bottom,
+        "corners_top_3d": corners_top,
+        "source": corridor.get("source"),
+    }
+
+
 def _verification_summary(verification: dict | None) -> dict | None:
     if not verification:
         return None
@@ -316,14 +372,14 @@ def _build_test_session_entry(
         "bounding_box": None,
         "grasp_candidate": None,
         "verification": None,
+        "corridor": None,
         "error": error,
     }
     if isinstance(pipeline_result, dict):
         entry["bounding_box"] = pipeline_result.get("bounding_box")
         entry["grasp_candidate"] = pipeline_result.get("grasp_candidate")
-        entry["verification"] = _verification_summary(
-            pipeline_result.get("verification")
-        )
+        entry["verification"] = _verification_summary(pipeline_result.get("verification"))
+        entry["corridor"] = _extract_corridor(pipeline_result)
     return entry
 
 
@@ -591,13 +647,40 @@ def process_session(
         except Exception as e:
             print(f"[GRASP] WARN could not write handover JSON: {e}")
 
+    extraction_corridor = None
+    if selection_result and selection_result.primary and session_context is not None:
+        extraction_corridor = _compute_extraction_corridor(
+            selection_result.primary.candidate, session_context
+        )
+        if extraction_corridor is not None:
+            try:
+                corridor_path = os.path.join(session_path, "extraction_corridor.json")
+                with open(corridor_path, "w", encoding="utf-8") as fp:
+                    json.dump(extraction_corridor, fp, indent=2, ensure_ascii=False)
+                print(
+                    f"[CORRIDOR] Paket-Footprint "
+                    f"{extraction_corridor['corridor_half_long_m']*2000:.0f}x"
+                    f"{extraction_corridor['corridor_half_short_m']*2000:.0f}mm "
+                    f"(halb) -> {corridor_path}"
+                )
+            except OSError as exc:
+                print(f"[CORRIDOR] Speichern fehlgeschlagen: {exc}")
+
     # Stage 13: Verifikation des primären Greifpunkts (nur Annotation).
     verification, verification_result = _run_verification(
-        session_path, session_context, selection_result, grasp_result
+        session_path,
+        session_context,
+        selection_result,
+        grasp_result,
+        extraction_corridor=extraction_corridor,
     )
 
     pipeline_result = _save_final_handover(
-        session_path, selection_result, grasp_result, verification=verification
+        session_path,
+        selection_result,
+        grasp_result,
+        verification=verification,
+        extraction_corridor=extraction_corridor,
     )
 
     # Phase 4: Visualisierung
@@ -622,6 +705,7 @@ def process_session(
             selection_result=selection_result,
             grasp_result=grasp_result,
             verification_result=verification_result,
+            extraction_corridor=extraction_corridor,
         )
     
     # Phase 5: Screenshots (optional)

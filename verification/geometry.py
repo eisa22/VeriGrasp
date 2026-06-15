@@ -80,6 +80,40 @@ def gripper_corners_plane_xy(
     return np.asarray(g_xy, dtype=np.float64).reshape(1, 2) + corners_g @ M.T
 
 
+def corridor_box_endpoints_3d(
+    p_g_cam: np.ndarray,
+    plane: tuple[float, float, float, float],
+    z_bottom_h: float,
+    approach_h: float,
+    half_long: float,
+    half_short: float,
+    long_dir_xy: np.ndarray | None = None,
+) -> dict:
+    """8 Eckpunkte des Entnahmekorridors in Kamera-Koordinaten.
+
+    Der Korridor ist das Greifer-Rechteck (half_long × half_short) extrudiert
+    von ``z_bottom_h`` (Paket-Oberfläche über Palette) bis ``z_bottom_h + approach_h``.
+    """
+    from perception.geometry.plane import project_to_plane_xy, unproject_from_plane_xy
+
+    p_g = np.asarray(p_g_cam, dtype=np.float64).reshape(1, 3)
+    g_xy = project_to_plane_xy(p_g, plane)[0]
+    corners_xy = gripper_corners_plane_xy(g_xy, half_long, half_short, long_dir_xy)
+    z_bot = float(z_bottom_h)
+    z_corridor_top = z_bot + float(approach_h)
+    bottom = unproject_from_plane_xy(corners_xy, plane, heights=z_bot)
+    top = unproject_from_plane_xy(corners_xy, plane, heights=z_corridor_top)
+    return {
+        "z_bottom_m": z_bot,
+        "corridor_z_top_m": z_corridor_top,
+        "half_long_m": float(half_long),
+        "half_short_m": float(half_short),
+        "safety_corridor_height_m": float(approach_h),
+        "corners_bottom_3d": [list(map(float, p)) for p in bottom],
+        "corners_top_3d": [list(map(float, p)) for p in top],
+    }
+
+
 @dataclass
 class Intrinsics:
     fx: float

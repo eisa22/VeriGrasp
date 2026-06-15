@@ -38,22 +38,23 @@ _DEFAULT_CONFIG: dict[str, Any] = {
         "safety_margin_m": 0.005,
     },
     "stage1": {
-        # Minimum fraction of valid depth pixels inside the bbox; below this the
-        # height is not trustworthy (too many holes).
-        "tau_valid": 0.60,
-        # Height histogram bin size for top-cluster detection.
-        "hist_bin_m": 0.005,
-        # The top cluster must hold at least this fraction of bbox points to be
-        # considered a dominant, unambiguous top face.
-        "top_cluster_min_fraction": 0.35,
-        # Two height plateaus separated by more than this gap => stacked /
-        # adjacent objects inside one bbox.
-        "plateau_gap_m": 0.015,
-        # A continuous depth step of at least this size spanning the bbox is
-        # treated as a seam between two side-by-side objects.
-        "depth_edge_step_m": 0.020,
-        # Fraction of a bbox row/column the seam must span to count as "through".
-        "depth_edge_span_ratio": 0.70,
+        # Segmentation-vs-raw-cloud consistency gate.
+        # Minimum fraction of mask pixels that carry valid depth; below this the
+        # segmentation is not backed by real geometry (hallucinated / over holes).
+        "min_valid_fraction": 0.60,
+        # Absolute minimum number of valid mask points.
+        "min_points": 50,
+        # Planar radius of the measurement window around the grasp point. The
+        # top height is measured here so it matches where the lift happens.
+        "window_radius_m": 0.03,
+        # Minimum points inside that window; fewer => fail-closed (grasp in hole).
+        "min_window_points": 10,
+        # Robust percentile of the local heights used as the top / lift height
+        # (high percentile rejects flying-pixel outliers without taking the max).
+        "top_percentile": 95.0,
+        # Allowed deviation between the locally measured top height and the
+        # pipeline-reported candidate.top_surface_height.
+        "top_height_tol_m": 0.03,
     },
     "stage2": {
         # Max planarity RMSE of the gripper window (a few mm compliance).
@@ -78,11 +79,16 @@ _DEFAULT_CONFIG: dict[str, Any] = {
             "min_points": 12,
         },
     },
+    "corridor": {
+        # Optional expansion on the parcel footprint when building the lift corridor
+        # in the pipeline (before verification). 0 = exact package widest extent.
+        "safety_margin_m": 0.0,
+    },
     "stage3": {
-        # Corridor half-extents default to gripper half-size + safety margin.
-        "corridor_half_w_m": None,
-        "corridor_half_l_m": None,
-        # Vertical extent of the safety lift corridor above the grasp top face.
+        # Stage 3 only runs a raw-cloud collision test against the precomputed
+        # extraction corridor (pipeline). Horizontal extents are NOT derived here.
+        # Vertical extent of the safety lift corridor above the package top
+        # (used when building the corridor in the pipeline).
         "safety_corridor_height_m": 0.30,
         # Deprecated alias — used only when safety_corridor_height_m is absent.
         "approach_height_m": None,
@@ -97,10 +103,8 @@ _DEFAULT_CONFIG: dict[str, Any] = {
         # Per-check weights for the combined soft score (RQ3). Keys are check
         # names; missing checks default to weight 1.0.
         "weights": {
-            "valid_ratio": 1.0,
-            "top_cluster": 1.0,
-            "single_object": 1.0,
-            "no_seam": 1.0,
+            "existence": 1.0,
+            "top_height_match": 1.5,
             "planarity": 2.0,
             "normal_angle": 2.0,
             "normal_scatter": 1.0,
@@ -111,10 +115,8 @@ _DEFAULT_CONFIG: dict[str, Any] = {
         # Margins are normalised by these scales (per check, in the check's unit)
         # before weighting. Missing checks default to 1.0.
         "scales": {
-            "valid_ratio": 0.4,
-            "top_cluster": 0.5,
-            "single_object": 0.05,
-            "no_seam": 0.05,
+            "existence": 0.4,
+            "top_height_match": 0.03,
             "planarity": 0.0025,
             "normal_angle": 30.0,
             "normal_scatter": 0.2,

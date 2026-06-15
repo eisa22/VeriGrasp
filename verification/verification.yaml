@@ -14,12 +14,13 @@ gripper:
   safety_margin_m: 0.005
 
 stage1:
-  tau_valid: 0.60
-  hist_bin_m: 0.005
-  top_cluster_min_fraction: 0.35
-  plateau_gap_m: 0.015
-  depth_edge_step_m: 0.020
-  depth_edge_span_ratio: 0.70
+  # Segmentation-vs-raw-cloud consistency gate.
+  min_valid_fraction: 0.60     # fraction of mask pixels with valid depth
+  min_points: 50               # absolute minimum valid mask points
+  window_radius_m: 0.03        # planar radius of the window around the grasp point
+  min_window_points: 10        # fewer points in the window => fail-closed
+  top_percentile: 95.0         # robust local top height (rejects flying pixels)
+  top_height_tol_m: 0.03       # allowed deviation from candidate.top_surface_height
 
 stage2:
   plane_rmse_max_m: 0.0025
@@ -33,11 +34,11 @@ stage2:
     mad_scale: 2.5
     min_points: 12
 
+corridor:
+  safety_margin_m: 0.0        # optional expansion on parcel footprint (pipeline)
+
 stage3:
-  corridor_half_w_m: null      # null => gripper half_width + safety_margin
-  corridor_half_l_m: null      # null => gripper half_length + safety_margin
-  safety_corridor_height_m: 0.30   # vertical lift corridor above grasp top (m)
-  approach_height_m: null      # deprecated — use safety_corridor_height_m
+  safety_corridor_height_m: 0.30   # lift height when building corridor (pipeline)
   noise_point_tolerance: 5
   top_band_m: 0.005
 

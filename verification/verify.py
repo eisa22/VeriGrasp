@@ -14,11 +14,12 @@ from verification.config import load_verification_config
 from verification.geometry import (
     Intrinsics,
     full_pointcloud,
+    gather_bbox_points,
     long_axis_in_plane,
     target_pointcloud,
 )
 from verification.stages import run_stage1, run_stage2, run_stage3
-from verification.types import StageResult, VerificationResult
+from verification.types import CheckRecord, StageResult, VerificationResult
 
 
 def _decisive(stages: list[StageResult]) -> tuple[int | None, str | None]:
@@ -48,21 +49,13 @@ def _soft_score(stages: list[StageResult], cfg: dict) -> float:
     return num / den if den > 0 else 0.0
 
 
-def _clamp_bbox(bbox, h: int, w: int) -> tuple[int, int, int, int]:
-    x1, y1, x2, y2 = [int(v) for v in bbox]
-    x1 = max(0, min(x1, w))
-    x2 = max(0, min(x2, w))
-    y1 = max(0, min(y1, h))
-    y2 = max(0, min(y2, h))
-    return x1, y1, x2, y2
-
-
 def verify_grasp(
     grasp,
     candidate,
     session_context,
     config: dict | None = None,
     p_full: np.ndarray | None = None,
+    corridor: dict | None = None,
 ) -> VerificationResult:
     """Verify a single suction grasp on its target candidate.
 
@@ -72,6 +65,8 @@ def verify_grasp(
         session_context: provides depth_abs, plane_model, intrinsics.
         config: verification config dict (loaded from YAML if None).
         p_full: optional precomputed full scene point cloud (camera frame).
+        corridor: precomputed extraction corridor from the pipeline
+            (``compute_extraction_corridor``). Required for Stage 3.
     """
     cfg = config if config is not None else load_verification_config()
     mode = str(cfg.get("mode", "cascade"))
@@ -100,18 +95,16 @@ def verify_grasp(
         parcel_obb = getattr(bottom, "parcel_obb", None)
     long_dir_xy = long_axis_in_plane(parcel_obb, plane)
 
-    h, w = depth.shape[:2]
-    x1, y1, x2, y2 = _clamp_bbox(candidate.bbox_2d, h, w)
-    sub_depth = depth[y1:y2, x1:x2]
-    from verification.geometry import gather_bbox_points
-
-    p_bbox, n_valid, n_bbox_px = gather_bbox_points(depth, candidate.bbox_2d, intr)
+    n_mask_px = int(np.asarray(mask, dtype=bool).sum())
+    claimed_top = float(getattr(candidate, "top_surface_height", 0.0))
 
     cascade = mode == "cascade"
     stages: list[StageResult] = []
 
     # --- Stage 1 ---
-    st1 = run_stage1(p_bbox, n_valid, n_bbox_px, sub_depth, plane, cfg)
+    st1 = run_stage1(
+        p_target, len(p_target), n_mask_px, p_g, claimed_top, plane, cfg
+    )
     stages.append(st1)
     z_top = st1.outputs.get("z_top")
 
@@ -128,7 +121,25 @@ def verify_grasp(
 
     # --- Stage 3 ---
     if run_rest3:
-        st3 = run_stage3(p_full, p_g, z_top, plane, cfg, long_dir_xy=long_dir_xy)
+        if corridor is None:
+            st3 = StageResult(
+                stage=3,
+                name="corridor_free",
+                passed=False,
+                checks=[
+                    CheckRecord(
+                        name="corridor_clear",
+                        stage=3,
+                        raw_value=float("inf"),
+                        threshold=0.0,
+                        margin=-1.0,
+                        passed=False,
+                        detail={"error": "missing_extraction_corridor"},
+                    )
+                ],
+            )
+        else:
+            st3 = run_stage3(p_full, corridor, plane, cfg)
         stages.append(st3)
 
     all_passed = all(st.passed for st in stages)

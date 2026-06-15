@@ -17,161 +17,97 @@ from verification.geometry import (
     gather_gripper_points,
     robust_plane_fit,
 )
-from verification.config import resolve_corridor_height, resolve_gripper
+from verification.config import resolve_gripper
 from verification.types import CheckRecord, StageResult
 
 _LARGE_MARGIN = 1.0
 
 
-def _cluster_by_gap(values: np.ndarray, gap: float) -> list[np.ndarray]:
-    """Split sorted 1D values into groups separated by a gap > `gap`."""
-    if values.size == 0:
-        return []
-    vs = np.sort(values)
-    splits = np.where(np.diff(vs) > gap)[0]
-    return np.split(vs, splits + 1)
-
-
-def _seam_span(sub_depth: np.ndarray, step_m: float) -> float:
-    """Largest fraction of a bbox row/column line crossed by a depth step.
-
-    Returns max over column boundaries (vertical seam) and row boundaries
-    (horizontal seam) of the fraction of valid neighbour pairs whose depth jump
-    exceeds `step_m`. ~1.0 means a step spans (almost) the whole bbox.
-    """
-    d = sub_depth.astype(np.float64)
-    d[d <= 0] = np.nan
-    spans = [0.0]
-
-    if d.shape[1] >= 2:
-        col_diff = np.abs(d[:, 1:] - d[:, :-1])  # (H, W-1)
-        with np.errstate(invalid="ignore"):
-            exceed = col_diff > step_m
-        valid = ~np.isnan(col_diff)
-        denom = valid.sum(axis=0).astype(np.float64)
-        denom[denom == 0] = np.nan
-        frac = exceed.sum(axis=0) / denom
-        spans.append(float(np.nanmax(frac)) if np.any(~np.isnan(frac)) else 0.0)
-
-    if d.shape[0] >= 2:
-        row_diff = np.abs(d[1:, :] - d[:-1, :])  # (H-1, W)
-        with np.errstate(invalid="ignore"):
-            exceed = row_diff > step_m
-        valid = ~np.isnan(row_diff)
-        denom = valid.sum(axis=1).astype(np.float64)
-        denom[denom == 0] = np.nan
-        frac = exceed.sum(axis=1) / denom
-        spans.append(float(np.nanmax(frac)) if np.any(~np.isnan(frac)) else 0.0)
-
-    return max(spans)
-
-
 def run_stage1(
-    p_bbox: np.ndarray,
+    p_target: np.ndarray,
     n_valid: int,
-    n_bbox_px: int,
-    sub_depth: np.ndarray,
+    n_mask_px: int,
+    p_g: np.ndarray,
+    claimed_top_m: float,
     plane: tuple[float, float, float, float],
     cfg: dict,
 ) -> StageResult:
-    """Stage 1 - is the bounding box a valid single-object premise?"""
-    s = cfg["stage1"]
-    tau_valid = float(s["tau_valid"])
-    gap = float(s["plateau_gap_m"])
-    top_min_frac = float(s["top_cluster_min_fraction"])
-    step_m = float(s["depth_edge_step_m"])
-    span_ratio = float(s["depth_edge_span_ratio"])
+    """Stage 1 - does the segmentation match the raw point cloud?
 
+    Two checks consume only the target mask points and the grasp point:
+    1. ``existence`` - enough valid raw points actually lie under the mask
+       (rejects a segmentation hallucinated over invalid / empty depth).
+    2. ``top_height_match`` - the top height measured *locally at the grasp
+       point* (robust percentile over a planar window) agrees with the height
+       the pipeline reported (``candidate.top_surface_height``). This measured
+       height is the lift reference exported as ``z_top`` for Stage 3.
+    """
+    s = cfg["stage1"]
+    min_frac = float(s["min_valid_fraction"])
+    min_pts = int(s["min_points"])
+    win_r = float(s["window_radius_m"])
+    pct = float(s["top_percentile"])
+    tol = float(s["top_height_tol_m"])
+    min_win_pts = int(s.get("min_window_points", 10))
+
+    p_target = np.asarray(p_target, dtype=np.float64)
     checks: list[CheckRecord] = []
 
-    # --- Check 1a: data quality + top face determinable ---
-    valid_ratio = (n_valid / n_bbox_px) if n_bbox_px > 0 else 0.0
+    # --- Check 1: existence (global over the mask) ---
+    ratio = (n_valid / n_mask_px) if n_mask_px > 0 else 0.0
     checks.append(
         CheckRecord(
-            name="valid_ratio",
+            name="existence",
             stage=1,
-            raw_value=valid_ratio,
-            threshold=tau_valid,
-            margin=valid_ratio - tau_valid,
-            passed=valid_ratio >= tau_valid,
-            detail={"n_valid": int(n_valid), "n_bbox_px": int(n_bbox_px)},
+            raw_value=ratio,
+            threshold=min_frac,
+            margin=ratio - min_frac,
+            passed=(ratio >= min_frac) and (n_valid >= min_pts),
+            detail={"n_valid": int(n_valid), "n_mask_px": int(n_mask_px)},
         )
     )
 
-    heights = heights_above_plane(p_bbox, plane) if len(p_bbox) else np.zeros(0)
+    # --- Check 2: top_height_match (local window at the grasp point) ---
     z_top = None
-    top_mask = None
-    top_frac = 0.0
-    groups: list[np.ndarray] = []
-    if heights.size > 0:
-        groups = _cluster_by_gap(heights, gap)
-        total = float(heights.size)
-        group_fracs = [(g, len(g) / total) for g in groups]
-        # Top face = highest group; representative height = 95th percentile.
-        top_group = max(groups, key=lambda g: g.mean())
-        top_frac = len(top_group) / total
-        z_top = float(np.percentile(top_group, 95))
-        top_mask = heights >= (top_group.min() - 1e-9)
+    n_win = 0
+    if p_target.shape[0] >= 1:
+        xy = project_to_plane_xy(p_target, plane)
+        g_xy = project_to_plane_xy(
+            np.asarray(p_g, dtype=np.float64).reshape(1, 3), plane
+        )[0]
+        dist = np.linalg.norm(xy - g_xy[None, :], axis=1)
+        win = dist <= win_r
+        n_win = int(win.sum())
+        if n_win >= min_win_pts:
+            z_top = float(
+                np.percentile(heights_above_plane(p_target[win], plane), pct)
+            )
 
+    diff = abs(z_top - claimed_top_m) if z_top is not None else float("inf")
     checks.append(
         CheckRecord(
-            name="top_cluster",
+            name="top_height_match",
             stage=1,
-            raw_value=top_frac,
-            threshold=top_min_frac,
-            margin=top_frac - top_min_frac,
-            passed=(z_top is not None) and (top_frac >= top_min_frac),
-            detail={"z_top_m": z_top, "n_groups": len(groups)},
-        )
-    )
-
-    # --- Check 1b: single object (no second plateau, no through-seam) ---
-    dominant = [g for g in groups if (len(g) / max(len(heights), 1)) >= top_min_frac]
-    if len(dominant) >= 2:
-        dominant_sorted = sorted(dominant, key=lambda g: g.mean())
-        # Gap between the two highest dominant plateaus.
-        g_hi = dominant_sorted[-1]
-        g_lo = dominant_sorted[-2]
-        plateau_gap = float(g_hi.min() - g_lo.max())
-        single_passed = plateau_gap <= gap
-        single_margin = gap - plateau_gap
-        single_raw = plateau_gap
-    else:
-        single_passed = True
-        single_margin = _LARGE_MARGIN
-        single_raw = 0.0
-    checks.append(
-        CheckRecord(
-            name="single_object",
-            stage=1,
-            raw_value=single_raw,
-            threshold=gap,
-            margin=single_margin,
-            passed=single_passed,
-            detail={"n_dominant_plateaus": len(dominant)},
-        )
-    )
-
-    seam_span = _seam_span(sub_depth, step_m) if sub_depth.size else 0.0
-    checks.append(
-        CheckRecord(
-            name="no_seam",
-            stage=1,
-            raw_value=seam_span,
-            threshold=span_ratio,
-            margin=span_ratio - seam_span,
-            passed=seam_span < span_ratio,
-            detail={"depth_step_m": step_m},
+            raw_value=diff,
+            threshold=tol,
+            margin=(tol - diff) if np.isfinite(diff) else -_LARGE_MARGIN,
+            passed=bool(np.isfinite(diff) and diff <= tol),
+            detail={
+                "z_top_meas_m": z_top,
+                "claimed_top_m": float(claimed_top_m),
+                "n_window_points": n_win,
+                "window_radius_m": win_r,
+            },
         )
     )
 
     passed = all(c.passed for c in checks)
     return StageResult(
         stage=1,
-        name="bbox_valid",
+        name="segmentation_consistent",
         passed=passed,
         checks=checks,
-        outputs={"z_top": z_top, "top_mask": top_mask, "valid_ratio": valid_ratio},
+        outputs={"z_top": z_top},
     )
 
 
@@ -469,38 +405,37 @@ def run_stage2(
 
 def run_stage3(
     p_full: np.ndarray,
-    p_g: np.ndarray,
-    z_top: float,
+    corridor: dict,
     plane: tuple[float, float, float, float],
     cfg: dict,
-    long_dir_xy: np.ndarray | None = None,
 ) -> StageResult:
-    """Stage 3 - is the vertical lift corridor above the grasp clear?
+    """Stage 3 - collision check of the precomputed lift corridor vs. raw cloud.
 
-    The corridor cross-section matches the (oriented) gripper footprint plus a
-    safety margin: long side along ``long_dir_xy``, short side perpendicular.
+    The corridor geometry is produced by the pipeline (``compute_extraction_corridor``);
+    this stage only tests whether points in the full scene intersect the vertical
+    lift volume above the package top.
     """
     s = cfg["stage3"]
-    grip = resolve_gripper(cfg)
-    safety = grip.safety_margin_m
-    half_long = max(grip.half_w_m, grip.half_l_m)
-    half_short = min(grip.half_w_m, grip.half_l_m)
-    h_long = s.get("corridor_half_w_m")
-    h_long = float(h_long) if h_long is not None else half_long + safety
-    h_short = s.get("corridor_half_l_m")
-    h_short = float(h_short) if h_short is not None else half_short + safety
-    approach_h = resolve_corridor_height(cfg)
     top_band = float(s["top_band_m"])
     noise_tol = int(s["noise_point_tolerance"])
-    corridor_reach = float(np.hypot(h_long, h_short))
 
-    if z_top is None:
-        z_top = float(heights_above_plane(np.asarray(p_g).reshape(1, 3), plane)[0])
+    z_top = float(corridor.get("package_top_m", corridor.get("z_bottom_m", 0.0)))
+    h_long = float(corridor["corridor_half_long_m"])
+    h_short = float(corridor["corridor_half_short_m"])
+    center = np.asarray(corridor["center_3d"], dtype=np.float64).reshape(3)
+    long_dir = corridor.get("long_dir_xy")
+    long_dir_xy = (
+        np.asarray(long_dir, dtype=np.float64) if long_dir is not None else None
+    )
+    approach_h = float(
+        corridor.get("safety_corridor_height_m", s.get("safety_corridor_height_m", 0.30))
+    )
+    corridor_reach = float(np.hypot(h_long, h_short))
 
     heights = heights_above_plane(p_full, plane)
     xy = project_to_plane_xy(p_full, plane)
-    g_xy = project_to_plane_xy(np.asarray(p_g, dtype=np.float64).reshape(1, 3), plane)[0]
-    rel = (xy - g_xy[None, :]) @ _gripper_rot(long_dir_xy)
+    c_xy = project_to_plane_xy(center.reshape(1, 3), plane)[0]
+    rel = (xy - c_xy[None, :]) @ _gripper_rot(long_dir_xy)
 
     above = heights > (z_top + top_band)
     if not np.any(above):
@@ -537,11 +472,18 @@ def run_stage3(
                 "noise_tolerance": noise_tol,
                 "corridor_half_long_m": h_long,
                 "corridor_half_short_m": h_short,
-                "gripper_width_m": grip.width_m,
-                "gripper_length_m": grip.length_m,
                 "clearance_height_m": clearance_height,
                 "safety_corridor_height_m": approach_h,
                 "z_top_m": float(z_top),
+                "z_bottom_m": float(corridor.get("z_bottom_m", z_top)),
+                "corridor_z_top_m": float(
+                    corridor.get("corridor_z_top_m", z_top + approach_h)
+                ),
+                "half_long_m": float(corridor.get("half_long_m", h_long)),
+                "half_short_m": float(corridor.get("half_short_m", h_short)),
+                "corners_bottom_3d": corridor.get("corners_bottom_3d"),
+                "corners_top_3d": corridor.get("corners_top_3d"),
+                "corridor_source": corridor.get("source"),
             },
         )
     ]
