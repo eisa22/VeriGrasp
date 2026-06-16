@@ -216,6 +216,166 @@ def test_tilted_surface_rejects_stage2():
     assert res.decisive_stage == 2
 
 
+def test_gripper_data_gap_rejects():
+    depth, bbox, (r, c) = _scene_with_box()
+    # Large hole inside the gripper footprint but away from the grasp pixel.
+    depth[r - 20 : r + 20, c + 5 : c + 35] = 0.0
+    sess = _session(depth)
+    cand = _candidate(bbox)
+    grasp = _grasp(r, c, 1.0)
+    res = verify_grasp(grasp, cand, sess, corridor=_corridor_for(cand, sess))
+    assert res.verdict == "REJECT"
+    assert res.decisive_stage == 2
+    assert res.decisive_check == "data_gaps"
+
+
+def test_gripper_depth_seam_rejects():
+    depth, bbox, (r, c) = _scene_with_box()
+    cy, cx = r, c
+    half = 40
+    # Alternating column stripes (~30 mm height step) across the footprint.
+    for j, col in enumerate(range(cx - half, cx + half)):
+        if (j // 4) % 2:
+            depth[cy - half : cy + half, col] = 0.97
+    sess = _session(depth)
+    cand = _candidate(bbox)
+    grasp = _grasp(r, c, float(depth[r, c]))
+    cfg = load_verification_config()
+    cfg["stage2"]["plane_rmse_max_m"] = 0.020
+    cfg["stage2"]["normal_scatter_max"] = 1.0
+    cfg["stage2"]["max_peak_to_valley_m"] = 0.040
+    res = verify_grasp(
+        grasp, cand, sess, config=cfg, corridor=_corridor_for(cand, sess)
+    )
+    assert res.verdict == "REJECT"
+    assert res.decisive_stage == 2
+    assert res.decisive_check == "depth_seam"
+
+
+def test_gripper_warp_rejects():
+    depth, bbox, (r, c) = _scene_with_box()
+    cy, cx = r, c
+    half = 40
+    # Parabolic dome: centre raised ~10 mm relative to the rim.
+    rows = np.arange(cy - half, cy + half, dtype=np.float64)
+    cols = np.arange(cx - half, cx + half, dtype=np.float64)
+    rr, cc = np.meshgrid(rows, cols, indexing="ij")
+    du = (cc - cx) * 1.0 / FX
+    dv = (rr - cy) * 1.0 / FY
+    bump_m = 0.010 * (1.0 - (du / 0.04) ** 2 - (dv / 0.04) ** 2)
+    bump_m = np.clip(bump_m, 0.0, None)
+    depth[cy - half : cy + half, cx - half : cx + half] -= bump_m.astype(np.float32)
+    sess = _session(depth)
+    cand = _candidate(bbox)
+    grasp = _grasp(r, c, float(depth[r, c]))
+    cfg = load_verification_config()
+    cfg["stage2"]["plane_rmse_max_m"] = 0.006
+    cfg["stage2"]["min_area_ratio"] = 0.0
+    cfg["stage2"]["edge_clearance_min_m"] = 0.0
+    res = verify_grasp(
+        grasp, cand, sess, config=cfg, corridor=_corridor_for(cand, sess)
+    )
+    assert res.verdict == "REJECT"
+    assert res.decisive_stage == 2
+    assert res.decisive_check == "surface_warp"
+
+
+def _with_obb(
+    cand: CandidateOut,
+    center: tuple[float, float, float],
+    extents: tuple[float, float, float],
+) -> CandidateOut:
+    """Attach a minimal BottomInference whose OBB drives the holdability checks."""
+    from perception.candidate import BottomInference
+
+    cand.bottom = BottomInference(
+        bottom_z=0.0,
+        bottom_method="test",
+        bottom_confidence=1.0,
+        bottom_residual_m=0.0,
+        used_neighbor_ids=[],
+        height_m=float(extents[2]),
+        parcel_obb={
+            "center": list(center),
+            "extents": list(extents),
+            "R": np.eye(3).tolist(),
+        },
+    )
+    return cand
+
+
+def test_normal_alignment_rejects():
+    depth, bbox, (r, c) = _scene_with_box()
+    sess = _session(depth)
+    cand = _candidate(bbox)
+    grasp = _grasp(r, c, 1.0)
+    # SuctionNet normal tilted ~40 deg away from the (vertical) plane normal.
+    ang = np.deg2rad(40.0)
+    grasp.normal = np.array([np.sin(ang), 0.0, -np.cos(ang)])
+    res = verify_grasp(grasp, cand, sess, corridor=_corridor_for(cand, sess))
+    assert res.verdict == "REJECT", res.to_serializable()
+    assert res.decisive_stage == 2
+    assert res.decisive_check == "normal_alignment"
+
+
+def test_surface_warp_robust_rejects():
+    depth, bbox, (r, c) = _scene_with_box()
+    cy, cx = r, c
+    half = 40
+    # Parabolic dome (~10 mm) that survives a relaxed peak-to-valley gate but
+    # exceeds the tighter robust percentile spread.
+    rows = np.arange(cy - half, cy + half, dtype=np.float64)
+    cols = np.arange(cx - half, cx + half, dtype=np.float64)
+    rr, cc = np.meshgrid(rows, cols, indexing="ij")
+    du = (cc - cx) * 1.0 / FX
+    dv = (rr - cy) * 1.0 / FY
+    bump_m = 0.010 * (1.0 - (du / 0.04) ** 2 - (dv / 0.04) ** 2)
+    bump_m = np.clip(bump_m, 0.0, None)
+    depth[cy - half : cy + half, cx - half : cx + half] -= bump_m.astype(np.float32)
+    sess = _session(depth)
+    cand = _candidate(bbox)
+    grasp = _grasp(r, c, float(depth[r, c]))
+    cfg = load_verification_config()
+    cfg["stage2"]["plane_rmse_max_m"] = 0.020
+    cfg["stage2"]["min_area_ratio"] = 0.0
+    cfg["stage2"]["edge_clearance_min_m"] = 0.0
+    cfg["stage2"]["normal_scatter_max"] = 1.0
+    # Relax the non-robust warp so the robust spread is the decisive reject.
+    cfg["stage2"]["max_peak_to_valley_m"] = 0.050
+    res = verify_grasp(
+        grasp, cand, sess, config=cfg, corridor=_corridor_for(cand, sess)
+    )
+    assert res.verdict == "REJECT", res.to_serializable()
+    assert res.decisive_stage == 2
+    assert res.decisive_check == "surface_warp_robust"
+
+
+def test_suction_force_rejects():
+    depth, bbox, (r, c) = _scene_with_box()
+    sess = _session(depth)
+    cand = _candidate(bbox)
+    # Heavy box: vacuum hold force below the safety factor times weight.
+    cand = _with_obb(cand, center=(0.0, 0.0, 1.0), extents=(0.6, 0.6, 0.6))
+    grasp = _grasp(r, c, 1.0)
+    res = verify_grasp(grasp, cand, sess, corridor=_corridor_for(cand, sess))
+    assert res.verdict == "REJECT", res.to_serializable()
+    assert res.decisive_stage == 2
+    assert res.decisive_check == "suction_force"
+
+
+def test_wrench_lever_rejects():
+    depth, bbox, (r, c) = _scene_with_box()
+    sess = _session(depth)
+    cand = _candidate(bbox)
+    # Light box but CoM far laterally from the grasp -> peel moment too large.
+    cand = _with_obb(cand, center=(0.5, 0.0, 1.0), extents=(0.2, 0.2, 0.2))
+    grasp = _grasp(r, c, 1.0)
+    res = verify_grasp(grasp, cand, sess, corridor=_corridor_for(cand, sess))
+    assert res.verdict == "REJECT", res.to_serializable()
+    assert res.decisive_stage == 2
+    assert res.decisive_check == "wrench_lever"
+
+
 def test_safety_corridor_height_default_is_30cm():
     from verification.config import resolve_corridor_height
 
@@ -231,7 +391,10 @@ def test_neighbor_in_corridor_rejects_stage3():
     cand = _candidate(bbox)
     grasp = _grasp(r, c, 1.0)
     corridor = _corridor_for(cand, sess, half_long=0.08, half_short=0.08)
-    res = verify_grasp(grasp, cand, sess, corridor=corridor)
+    cfg = load_verification_config()
+    # Small parcel vs. full gripper footprint: tolerate empty rim cells in Stage 2.
+    cfg["stage2"]["max_empty_cell_fraction"] = 0.25
+    res = verify_grasp(grasp, cand, sess, config=cfg, corridor=corridor)
     assert res.verdict == "REJECT", res.to_serializable()
     assert res.decisive_stage == 3
 

@@ -29,6 +29,18 @@ stage2:
   min_area_ratio: 0.95          # tolerate small sensor gaps at the footprint rim
   edge_clearance_min_m: null    # null => min(half_width, half_length)
   raster_m: 0.008               # >= depth sampling (~depth/fx ≈ 5 mm) else cells stay empty
+  max_empty_cell_fraction: 0.08
+  depth_seam_step_m: 0.015
+  depth_seam_span_ratio: 0.40
+  max_peak_to_valley_m: 0.008
+  # Additional physical checks (additive)
+  normal_alignment_max_deg: 30.0
+  max_peak_to_valley_robust_m: 0.006
+  warp_robust_low_pct: 2.5
+  warp_robust_high_pct: 97.5
+  object_density_kg_m3: 150.0
+  vacuum_pressure_pa: 40000.0
+  holdability_safety_factor: 2.0
   robust_fit:
     max_iter: 5
     mad_scale: 2.5

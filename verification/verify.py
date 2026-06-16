@@ -87,6 +87,9 @@ def verify_grasp(
         p_target, _, _ = gather_bbox_points(depth, candidate.bbox_2d, intr)
 
     p_g = np.asarray(grasp.position, dtype=np.float64)
+    grasp_normal = getattr(grasp, "normal", None)
+    if grasp_normal is not None:
+        grasp_normal = np.asarray(grasp_normal, dtype=np.float64)
 
     # Orient the gripper so its long side follows the parcel's longer side.
     parcel_obb = None
@@ -112,7 +115,10 @@ def verify_grasp(
 
     # --- Stage 2 ---
     if run_rest:
-        st2 = run_stage2(p_target, p_g, plane, axis, cfg, long_dir_xy=long_dir_xy)
+        st2 = run_stage2(
+            p_target, p_g, plane, axis, cfg, long_dir_xy=long_dir_xy,
+            grasp_normal=grasp_normal, parcel_obb=parcel_obb,
+        )
         stages.append(st2)
         run_rest3 = st2.passed or not cascade
     else:

@@ -28,6 +28,7 @@ from perception.grasp_generation import compute_suction_grasps
 from perception.adapter import (
     build_candidates_from_closed_matches,
     build_candidates_from_sam3d,
+    build_match_neighbors,
     build_scene_pcd_from_depth,
 )
 from perception.bottom_inference import infer_bottom_planes
@@ -531,6 +532,20 @@ def process_session(
         )
         pallet_plane = tuple(float(x) for x in session_context.plane_model)
         sobel_edges = sobel_viz_data.get("edges") if sobel_viz_data else None
+        match_neighbors = (
+            build_match_neighbors(
+                closed_matches,
+                session_context.depth_abs,
+                session_context.plane_model,
+                "kept",
+            )
+            + build_match_neighbors(
+                excluded_matches,
+                session_context.depth_abs,
+                session_context.plane_model,
+                "excluded_by_dedup",
+            )
+        )
         candidates, scene_planes, gradient_plateaus = infer_bottom_planes(
             candidates,
             pallet_plane,
@@ -538,6 +553,7 @@ def process_session(
             depth=session_context.depth_abs,
             sobel_edges=sobel_edges,
             workspace_mask=session_context.workspace_mask,
+            match_neighbors=match_neighbors,
             return_scene_planes=True,
             return_gradient_catalog=True,
         )

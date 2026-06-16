@@ -771,6 +771,103 @@ def visualize_best_suction_grasp_3d(
     )
 
 
+def visualize_gripper_footprint_3d(
+    session_path,
+    selection_result,
+    grasp_result,
+    window_name: str = "Greifer-Footprint",
+    session_context=None,
+    candidates=None,
+):
+    """Greiferfläche aus verification.yaml am Paket — lang entlang Paketlänge."""
+    from verification.config import load_verification_config, resolve_gripper
+    from verification.geometry import (
+        Intrinsics,
+        long_axis_in_plane,
+        target_pointcloud,
+    )
+
+    if selection_result is None or selection_result.primary is None:
+        print("[GRIPPER-VIZ] Kein Selected Target – übersprungen.")
+        return
+    if grasp_result is None or not grasp_result.grasps:
+        print("[GRIPPER-VIZ] Kein Greifpunkt – übersprungen.")
+        return
+
+    grasp = grasp_result.primary_grasp or grasp_result.grasps[0]
+    p_g = np.asarray(grasp.position, dtype=np.float64)
+    candidate = selection_result.primary.candidate
+    plane = tuple(float(x) for x in session_context.plane_model)
+
+    cfg = load_verification_config()
+    grip = resolve_gripper(cfg)
+    half_long = max(grip.half_w_m, grip.half_l_m)
+    half_short = min(grip.half_w_m, grip.half_l_m)
+
+    parcel_obb = None
+    if candidate.bottom is not None:
+        parcel_obb = getattr(candidate.bottom, "parcel_obb", None)
+    long_dir_xy = long_axis_in_plane(parcel_obb, plane)
+
+    all_points, _, _, _, base_colors, _ = _load_pcd_for_viz(session_path, session_context)
+    bg = o3d.geometry.PointCloud()
+    bg.points = o3d.utility.Vector3dVector(all_points)
+    bg.colors = o3d.utility.Vector3dVector(base_colors * 0.25)
+    geoms: list = [bg]
+
+    primary_id = candidate.candidate_id
+    for cand in candidates or []:
+        if cand.bottom is None:
+            continue
+        is_primary = cand.candidate_id == primary_id
+        color = [1.0, 0.15, 0.15] if is_primary else [0.50, 0.50, 0.50]
+        corners = np.asarray(cand.bottom.parcel_obb["corners_3d"], dtype=np.float64)
+        shade = 0.30 if is_primary else 0.10
+        geoms.append(_make_obb_solid_mesh(corners, color, shade=shade))
+        if is_primary:
+            geoms.extend(_make_obb_thick_edges(corners, color, radius=0.006))
+
+    intr = Intrinsics.from_session(session_context)
+    depth = np.asarray(session_context.depth_abs)
+    p_target = target_pointcloud(depth, candidate.mask_2d, intr)
+    if len(p_target):
+        tgt = o3d.geometry.PointCloud()
+        tgt.points = o3d.utility.Vector3dVector(_camera_to_o3d(p_target))
+        tgt.paint_uniform_color([0.20, 0.90, 0.35])
+        geoms.append(tgt)
+
+    footprint_color = [1.0, 0.85, 0.10]
+    geoms.append(
+        _make_gripper_footprint_rect(
+            p_g,
+            half_long,
+            half_short,
+            plane,
+            footprint_color,
+            long_dir_xy=long_dir_xy,
+        )
+    )
+
+    grasp_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.012)
+    grasp_sphere.translate(_camera_to_o3d(p_g.reshape(1, 3))[0])
+    grasp_sphere.paint_uniform_color([0.15, 0.95, 0.25])
+    grasp_sphere.compute_vertex_normals()
+    geoms.append(grasp_sphere)
+
+    p_label = candidate.debug.get("label", candidate.candidate_id[:6])
+    orient = "parcel_long_axis" if long_dir_xy is not None else "axis_aligned"
+    title = (
+        f"{window_name}: '{p_label}' "
+        f"gripper={grip.width_m*1000:.0f}x{grip.length_m*1000:.0f}mm "
+        f"orient={orient} (lang entlang Paket)"
+    )
+    print(
+        f"[GRIPPER-VIZ] Footprint {grip.width_m*1000:.0f}x{grip.length_m*1000:.0f}mm "
+        f"an Greifpunkt, {orient}"
+    )
+    o3d.visualization.draw_geometries(geoms, window_name=title)
+
+
 def visualize_extraction_corridor_3d(
     session_path,
     selection_result,
@@ -998,6 +1095,67 @@ def _fmt_chk(check) -> str:
         return "n/a"
     mark = "OK" if check.passed else "X"
     return f"{check.raw_value:.3f}/{check.threshold:.3f}[{mark}]"
+
+
+_PANEL_PASS_COLOR = [0.20, 0.85, 0.35]
+_PANEL_FAIL_COLOR = [0.95, 0.25, 0.25]
+_PANEL_NA_COLOR = [0.60, 0.60, 0.60]
+_PANEL_HEAD_COLOR = [0.95, 0.95, 0.30]
+
+
+def _check_panel_row(label: str, check) -> tuple[str, list[float]]:
+    """One panel line ('mark label raw/thr') plus its pass/fail/na colour."""
+    if check is None:
+        return f"--  {label}: n/a", _PANEL_NA_COLOR
+    mark = "OK" if check.passed else "X "
+    color = _PANEL_PASS_COLOR if check.passed else _PANEL_FAIL_COLOR
+    return f"{mark} {label} {check.raw_value:.3f}/{check.threshold:.3f}", color
+
+
+def _make_text_panel(rows, anchor, line_height_m: float = 0.010, gap: float = 1.45):
+    """Build a readable 3D text panel from ``rows`` = [(text, color), ...].
+
+    Text is rendered in the o3d display XY plane (faces the default camera) so
+    the verification results are legible inside the viewport, not only in the
+    window title. Lines stack downward from ``anchor`` (o3d coords).
+    """
+    geoms = []
+    try:
+        scale = float(line_height_m) / 14.0  # create_text glyph height ~14 units
+        ax, ay, az = float(anchor[0]), float(anchor[1]), float(anchor[2])
+        step = line_height_m * gap
+        for i, (text, color) in enumerate(rows):
+            if not text:
+                continue
+            tm = o3d.t.geometry.TriangleMesh.create_text(
+                str(text), depth=0.05
+            ).to_legacy()
+            # NOTE: scale/translate/paint_uniform_color segfault on the text
+            # mesh in Open3D 0.18; transform vertices/colours via numpy instead.
+            verts = np.asarray(tm.vertices, dtype=np.float64) * scale
+            verts[:, 0] += ax
+            verts[:, 1] += ay - i * step
+            verts[:, 2] += az
+            tm.vertices = o3d.utility.Vector3dVector(verts)
+            tm.vertex_colors = o3d.utility.Vector3dVector(
+                np.tile(np.asarray(color, dtype=np.float64), (len(tm.vertices), 1))
+            )
+            tm.compute_vertex_normals()
+            geoms.append(tm)
+    except Exception as exc:  # never let labels break the visualization
+        print(f"[VERIFY-VIZ] Text-Panel uebersprungen: {exc}")
+    return geoms
+
+
+def _scene_panel_anchor(base_points: np.ndarray, fallback_z: float) -> np.ndarray:
+    """Top-right corner of the scene (o3d coords) with a small gap for the panel."""
+    pts = np.asarray(base_points, dtype=np.float64)
+    if pts.size == 0:
+        return np.array([0.0, 0.0, fallback_z])
+    mins = pts.min(axis=0)
+    maxs = pts.max(axis=0)
+    gap = 0.03 * max(maxs[0] - mins[0], 1e-3)
+    return np.array([maxs[0] + gap, maxs[1], fallback_z])
 
 
 def _log_verif_check(check) -> None:
@@ -1279,12 +1437,22 @@ def visualize_verification_3d(
         sc = _verif_check(st2, "normal_scatter")
         ar = _verif_check(st2, "suction_area")
         ec = _verif_check(st2, "edge_clearance")
+        dg = _verif_check(st2, "data_gaps")
+        ds = _verif_check(st2, "depth_seam")
+        sw = _verif_check(st2, "surface_warp")
+        nal = _verif_check(st2, "normal_alignment")
+        swr = _verif_check(st2, "surface_warp_robust")
+        sf = _verif_check(st2, "suction_force")
+        wl = _verif_check(st2, "wrench_lever")
         flag = "PASS (gruen)" if st2.passed else "FAIL (rot)"
         title = (
             f"STUFE 2/3 Saugbarkeit: {flag}  |  "
             f"gripper={grip.width_m*1000:.0f}x{grip.length_m*1000:.0f}mm "
             f"rmse={_fmt_chk(pl)} angle={_fmt_chk(na)} "
-            f"scatter={_fmt_chk(sc)} area={_fmt_chk(ar)} edge={_fmt_chk(ec)}"
+            f"scatter={_fmt_chk(sc)} area={_fmt_chk(ar)} edge={_fmt_chk(ec)} "
+            f"gaps={_fmt_chk(dg)} seam={_fmt_chk(ds)} warp={_fmt_chk(sw)} "
+            f"align={_fmt_chk(nal)} warp_rob={_fmt_chk(swr)} "
+            f"force={_fmt_chk(sf)} wrench={_fmt_chk(wl)}"
         )
         print(f"[VERIFY-VIZ] Stufe 2 ({flag}):")
         for c in st2.checks:
@@ -1292,6 +1460,24 @@ def visualize_verification_3d(
                 f"             {('OK ' if c.passed else 'FAIL')} {c.name}: "
                 f"raw={c.raw_value:.4f} thr={c.threshold:.4f} margin={c.margin:.4f}"
             )
+        panel_rows = [
+            (f"STUFE 2 Saugbarkeit: {'PASS' if st2.passed else 'FAIL'}", _PANEL_HEAD_COLOR),
+            _check_panel_row("planarity", pl),
+            _check_panel_row("normal_angle", na),
+            _check_panel_row("normal_scatter", sc),
+            _check_panel_row("suction_area", ar),
+            _check_panel_row("edge_clearance", ec),
+            _check_panel_row("data_gaps", dg),
+            _check_panel_row("depth_seam", ds),
+            _check_panel_row("surface_warp", sw),
+            _check_panel_row("normal_alignment", nal),
+            _check_panel_row("surface_warp_robust", swr),
+            _check_panel_row("suction_force", sf),
+            _check_panel_row("wrench_lever", wl),
+        ]
+        grasp_z = float(_camera_to_o3d(p_g.reshape(1, 3))[0][2])
+        anchor = _scene_panel_anchor(base_points, grasp_z)
+        geoms.extend(_make_text_panel(panel_rows, anchor))
         o3d.visualization.draw_geometries(geoms, window_name=title)
 
     # ------------------------------------------------------------------ Stage 3
@@ -2414,7 +2600,8 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
    10. Selected Target (optional)
    11. Suction grasp points on selected target (optional)
    12. Best suction grasp only — grasps[0] (optional)
-   13. Extraction corridor at package widest extent (optional, Stage 12b)
+   13. Gripper footprint on package from verification.yaml (optional, Stage 12a)
+   14. Extraction corridor at package widest extent (optional, Stage 12b)
     """
     has_sam3d = sam3d_masks is not None and sam3d_labels is not None
     has_bottom = candidates is not None and len(candidates) > 0
@@ -2422,6 +2609,7 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
     has_selection = selection_result is not None and selection_result.primary is not None
     has_grasp = grasp_result is not None and len(grasp_result.grasps) > 0
     has_best_grasp = has_grasp
+    has_gripper_footprint = has_best_grasp
     has_corridor = extraction_corridor is not None and has_best_grasp
     total_steps = (
         6
@@ -2431,6 +2619,7 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
         + int(has_selection)
         + int(has_grasp)
         + int(has_best_grasp)
+        + int(has_gripper_footprint)
         + int(has_corridor)
     )
     print(f"\n[VIZ] Starte {total_steps}-fache Debug-Visualisierung...")
@@ -2505,6 +2694,7 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
             - int(has_selection)
             - int(has_grasp)
             - int(has_best_grasp)
+            - int(has_gripper_footprint)
             - int(has_corridor)
         )
         n_gg = len(gradient_plateaus or [])
@@ -2524,6 +2714,7 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
             total_steps
             - int(has_grasp)
             - int(has_best_grasp)
+            - int(has_gripper_footprint)
             - int(has_corridor)
         )
         primary = selection_result.primary
@@ -2544,7 +2735,12 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
         )
 
     if has_grasp:
-        step = total_steps - int(has_best_grasp) - int(has_corridor)
+        step = (
+            total_steps
+            - int(has_best_grasp)
+            - int(has_gripper_footprint)
+            - int(has_corridor)
+        )
         n_grasps = len(grasp_result.grasps)
         backend = grasp_result.backend
         print(
@@ -2562,7 +2758,7 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
         )
 
     if has_best_grasp:
-        step = total_steps - int(has_corridor)
+        step = total_steps - int(has_gripper_footprint) - int(has_corridor)
         best = grasp_result.grasps[0]
         print(
             f"[VIZ] {step}/{total_steps}: Best Suction Grasp "
@@ -2576,6 +2772,18 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
             window_name=f"{step}/{total_steps}: Best Suction Grasp (Stage 12)",
             session_context=session_context,
             scene_planes=scene_planes,
+        )
+
+    if has_gripper_footprint:
+        step = total_steps - int(has_corridor)
+        print(f"[VIZ] {step}/{total_steps}: Greifer-Footprint (Stage 12a)...")
+        visualize_gripper_footprint_3d(
+            session_path,
+            selection_result,
+            grasp_result,
+            window_name=f"{step}/{total_steps}: Greifer-Footprint (Stage 12a)",
+            session_context=session_context,
+            candidates=candidates,
         )
 
     if has_corridor:

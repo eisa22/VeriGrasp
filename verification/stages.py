@@ -257,6 +257,195 @@ def _gripper_footprint_and_edge(
     return coverage, edge_clearance
 
 
+def _footprint_raster_layout(
+    half_w: float,
+    half_l: float,
+    raster_m: float,
+) -> tuple[int, int, np.ndarray, callable]:
+    """Raster indices and footprint mask in gripper-local coordinates."""
+    nx = max(1, int(np.ceil(2 * half_w / raster_m)))
+    ny = max(1, int(np.ceil(2 * half_l / raster_m)))
+    cx = (np.arange(nx) + 0.5) * raster_m - half_w
+    cy = (np.arange(ny) + 0.5) * raster_m - half_l
+    gx, gy = np.meshgrid(cx, cy, indexing="ij")
+    required = (np.abs(gx) <= half_w) & (np.abs(gy) <= half_l)
+
+    def to_cell(xy: np.ndarray) -> np.ndarray:
+        ix = np.floor((xy[:, 0] + half_w) / raster_m).astype(int)
+        iy = np.floor((xy[:, 1] + half_l) / raster_m).astype(int)
+        return np.stack(
+            [np.clip(ix, 0, nx - 1), np.clip(iy, 0, ny - 1)],
+            axis=1,
+        )
+
+    return nx, ny, required, to_cell
+
+
+def _footprint_height_grid(
+    p_grip: np.ndarray,
+    rel_xy: np.ndarray,
+    plane: tuple[float, float, float, float],
+    half_w: float,
+    half_l: float,
+    raster_m: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Median height-above-plane per raster cell (NaN where empty)."""
+    nx, ny, required, to_cell = _footprint_raster_layout(half_w, half_l, raster_m)
+    grid = np.full((nx, ny), np.nan, dtype=np.float64)
+    if len(p_grip) == 0:
+        return grid, required
+
+    heights = heights_above_plane(p_grip, plane)
+    cells = to_cell(rel_xy)
+    buckets: dict[tuple[int, int], list[float]] = {}
+    for (i, j), h in zip(cells, heights):
+        key = (int(i), int(j))
+        buckets.setdefault(key, []).append(float(h))
+    for (i, j), hs in buckets.items():
+        grid[i, j] = float(np.median(hs))
+    return grid, required
+
+
+def _footprint_empty_fraction(
+    rel_xy: np.ndarray,
+    half_w: float,
+    half_l: float,
+    raster_m: float,
+) -> float:
+    """Fraction of footprint raster cells with no points (no morphological closing)."""
+    _, _, required, to_cell = _footprint_raster_layout(half_w, half_l, raster_m)
+    n_required = int(required.sum())
+    if n_required == 0 or rel_xy.shape[0] == 0:
+        return 1.0
+    filled = np.zeros(required.shape, dtype=bool)
+    cells = to_cell(rel_xy)
+    filled[cells[:, 0], cells[:, 1]] = True
+    n_filled = int((filled & required).sum())
+    return 1.0 - (n_filled / n_required)
+
+
+def _grid_seam_span(grid: np.ndarray, step_m: float) -> float:
+    """Max row/column fraction of valid neighbours separated by a height step."""
+    spans = [0.0]
+    if grid.shape[1] >= 2:
+        for i in range(grid.shape[0]):
+            row = grid[i, :]
+            diff = np.abs(row[1:] - row[:-1])
+            with np.errstate(invalid="ignore"):
+                exceed = diff > step_m
+            valid = ~np.isnan(row[1:]) & ~np.isnan(row[:-1])
+            denom = valid.sum()
+            if denom > 0:
+                spans.append(float(exceed[valid].sum()) / float(denom))
+    if grid.shape[0] >= 2:
+        for j in range(grid.shape[1]):
+            col = grid[:, j]
+            diff = np.abs(col[1:] - col[:-1])
+            with np.errstate(invalid="ignore"):
+                exceed = diff > step_m
+            valid = ~np.isnan(col[1:]) & ~np.isnan(col[:-1])
+            denom = valid.sum()
+            if denom > 0:
+                spans.append(float(exceed[valid].sum()) / float(denom))
+    return max(spans)
+
+
+def _footprint_depth_seam_span(
+    p_grip: np.ndarray,
+    rel_xy: np.ndarray,
+    plane: tuple[float, float, float, float],
+    half_w: float,
+    half_l: float,
+    raster_m: float,
+    step_m: float,
+) -> float:
+    """Largest seam span across the gripper footprint height grid."""
+    grid, _ = _footprint_height_grid(
+        p_grip, rel_xy, plane, half_w, half_l, raster_m
+    )
+    return _grid_seam_span(grid, step_m)
+
+
+def _footprint_peak_to_valley(
+    p_grip: np.ndarray,
+    plane_point: np.ndarray,
+    plane_normal: np.ndarray,
+    inlier_mask: np.ndarray | None = None,
+) -> float:
+    """Peak-to-valley signed residual range relative to the fitted plane."""
+    pts = np.asarray(p_grip, dtype=np.float64)
+    if pts.size == 0:
+        return float("inf")
+    if inlier_mask is not None and inlier_mask.any():
+        pts = pts[inlier_mask]
+    normal = np.asarray(plane_normal, dtype=np.float64).reshape(3)
+    centroid = np.asarray(plane_point, dtype=np.float64).reshape(3)
+    residuals = (pts - centroid[None, :]) @ normal
+    return float(residuals.max() - residuals.min())
+
+
+def _footprint_peak_to_valley_robust(
+    p_grip: np.ndarray,
+    plane_point: np.ndarray,
+    plane_normal: np.ndarray,
+    low_pct: float = 2.5,
+    high_pct: float = 97.5,
+) -> float:
+    """Outlier-robust peak-to-valley: percentile spread of signed residuals.
+
+    Uses ``high_pct - low_pct`` of the signed plane residuals instead of the
+    raw ``max - min`` so a single flying-pixel outlier no longer dominates the
+    warp estimate (complements the non-robust ``_footprint_peak_to_valley``).
+    """
+    pts = np.asarray(p_grip, dtype=np.float64)
+    if pts.size == 0:
+        return float("inf")
+    normal = np.asarray(plane_normal, dtype=np.float64).reshape(3)
+    centroid = np.asarray(plane_point, dtype=np.float64).reshape(3)
+    residuals = (pts - centroid[None, :]) @ normal
+    hi = float(np.percentile(residuals, high_pct))
+    lo = float(np.percentile(residuals, low_pct))
+    return hi - lo
+
+
+def _holdability(
+    p_g: np.ndarray,
+    plane: tuple[float, float, float, float],
+    parcel_obb: dict,
+    pad_area_m2: float,
+    cup_reff_m: float,
+    density_kg_m3: float,
+    vacuum_pressure_pa: float,
+) -> tuple[float, float, float, float] | None:
+    """Quasi-static suction wrench resistance (Dex-Net 3.0 style).
+
+    Returns (hold_factor, safety_threshold_unused, drive_moment, resist_moment)
+    where ``hold_factor = F_vac / W`` and the peel moments are in Nm. Returns
+    None when the OBB lacks the extents/center needed to estimate mass and CoM.
+    """
+    try:
+        extents = np.asarray(parcel_obb["extents"], dtype=np.float64).reshape(3)
+        center = np.asarray(parcel_obb["center"], dtype=np.float64).reshape(3)
+    except (KeyError, TypeError, ValueError):
+        return None
+
+    g = 9.81
+    volume = float(abs(extents[0] * extents[1] * extents[2]))
+    mass = volume * float(density_kg_m3)
+    weight = mass * g
+    f_vac = float(vacuum_pressure_pa) * float(pad_area_m2)
+
+    hold_factor = f_vac / weight if weight > 1e-9 else _LARGE_MARGIN
+
+    g_xy = project_to_plane_xy(np.asarray(p_g, dtype=np.float64).reshape(1, 3), plane)[0]
+    c_xy = project_to_plane_xy(center.reshape(1, 3), plane)[0]
+    lever = float(np.linalg.norm(g_xy - c_xy))
+
+    drive_moment = weight * lever
+    resist_moment = f_vac * float(cup_reff_m)
+    return hold_factor, weight, drive_moment, resist_moment
+
+
 def run_stage2(
     p_target: np.ndarray,
     p_g: np.ndarray,
@@ -264,6 +453,8 @@ def run_stage2(
     approach_axis: np.ndarray,
     cfg: dict,
     long_dir_xy: np.ndarray | None = None,
+    grasp_normal: np.ndarray | None = None,
+    parcel_obb: dict | None = None,
 ) -> StageResult:
     """Stage 2 - is the grasp point suctionable (planar, aligned, sealed)?
 
@@ -271,6 +462,8 @@ def run_stage2(
     footprint. ``p_target`` must contain only points on the selected parcel.
     ``long_dir_xy`` (pallet-plane unit vector) orients the gripper's long side
     along the parcel's longer side; None falls back to the u axis.
+    ``grasp_normal`` (SuctionNet per-point normal) and ``parcel_obb`` (mass /
+    CoM source) feed the additional physical checks; both are optional.
     """
     s = cfg["stage2"]
     grip = resolve_gripper(cfg)
@@ -284,6 +477,20 @@ def run_stage2(
     raster_m = float(s["raster_m"])
     edge_min = s["edge_clearance_min_m"]
     edge_min = float(edge_min) if edge_min is not None else half_short
+    max_empty_frac = float(s["max_empty_cell_fraction"])
+    depth_seam_step = float(s["depth_seam_step_m"])
+    depth_seam_span_max = float(s["depth_seam_span_ratio"])
+    max_ptv = float(s["max_peak_to_valley_m"])
+    # Additional physical checks (additive; bestehende Checks unveraendert).
+    align_max = float(s["normal_alignment_max_deg"])
+    max_ptv_robust = float(s["max_peak_to_valley_robust_m"])
+    warp_low_pct = float(s["warp_robust_low_pct"])
+    warp_high_pct = float(s["warp_robust_high_pct"])
+    density = float(s["object_density_kg_m3"])
+    vacuum_pa = float(s["vacuum_pressure_pa"])
+    hold_safety = float(s["holdability_safety_factor"])
+    pad_area = grip.width_m * grip.length_m
+    cup_reff = 0.5 * min(grip.width_m, grip.length_m)
     rf = s["robust_fit"]
 
     p_grip, rel_xy = gather_gripper_points(
@@ -326,6 +533,50 @@ def run_stage2(
                 threshold=edge_min, margin=-edge_min, passed=False,
             )
         )
+        checks.append(
+            CheckRecord(
+                name="data_gaps", stage=2, raw_value=1.0,
+                threshold=max_empty_frac, margin=-_LARGE_MARGIN, passed=False,
+            )
+        )
+        checks.append(
+            CheckRecord(
+                name="depth_seam", stage=2, raw_value=1.0,
+                threshold=depth_seam_span_max, margin=-_LARGE_MARGIN, passed=False,
+            )
+        )
+        checks.append(
+            CheckRecord(
+                name="surface_warp", stage=2, raw_value=float("inf"),
+                threshold=max_ptv, margin=-_LARGE_MARGIN, passed=False,
+            )
+        )
+        if grasp_normal is not None:
+            checks.append(
+                CheckRecord(
+                    name="normal_alignment", stage=2, raw_value=90.0,
+                    threshold=align_max, margin=-_LARGE_MARGIN, passed=False,
+                )
+            )
+        checks.append(
+            CheckRecord(
+                name="surface_warp_robust", stage=2, raw_value=float("inf"),
+                threshold=max_ptv_robust, margin=-_LARGE_MARGIN, passed=False,
+            )
+        )
+        if parcel_obb is not None:
+            checks.append(
+                CheckRecord(
+                    name="suction_force", stage=2, raw_value=0.0,
+                    threshold=hold_safety, margin=-_LARGE_MARGIN, passed=False,
+                )
+            )
+            checks.append(
+                CheckRecord(
+                    name="wrench_lever", stage=2, raw_value=float("inf"),
+                    threshold=0.0, margin=-_LARGE_MARGIN, passed=False,
+                )
+            )
         return StageResult(
             stage=2, name="grasp_suctionable", passed=False, checks=checks,
             outputs={
@@ -388,6 +639,85 @@ def run_stage2(
             passed=edge_clearance >= edge_min,
         )
     )
+
+    empty_frac = _footprint_empty_fraction(rel_xy, half_long, half_short, raster_m)
+    checks.append(
+        CheckRecord(
+            name="data_gaps", stage=2, raw_value=empty_frac,
+            threshold=max_empty_frac, margin=max_empty_frac - empty_frac,
+            passed=empty_frac <= max_empty_frac,
+        )
+    )
+
+    seam_span = _footprint_depth_seam_span(
+        p_grip, rel_xy, plane, half_long, half_short, raster_m, depth_seam_step
+    )
+    checks.append(
+        CheckRecord(
+            name="depth_seam", stage=2, raw_value=seam_span,
+            threshold=depth_seam_span_max, margin=depth_seam_span_max - seam_span,
+            passed=seam_span < depth_seam_span_max,
+        )
+    )
+
+    peak_to_valley = _footprint_peak_to_valley(
+        p_grip, plane_point, plane_normal
+    )
+    checks.append(
+        CheckRecord(
+            name="surface_warp", stage=2, raw_value=peak_to_valley,
+            threshold=max_ptv, margin=max_ptv - peak_to_valley,
+            passed=peak_to_valley <= max_ptv,
+        )
+    )
+
+    # 2d normal_alignment (SuctionNet per-point normal vs fitted plane normal)
+    if grasp_normal is not None:
+        align = angle_between(grasp_normal, plane_normal)
+        checks.append(
+            CheckRecord(
+                name="normal_alignment", stage=2, raw_value=align,
+                threshold=align_max, margin=align_max - align,
+                passed=align <= align_max,
+            )
+        )
+
+    # 2e surface_warp_robust (percentile spread, outlier-robust)
+    ptv_robust = _footprint_peak_to_valley_robust(
+        p_grip, plane_point, plane_normal, warp_low_pct, warp_high_pct
+    )
+    checks.append(
+        CheckRecord(
+            name="surface_warp_robust", stage=2, raw_value=ptv_robust,
+            threshold=max_ptv_robust, margin=max_ptv_robust - ptv_robust,
+            passed=ptv_robust <= max_ptv_robust,
+        )
+    )
+
+    # 2f holdability (suction wrench resistance) - only when OBB mass/CoM known
+    if parcel_obb is not None:
+        hold = _holdability(
+            p_g, plane, parcel_obb, pad_area, cup_reff, density, vacuum_pa
+        )
+        if hold is not None:
+            hold_factor, weight, drive_moment, resist_moment = hold
+            checks.append(
+                CheckRecord(
+                    name="suction_force", stage=2, raw_value=hold_factor,
+                    threshold=hold_safety, margin=hold_factor - hold_safety,
+                    passed=hold_factor >= hold_safety,
+                    detail={"weight_n": weight},
+                )
+            )
+            moment_thr = resist_moment / hold_safety if hold_safety > 0 else resist_moment
+            checks.append(
+                CheckRecord(
+                    name="wrench_lever", stage=2, raw_value=drive_moment,
+                    threshold=moment_thr, margin=moment_thr - drive_moment,
+                    passed=drive_moment <= moment_thr,
+                    detail={"resist_moment_nm": resist_moment},
+                )
+            )
 
     passed = all(c.passed for c in checks)
     return StageResult(

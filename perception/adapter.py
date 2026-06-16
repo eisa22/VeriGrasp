@@ -209,8 +209,14 @@ def build_match_neighbors(
         pts = _backproject_mask(mask, depth, cx, cy)
         if len(pts) < 10:
             continue
-        heights = heights_above_plane(pts, plane)
-        xy = project_to_plane_xy(pts, plane)
+    heights = heights_above_plane(pts, plane)
+    xy = project_to_plane_xy(pts, plane)
+    zs = m.get("z_stats") or {}
+    if zs.get("z_plane_m") is not None:
+        top_h = float(zs["z_plane_m"])
+    elif m.get("z_plane_m") is not None:
+        top_h = float(m["z_plane_m"])
+    else:
         top_h = float(np.percentile(heights, 95))
         fp = _footprint_from_xy(xy)
         center = np.array(

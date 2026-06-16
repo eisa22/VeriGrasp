@@ -365,3 +365,43 @@ def test_immutability_and_audit_fields():
             "gradient_rejections",
         ):
             assert key in c.debug
+
+
+def test_stack_match_neighbor_uses_closest_overlapping_tier():
+    """Stacked parcels: Stage-5 overlap pool picks the immediate tier below."""
+    from perception.adapter import MatchNeighbor
+    from perception.bottom_inference.neighbors import (
+        build_geometry_index,
+        compute_candidate_geometry,
+    )
+
+    top = _make_flat_parcel("top", top_h=0.60, center_xy=(0.0, 0.0), footprint=0.20)
+    cfg = load_bottom_inference_config()
+    cfg["stack_closest_layer"] = True
+    geom = build_geometry_index([top], PALLET_PLANE, cfg)
+    g = geom["top"]
+
+    def _mn(mid: str, h: float) -> MatchNeighbor:
+        fp = g.obb_footprint
+        cxy = g.center_xy.copy()
+        return MatchNeighbor(
+            match_id=mid,
+            label=mid,
+            status="excluded_by_dedup",
+            top_surface_height=h,
+            footprint_xy=fp,
+            center_xy=cxy,
+        )
+
+    match_neighbors = [_mn("tier_mid", 0.41), _mn("tier_low", 0.22)]
+
+    out = infer_bottom_planes(
+        [top],
+        PALLET_PLANE,
+        cfg,
+        match_neighbors=match_neighbors,
+    )
+    assert out[0].bottom.bottom_method == "from_neighbor"
+    assert out[0].bottom.bottom_z == pytest.approx(0.41, abs=0.02)
+    assert out[0].debug["neighbor_source"] == "match"
+    assert out[0].debug["z_neighbor_top_match"] == pytest.approx(0.41, abs=0.02)

@@ -72,6 +72,25 @@ _DEFAULT_CONFIG: dict[str, Any] = {
         # Raster cell size for the contiguous-area / edge analysis. Must be
         # >= depth sampling (~depth/fx ≈ 5 mm here) or interior cells stay empty.
         "raster_m": 0.008,
+        # Max fraction of footprint raster cells without any depth points.
+        "max_empty_cell_fraction": 0.08,
+        # Physical depth seam: neighbour cells must differ by less than this.
+        "depth_seam_step_m": 0.015,
+        # Max fraction of neighbour pairs along a row/column exceeding the step.
+        "depth_seam_span_ratio": 0.40,
+        # Max peak-to-valley height variation after plane fit (surface warp).
+        "max_peak_to_valley_m": 0.008,
+        # --- Additional physical checks (additive) ---
+        # Max angle between SuctionNet grasp normal and fitted plane normal.
+        "normal_alignment_max_deg": 30.0,
+        # Outlier-robust warp: max percentile-spread of plane residuals.
+        "max_peak_to_valley_robust_m": 0.006,
+        "warp_robust_low_pct": 2.5,
+        "warp_robust_high_pct": 97.5,
+        # Holdability (suction wrench resistance) physical parameters.
+        "object_density_kg_m3": 150.0,
+        "vacuum_pressure_pa": 40000.0,
+        "holdability_safety_factor": 2.0,
         "robust_fit": {
             "max_iter": 5,
             # Inlier band = mad_scale * MAD of residuals (deterministic).
@@ -110,6 +129,13 @@ _DEFAULT_CONFIG: dict[str, Any] = {
             "normal_scatter": 1.0,
             "suction_area": 1.5,
             "edge_clearance": 1.5,
+            "data_gaps": 1.0,
+            "depth_seam": 1.5,
+            "surface_warp": 1.5,
+            "normal_alignment": 1.5,
+            "surface_warp_robust": 1.5,
+            "suction_force": 2.0,
+            "wrench_lever": 1.5,
             "corridor_clear": 2.0,
         },
         # Margins are normalised by these scales (per check, in the check's unit)
@@ -122,6 +148,13 @@ _DEFAULT_CONFIG: dict[str, Any] = {
             "normal_scatter": 0.2,
             "suction_area": 1.0,
             "edge_clearance": 0.02,
+            "data_gaps": 0.08,
+            "depth_seam": 0.40,
+            "surface_warp": 0.008,
+            "normal_alignment": 30.0,
+            "surface_warp_robust": 0.006,
+            "suction_force": 2.0,
+            "wrench_lever": 0.5,
             "corridor_clear": 0.15,
         },
         # Final soft verdict threshold: accept when score >= this.

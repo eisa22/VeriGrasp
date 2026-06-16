@@ -12,8 +12,10 @@ from perception.bottom_inference.neighbors import (
     detect_global_gradient_plateaus,
     find_lateral_neighbors,
     find_neighbor_from_gradient_catalog,
+    find_neighbor_via_candidate_overlap,
     find_neighbor_via_depth_histogram,
     find_neighbor_via_gradient,
+    find_neighbor_via_matches,
 )
 from perception.bottom_inference.obb import fit_extruded_obb
 from perception.bottom_inference.scene_planes import (
@@ -32,33 +34,54 @@ def _resolve_neighbor_z(
     scene_z: float | None,
     scene_id: int | None,
     lateral_info,
+    *,
+    match_z: float | None = None,
+    match_id: str | None = None,
+    overlap_z: float | None = None,
+    overlap_id: str | None = None,
 ) -> tuple[float | None, str | None, str]:
-    """Pick the highest valid neighbour across all sources."""
-    candidates_z: list[tuple[float, str | None, str]] = []
+    """Pick the supporting neighbour height for bottom-plane inference.
+
+    Footprint-overlapping sources (match pool, SAM-candidate overlap, lateral
+    peers, global gradient plateaus) are preferred over ring-only Sobel /
+    histogram / scene-plane estimates so stacked parcels use the tier directly
+    below instead of a side-wall artefact from the search ring.
+    """
+    overlap_pool: list[tuple[float, str | None, str]] = []
+    if match_z is not None:
+        overlap_pool.append((float(match_z), match_id, "match"))
+    if overlap_z is not None:
+        overlap_pool.append((float(overlap_z), overlap_id, "overlap"))
+    if lateral_info.z_highest_neighbor is not None:
+        overlap_pool.append((
+            float(lateral_info.z_highest_neighbor),
+            lateral_info.highest_neighbor_id,
+            "lateral",
+        ))
     if gradient_global_z is not None:
         gid = (
             f"global_plateau_{gradient_global_id}"
             if gradient_global_id is not None
             else "global_plateau"
         )
-        candidates_z.append((gradient_global_z, gid, "gradient_global"))
+        overlap_pool.append((float(gradient_global_z), gid, "gradient_global"))
+
+    if overlap_pool:
+        best = max(overlap_pool, key=lambda x: x[0])
+        return best[0], best[1], best[2]
+
+    ring_pool: list[tuple[float, str | None, str]] = []
     if gradient_z is not None:
         gid = f"plateau_{gradient_label}" if gradient_label is not None else "plateau"
-        candidates_z.append((gradient_z, gid, "gradient"))
+        ring_pool.append((gradient_z, gid, "gradient"))
     if histogram_z is not None:
-        candidates_z.append((histogram_z, "depth_band", "histogram"))
+        ring_pool.append((histogram_z, "depth_band", "histogram"))
     if scene_z is not None:
         sid = f"scene_plane_{scene_id}" if scene_id is not None else "scene_plane"
-        candidates_z.append((scene_z, sid, "scene_plane"))
-    if lateral_info.z_highest_neighbor is not None:
-        candidates_z.append((
-            float(lateral_info.z_highest_neighbor),
-            lateral_info.highest_neighbor_id,
-            "lateral",
-        ))
-    if not candidates_z:
+        ring_pool.append((scene_z, sid, "scene_plane"))
+    if not ring_pool:
         return None, None, ""
-    best = max(candidates_z, key=lambda x: x[0])
+    best = max(ring_pool, key=lambda x: x[0])
     return best[0], best[1], best[2]
 
 
@@ -96,8 +119,9 @@ def infer_bottom_planes(
         depth: (H, W) absolute depth map. Required for gradient-based search.
         sobel_edges: (H, W) binary edge map (e.g. from Canny on depth).
         workspace_mask: (H, W) optional workspace gate.
-        match_neighbors / scene_pcd: kept for API compatibility, not used by
-            the gradient-only algorithm.
+        match_neighbors / scene_pcd: match_neighbors supplies Stage-5 kept and
+            dedup-excluded parcels for footprint-overlap stack support.
+            scene_pcd is kept for API compatibility.
     """
     if not candidates:
         return candidates
@@ -307,6 +331,18 @@ def infer_bottom_planes(
 
         lateral_info = find_lateral_neighbors(g, geom_index, config)
 
+        match_z = None
+        match_mid = None
+        match_status = None
+        if match_neighbors:
+            match_z, match_mid, match_status = find_neighbor_via_matches(
+                g, match_neighbors, config,
+            )
+
+        overlap_z, overlap_id = find_neighbor_via_candidate_overlap(
+            g, geom_index, config,
+        )
+
         if lateral_info.neighbor_ids:
             lat_summary = ", ".join(
                 f"{nid[:6]}@{t:+.3f}m"
@@ -326,6 +362,10 @@ def infer_bottom_planes(
             gradient_z, gradient_label,
             gradient_global_z, gradient_global_id,
             histogram_z, scene_z, scene_id, lateral_info,
+            match_z=match_z,
+            match_id=match_mid,
+            overlap_z=overlap_z,
+            overlap_id=overlap_id,
         )
 
         decision = decide_bottom(
@@ -372,6 +412,11 @@ def infer_bottom_planes(
         debug["scene_planes_qualifying"] = list(scene_qualifying)
         debug["scene_plane_rejections"] = dict(scene_rej)
         debug["z_neighbor_top_lateral"] = lateral_info.z_neighbor_top
+        debug["z_neighbor_top_match"] = match_z
+        debug["match_neighbor_id"] = match_mid
+        debug["match_neighbor_status"] = match_status
+        debug["z_neighbor_top_overlap"] = overlap_z
+        debug["overlap_neighbor_id"] = overlap_id
         debug["z_highest_neighbor"] = z_highest_neighbor
         debug["neighbor_source"] = source
         debug["highest_neighbor_id"] = highest_id

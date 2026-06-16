@@ -299,6 +299,32 @@ def find_neighbor_surface_via_scene(
     return z, n_used
 
 
+def find_neighbor_via_candidate_overlap(
+    target: CandidateGeometry,
+    geom_index: dict[str, CandidateGeometry],
+    config: dict,
+) -> tuple[float | None, str | None]:
+    """Highest top of another candidate whose XY footprint overlaps the target."""
+    tol = float(config.get("tolerance_m", 0.008))
+    min_iou = float(config.get("overlap_neighbor_min_iou", 0.05))
+    z_lowest = float(target.z_visible_min)
+
+    best_h: float | None = None
+    best_id: str | None = None
+    for cid, g in geom_index.items():
+        if cid == target.candidate_id:
+            continue
+        if g.top_surface_height >= z_lowest - tol:
+            continue
+        iou = footprint_iou(target.obb_footprint, g.obb_footprint)
+        if iou < min_iou:
+            continue
+        if best_h is None or g.top_surface_height > best_h:
+            best_h = float(g.top_surface_height)
+            best_id = cid
+    return best_h, best_id
+
+
 def find_neighbor_via_matches(
     target: CandidateGeometry,
     match_neighbors: list,
@@ -321,6 +347,10 @@ def find_neighbor_via_matches(
     z_pallet.'
 
     Returns (top_height, match_id, status) or (None, None, None).
+
+    When ``stack_closest_layer`` is true, the footprint-overlapping match with
+    the smallest vertical gap below ``z_visible_min`` wins (immediate stack tier).
+    Otherwise the highest qualifying top wins (legacy behaviour).
     """
     if not match_neighbors:
         return None, None, None
@@ -329,6 +359,7 @@ def find_neighbor_via_matches(
     min_iou = float(config.get("match_neighbor_min_iou", 0.05))
     max_dist = float(config.get("match_neighbor_max_dist_m", 0.40))
     z_lowest = float(target.z_visible_min)
+    closest = bool(config.get("stack_closest_layer", False))
 
     candidates: list[tuple[float, str, str, float, float]] = []  # (top, id, status, iou, dist)
 
@@ -347,8 +378,10 @@ def find_neighbor_via_matches(
     if not candidates:
         return None, None, None
 
-    # Highest qualifying top wins.
-    candidates.sort(key=lambda x: -x[0])
+    if closest:
+        candidates.sort(key=lambda x: (z_lowest - x[0], -x[0]))
+    else:
+        candidates.sort(key=lambda x: -x[0])
     best_h, best_id, best_status, best_iou, best_dist = candidates[0]
     print(
         f"[BOTTOM-NB] target z_min={z_lowest:.3f}m -> "

@@ -6,6 +6,10 @@ height_tolerance: 0.005
 tolerance_m: 0.008
 pallet_height_tolerance: 0.030
 edge_distance_m: 0.05
+overlap_neighbor_min_iou: 0.05
+match_neighbor_min_iou: 0.05
+match_neighbor_max_dist_m: 0.40
+stack_closest_layer: true
 global_gradient_plateaus:
   enabled: true                    # full-workspace Sobel plateau catalogue (Stage 5/6 edges)
   split_height_bands: true         # split large Sobel-CCs by height (separate front patches per box)

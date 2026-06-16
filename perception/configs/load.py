@@ -17,6 +17,12 @@ _DEFAULT_CONFIG: dict[str, Any] = {
     "tolerance_m": 0.008,
     "pallet_height_tolerance": 0.030,
     "edge_distance_m": 0.05,
+    # Footprint overlap for stacked parcels (SAM candidate + Stage-5 match pool).
+    "overlap_neighbor_min_iou": 0.05,
+    "match_neighbor_min_iou": 0.05,
+    "match_neighbor_max_dist_m": 0.40,
+    # When true, pick the vertically closest overlapping Stage-5 tier below.
+    "stack_closest_layer": True,
     "global_gradient_plateaus": {
         "enabled": True,
         "split_height_bands": True,
