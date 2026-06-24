@@ -1,7 +1,10 @@
 __pycache__/
 *.pyc
 venv/
+.venv/
 env/
+workspace/
+Results/
 *.zip
 *.npy
 *.png
