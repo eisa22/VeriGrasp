@@ -15,6 +15,24 @@ from perception.grasp_generation.centroid import build_centroid_disk_mask
 from perception.grasp_generation.types import SuctionGrasp
 
 
+def _orient_normals_to_direction(normals: np.ndarray, direction: np.ndarray) -> np.ndarray:
+    """Open3D-Äquivalent in NumPy (orient_normals_to_align_with_direction crasht auf macOS)."""
+    ref = np.asarray(direction, dtype=np.float64)
+    ref_norm = np.linalg.norm(ref)
+    if ref_norm <= 1e-12:
+        return normals
+    ref = ref / ref_norm
+    oriented = normals.astype(np.float64, copy=True)
+    flip = oriented @ ref < 0.0
+    oriented[flip] *= -1.0
+    return oriented.astype(np.float32, copy=False)
+
+
+def _normalize_normals(normals: np.ndarray) -> np.ndarray:
+    norms = np.linalg.norm(normals, axis=1, keepdims=True)
+    return normals / np.maximum(norms, 1e-12)
+
+
 def _std_filter(img: np.ndarray, wlen: int) -> np.ndarray:
     wmean, wsqrmean = (
         cv2.boxFilter(x, -1, (wlen, wlen), borderType=cv2.BORDER_REFLECT)
@@ -60,9 +78,9 @@ def estimate_suction_heatmap(
         o3d.geometry.KDTreeSearchParamKNN(normal_knn),
         fast_normal_computation=False,
     )
-    pc_o3d.orient_normals_to_align_with_direction(np.array([0.0, 0.0, -1.0]))
-    pc_o3d.normalize_normals()
-    normals = np.array(pc_o3d.normals).astype(np.float32)
+    normals = _normalize_normals(
+        _orient_normals_to_direction(np.asarray(pc_o3d.normals), np.array([0.0, 0.0, -1.0]))
+    )
 
     normal_map = np.zeros((height, width, 3), dtype=np.float32)
     normal_map[valid_idx] = normals

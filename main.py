@@ -11,6 +11,16 @@ Batch-Test ohne Visualisierung (alle Szenen, schlankes JSON in Results/):
 
 Pro Szene in Results/: dino, sam3d, bounding_box, grasp_candidate, verification (Kurzform), corridor (8 Eckpunkte).
 """
+from __future__ import annotations
+
+import os
+
+# macOS: Open3D + PyTorch teilen OpenMP; ohne diese Reihenfolge/Flags Segfault beim Import.
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+
+import open3d as _o3d  # noqa: F401 — vor torch laden
+
 from GroundingSAM.grounding_sam import run_grounding_dino_only
 from Segmentation.pallet_scene import prepare_session_context
 from Segmentation.sobel_refinement import apply_sobel_refinement

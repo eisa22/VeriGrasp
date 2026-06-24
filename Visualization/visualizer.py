@@ -2,9 +2,11 @@
 Visualization/visualizer.py
 Modul für 2D und 3D Visualisierung von Segmentierungsergebnissen.
 """
+from __future__ import annotations
+
 import numpy as np
-import torch
 import open3d as o3d
+import torch
 import cv2
 import os
 import json
@@ -35,8 +37,91 @@ from config import (
     MATCH_DEDUP_USE_DINO_BBOX,
     MATCH_DEDUP_USE_BBOX,
     MATCH_DEDUP_KEEP_CLOSER,
+    VIZ_ENABLE_3D,
+    VIZ_INTERACTIVE,
 )
 from path_utils import get_depth_path, get_rgb_path, load_session_depth
+
+
+def _vec3d(points) -> o3d.utility.Vector3dVector:
+    """Open3D-Vektor aus NumPy float64 (Python-Listen segfaulten nach torch/transformers)."""
+    return o3d.utility.Vector3dVector(np.asarray(points, dtype=np.float64))
+
+
+def _vec2i(lines) -> o3d.utility.Vector2iVector:
+    return o3d.utility.Vector2iVector(np.asarray(lines, dtype=np.int32))
+
+
+def _vec3i(triangles) -> o3d.utility.Vector3iVector:
+    return o3d.utility.Vector3iVector(np.asarray(triangles, dtype=np.int32))
+
+
+def _apply_rigid_transform(
+    geom,
+    R: np.ndarray | None = None,
+    t: np.ndarray | None = None,
+) -> None:
+    """Rigid transform in NumPy (rotate/translate crashen auf macOS nach torch/transformers)."""
+    if R is not None:
+        R = np.asarray(R, dtype=np.float64).reshape(3, 3)
+    if t is not None:
+        t = np.asarray(t, dtype=np.float64).reshape(3)
+    if isinstance(geom, o3d.geometry.TriangleMesh):
+        v = np.asarray(geom.vertices, dtype=np.float64)
+        if R is not None:
+            v = v @ R.T
+        if t is not None:
+            v = v + t
+        geom.vertices = _vec3d(v)
+        return
+    if isinstance(geom, o3d.geometry.PointCloud):
+        v = np.asarray(geom.points, dtype=np.float64)
+        if R is not None:
+            v = v @ R.T
+        if t is not None:
+            v = v + t
+        geom.points = _vec3d(v)
+
+
+def _paint_uniform(geom, color) -> None:
+    """Ersetzt paint_uniform_color (segfault auf macOS nach torch/transformers)."""
+    c = np.asarray(color, dtype=np.float64).reshape(-1)[:3]
+    if isinstance(geom, o3d.geometry.PointCloud):
+        n = len(geom.points)
+        if n:
+            geom.colors = _vec3d(np.tile(c, (n, 1)))
+        return
+    if isinstance(geom, o3d.geometry.LineSet):
+        n = len(geom.lines)
+        if n:
+            geom.colors = _vec3d(np.tile(c, (n, 1)))
+        return
+    if isinstance(geom, o3d.geometry.TriangleMesh):
+        n = len(geom.vertices)
+        if n:
+            geom.vertex_colors = _vec3d(np.tile(c, (n, 1)))
+        return
+    geom.paint_uniform_color(np.asarray(color, dtype=np.float64).tolist())
+
+
+def _draw_geometries(geoms, window_name: str = "Open3D") -> None:
+    """Zeigt 3D-Geometrien an (interaktiv oder headless auf macOS)."""
+    if not geoms:
+        return
+    if VIZ_INTERACTIVE:
+        o3d.visualization.draw_geometries(geoms, window_name=window_name)
+        return
+    vis = o3d.visualization.Visualizer()
+    vis.create_window(window_name=window_name, width=1280, height=720, visible=False)
+    for geom in geoms:
+        vis.add_geometry(geom)
+    opt = vis.get_render_option()
+    opt.point_size = 2.0
+    opt.background_color = np.asarray([0.1, 0.1, 0.1])
+    vis.poll_events()
+    vis.update_renderer()
+    vis.run()
+    vis.destroy_window()
 
 
 def _intrinsics_for_session(session_context, width: int, height: int) -> tuple[float, float, float, float]:
@@ -203,9 +288,9 @@ _OBB_FACE_TRIANGLES = (
 def _make_obb_wireframe(corners_cam: np.ndarray, color: list[float]) -> o3d.geometry.LineSet:
     corners = _camera_to_o3d(corners_cam)
     ls = o3d.geometry.LineSet()
-    ls.points = o3d.utility.Vector3dVector(corners)
-    ls.lines = o3d.utility.Vector2iVector(list(_OBB_EDGE_INDICES))
-    ls.colors = o3d.utility.Vector3dVector([color for _ in _OBB_EDGE_INDICES])
+    ls.points = _vec3d(corners)
+    ls.lines = _vec2i(list(_OBB_EDGE_INDICES))
+    ls.colors = _vec3d([color for _ in _OBB_EDGE_INDICES])
     return ls
 
 
@@ -217,9 +302,9 @@ def _make_obb_solid_mesh(
     """Vollflächiger Quader-Mesh (alle 6 Flächen) mit abgedunkelter Farbe."""
     corners = _camera_to_o3d(corners_cam)
     mesh = o3d.geometry.TriangleMesh()
-    mesh.vertices = o3d.utility.Vector3dVector(corners)
-    mesh.triangles = o3d.utility.Vector3iVector(list(_OBB_FACE_TRIANGLES))
-    mesh.paint_uniform_color([c * shade for c in color])
+    mesh.vertices = _vec3d(corners)
+    mesh.triangles = _vec3i(_OBB_FACE_TRIANGLES)
+    _paint_uniform(mesh, [c * shade for c in color])
     mesh.compute_vertex_normals()
     return mesh
 
@@ -232,7 +317,7 @@ def _make_cylinder_edge(p0: np.ndarray, p1: np.ndarray, radius: float, color: li
         return None
     cyl = o3d.geometry.TriangleMesh.create_cylinder(radius=radius, height=length, resolution=12, split=1)
     cyl.compute_vertex_normals()
-    cyl.paint_uniform_color(color)
+    _paint_uniform(cyl, color)
     z_axis = np.array([0.0, 0.0, 1.0])
     axis = vec / length
     rot_axis = np.cross(z_axis, axis)
@@ -240,7 +325,7 @@ def _make_cylinder_edge(p0: np.ndarray, p1: np.ndarray, radius: float, color: li
     if rot_axis_norm < 1e-9:
         if axis[2] < 0:
             R = np.diag([1.0, -1.0, -1.0])
-            cyl.rotate(R, center=np.zeros(3))
+            _apply_rigid_transform(cyl, R=R)
     else:
         rot_axis /= rot_axis_norm
         angle = float(np.arccos(np.clip(np.dot(z_axis, axis), -1.0, 1.0)))
@@ -250,9 +335,9 @@ def _make_cylinder_edge(p0: np.ndarray, p1: np.ndarray, radius: float, color: li
             [-rot_axis[1], rot_axis[0], 0.0],
         ])
         R = np.eye(3) + np.sin(angle) * K + (1 - np.cos(angle)) * (K @ K)
-        cyl.rotate(R, center=np.zeros(3))
+        _apply_rigid_transform(cyl, R=R)
     midpoint = 0.5 * (p0 + p1)
-    cyl.translate(midpoint)
+    _apply_rigid_transform(cyl, t=midpoint)
     return cyl
 
 
@@ -281,8 +366,8 @@ def _make_obb_corner_markers(
     for p in corners:
         s = o3d.geometry.TriangleMesh.create_sphere(radius=radius, resolution=8)
         s.compute_vertex_normals()
-        s.paint_uniform_color(color)
-        s.translate(p)
+        _paint_uniform(s, color)
+        _apply_rigid_transform(s, t=p)
         spheres.append(s)
     return spheres
 
@@ -339,10 +424,10 @@ def _gradient_plateau_geometries(
                 if p is None or p.points_3d is None or len(p.points_3d) == 0:
                     continue
                 pcd = o3d.geometry.PointCloud()
-                pcd.points = o3d.utility.Vector3dVector(_camera_to_o3d(p.points_3d))
+                pcd.points = _vec3d(_camera_to_o3d(p.points_3d))
                 if len(p.points_3d) > 400:
                     pcd = pcd.voxel_down_sample(voxel_size=0.004)
-                pcd.paint_uniform_color(color)
+                _paint_uniform(pcd, color)
                 geoms.append(pcd)
             print(
                 f"  [BOTTOM-VIZ] Paket '{label}': {len(ids)} Nachbar-Fläche(n) markiert "
@@ -357,10 +442,10 @@ def _gradient_plateau_geometries(
         if pts is None or len(pts) == 0:
             continue
         pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(_camera_to_o3d(pts))
+        pcd.points = _vec3d(_camera_to_o3d(pts))
         if len(pts) > 600:
             pcd = pcd.voxel_down_sample(voxel_size=0.005)
-        pcd.paint_uniform_color(dim)
+        _paint_uniform(pcd, dim)
         geoms.append(pcd)
 
     return geoms
@@ -393,10 +478,10 @@ def _scene_plane_geometries(
             continue
         color = _height_to_rgb(sp.height_above_pallet, h_min, h_max)
         pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(_camera_to_o3d(pts))
+        pcd.points = _vec3d(_camera_to_o3d(pts))
         if len(pts) > 800:
             pcd = pcd.voxel_down_sample(voxel_size=0.005)
-        pcd.paint_uniform_color(color)
+        _paint_uniform(pcd, color)
         geoms.append(pcd)
     return geoms
 
@@ -422,8 +507,8 @@ def visualize_bottom_inference_3d(
 
     all_points, _, _, _, base_colors, _ = _load_pcd_for_viz(session_path, session_context)
     bg = o3d.geometry.PointCloud()
-    bg.points = o3d.utility.Vector3dVector(all_points)
-    bg.colors = o3d.utility.Vector3dVector(base_colors * 0.45)
+    bg.points = _vec3d(all_points)
+    bg.colors = _vec3d(base_colors * 0.45)
     geoms: list = [bg]
 
     if gradient_plateaus:
@@ -449,9 +534,9 @@ def visualize_bottom_inference_3d(
             np.array([[-0.4, 0.0, z_pal], [0.4, 0.0, z_pal], [0.0, -0.3, z_pal], [0.0, 0.3, z_pal]])
         )
         pal_ls = o3d.geometry.LineSet()
-        pal_ls.points = o3d.utility.Vector3dVector(pal_pts)
-        pal_ls.lines = o3d.utility.Vector2iVector([[0, 1], [2, 3]])
-        pal_ls.paint_uniform_color([0.6, 0.6, 0.6])
+        pal_ls.points = _vec3d(pal_pts)
+        pal_ls.lines = _vec2i([[0, 1], [2, 3]])
+        _paint_uniform(pal_ls, [0.6, 0.6, 0.6])
         geoms.append(pal_ls)
 
     method_counts: dict[str, int] = {}
@@ -466,10 +551,10 @@ def visualize_bottom_inference_3d(
         pts = np.asarray(cand.points_3d, dtype=np.float64)
         if len(pts) > 0:
             pcd_top = o3d.geometry.PointCloud()
-            pcd_top.points = o3d.utility.Vector3dVector(_camera_to_o3d(pts))
+            pcd_top.points = _vec3d(_camera_to_o3d(pts))
             if len(pts) > 200:
                 pcd_top = pcd_top.voxel_down_sample(voxel_size=0.008)
-            pcd_top.paint_uniform_color([min(1.0, c + 0.1) for c in color])
+            _paint_uniform(pcd_top, [min(1.0, c + 0.1) for c in color])
             geoms.append(pcd_top)
 
         corners = np.asarray(b.parcel_obb["corners_3d"], dtype=np.float64)
@@ -487,7 +572,7 @@ def visualize_bottom_inference_3d(
     dist = ", ".join(f"{k}={v}" for k, v in sorted(method_counts.items()))
     title = f"{window_name} ({dist})" if dist else window_name
     print(f"[VIZ] Bottom-Inference: {len(candidates)} Kandidaten, {dist}")
-    o3d.visualization.draw_geometries(geoms, window_name=title)
+    _draw_geometries(geoms, window_name=title)
 
 
 def visualize_selected_target_3d(
@@ -517,8 +602,8 @@ def visualize_selected_target_3d(
 
     all_points, _, _, _, base_colors, _ = _load_pcd_for_viz(session_path, session_context)
     bg = o3d.geometry.PointCloud()
-    bg.points = o3d.utility.Vector3dVector(all_points)
-    bg.colors = o3d.utility.Vector3dVector(base_colors * 0.35)
+    bg.points = _vec3d(all_points)
+    bg.colors = _vec3d(base_colors * 0.35)
     geoms: list = [bg]
 
     if scene_planes:
@@ -527,10 +612,10 @@ def visualize_selected_target_3d(
             if pts is None or len(pts) == 0:
                 continue
             pcd = o3d.geometry.PointCloud()
-            pcd.points = o3d.utility.Vector3dVector(_camera_to_o3d(pts))
+            pcd.points = _vec3d(_camera_to_o3d(pts))
             if len(pts) > 800:
                 pcd = pcd.voxel_down_sample(voxel_size=0.005)
-            pcd.paint_uniform_color([0.30, 0.30, 0.30])
+            _paint_uniform(pcd, [0.30, 0.30, 0.30])
             geoms.append(pcd)
 
     for cand in candidates:
@@ -577,7 +662,7 @@ def visualize_selected_target_3d(
             lab = c.debug.get("label", c.candidate_id[:6])
             print(f"             '{lab}': {reason}")
 
-    o3d.visualization.draw_geometries(geoms, window_name=title)
+    _draw_geometries(geoms, window_name=title)
 
 
 def _make_centroid_zone_ring(
@@ -600,9 +685,9 @@ def _make_centroid_zone_ring(
     pts_o3d = _camera_to_o3d(pts_cam)
     lines = [[i, (i + 1) % n_segments] for i in range(n_segments)]
     ring = o3d.geometry.LineSet()
-    ring.points = o3d.utility.Vector3dVector(pts_o3d)
-    ring.lines = o3d.utility.Vector2iVector(np.asarray(lines, dtype=np.int32))
-    ring.paint_uniform_color(color if color is not None else [0.2, 0.85, 1.0])
+    ring.points = _vec3d(pts_o3d)
+    ring.lines = _vec2i(np.asarray(lines, dtype=np.int32))
+    _paint_uniform(ring, color if color is not None else [0.2, 0.85, 1.0])
     return ring
 
 
@@ -642,8 +727,8 @@ def visualize_suction_grasps_3d(
 
     all_points, _, _, _, base_colors, _ = _load_pcd_for_viz(session_path, session_context)
     bg = o3d.geometry.PointCloud()
-    bg.points = o3d.utility.Vector3dVector(all_points)
-    bg.colors = o3d.utility.Vector3dVector(base_colors * 0.30)
+    bg.points = _vec3d(all_points)
+    bg.colors = _vec3d(base_colors * 0.30)
     geoms: list = [bg]
 
     if scene_planes:
@@ -652,10 +737,10 @@ def visualize_suction_grasps_3d(
             if pts is None or len(pts) == 0:
                 continue
             pcd = o3d.geometry.PointCloud()
-            pcd.points = o3d.utility.Vector3dVector(_camera_to_o3d(pts))
+            pcd.points = _vec3d(_camera_to_o3d(pts))
             if len(pts) > 800:
                 pcd = pcd.voxel_down_sample(voxel_size=0.005)
-            pcd.paint_uniform_color([0.30, 0.30, 0.30])
+            _paint_uniform(pcd, [0.30, 0.30, 0.30])
             geoms.append(pcd)
 
     for cand in candidates or []:
@@ -681,8 +766,8 @@ def visualize_suction_grasps_3d(
         if radius_m > 0:
             geoms.append(_make_centroid_zone_ring(anchor, radius_m))
             anchor_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.008)
-            anchor_sphere.translate(_camera_to_o3d(anchor.reshape(1, 3))[0])
-            anchor_sphere.paint_uniform_color([0.2, 0.85, 1.0])
+            _apply_rigid_transform(anchor_sphere, t=_camera_to_o3d(anchor.reshape(1, 3))[0])
+            _paint_uniform(anchor_sphere, [0.2, 0.85, 1.0])
             anchor_sphere.compute_vertex_normals()
             geoms.append(anchor_sphere)
 
@@ -696,8 +781,8 @@ def visualize_suction_grasps_3d(
         pos_o3d = _camera_to_o3d(g.position.reshape(1, 3))[0]
         color = [0.15, 0.95, 0.25] if single_grasp else _score_to_grasp_color(g.score, s_min, s_max)
         sphere = o3d.geometry.TriangleMesh.create_sphere(radius=sphere_r)
-        sphere.translate(pos_o3d)
-        sphere.paint_uniform_color(color)
+        _apply_rigid_transform(sphere, t=pos_o3d)
+        _paint_uniform(sphere, color)
         sphere.compute_vertex_normals()
         geoms.append(sphere)
 
@@ -739,7 +824,7 @@ def visualize_suction_grasps_3d(
                 f"             #{g.rank}: score={g.score:.3f} "
                 f"pos=({g.position[0]:.3f},{g.position[1]:.3f},{g.position[2]:.3f})"
             )
-    o3d.visualization.draw_geometries(geoms, window_name=title)
+    _draw_geometries(geoms, window_name=title)
 
 
 def visualize_best_suction_grasp_3d(
@@ -811,8 +896,8 @@ def visualize_gripper_footprint_3d(
 
     all_points, _, _, _, base_colors, _ = _load_pcd_for_viz(session_path, session_context)
     bg = o3d.geometry.PointCloud()
-    bg.points = o3d.utility.Vector3dVector(all_points)
-    bg.colors = o3d.utility.Vector3dVector(base_colors * 0.25)
+    bg.points = _vec3d(all_points)
+    bg.colors = _vec3d(base_colors * 0.25)
     geoms: list = [bg]
 
     primary_id = candidate.candidate_id
@@ -832,8 +917,8 @@ def visualize_gripper_footprint_3d(
     p_target = target_pointcloud(depth, candidate.mask_2d, intr)
     if len(p_target):
         tgt = o3d.geometry.PointCloud()
-        tgt.points = o3d.utility.Vector3dVector(_camera_to_o3d(p_target))
-        tgt.paint_uniform_color([0.20, 0.90, 0.35])
+        tgt.points = _vec3d(_camera_to_o3d(p_target))
+        _paint_uniform(tgt, [0.20, 0.90, 0.35])
         geoms.append(tgt)
 
     footprint_color = [1.0, 0.85, 0.10]
@@ -849,8 +934,8 @@ def visualize_gripper_footprint_3d(
     )
 
     grasp_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.012)
-    grasp_sphere.translate(_camera_to_o3d(p_g.reshape(1, 3))[0])
-    grasp_sphere.paint_uniform_color([0.15, 0.95, 0.25])
+    _apply_rigid_transform(grasp_sphere, t=_camera_to_o3d(p_g.reshape(1, 3))[0])
+    _paint_uniform(grasp_sphere, [0.15, 0.95, 0.25])
     grasp_sphere.compute_vertex_normals()
     geoms.append(grasp_sphere)
 
@@ -865,7 +950,7 @@ def visualize_gripper_footprint_3d(
         f"[GRIPPER-VIZ] Footprint {grip.width_m*1000:.0f}x{grip.length_m*1000:.0f}mm "
         f"an Greifpunkt, {orient}"
     )
-    o3d.visualization.draw_geometries(geoms, window_name=title)
+    _draw_geometries(geoms, window_name=title)
 
 
 def visualize_extraction_corridor_3d(
@@ -913,8 +998,8 @@ def visualize_extraction_corridor_3d(
 
     all_points, _, _, _, base_colors, _ = _load_pcd_for_viz(session_path, session_context)
     bg = o3d.geometry.PointCloud()
-    bg.points = o3d.utility.Vector3dVector(all_points)
-    bg.colors = o3d.utility.Vector3dVector(base_colors * 0.25)
+    bg.points = _vec3d(all_points)
+    bg.colors = _vec3d(base_colors * 0.25)
     geoms: list = [bg]
 
     primary_id = candidate.candidate_id
@@ -944,14 +1029,14 @@ def visualize_extraction_corridor_3d(
     )
 
     grasp_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.014)
-    grasp_sphere.translate(_camera_to_o3d(p_g.reshape(1, 3))[0])
-    grasp_sphere.paint_uniform_color([0.15, 0.95, 0.25])
+    _apply_rigid_transform(grasp_sphere, t=_camera_to_o3d(p_g.reshape(1, 3))[0])
+    _paint_uniform(grasp_sphere, [0.15, 0.95, 0.25])
     grasp_sphere.compute_vertex_normals()
     geoms.append(grasp_sphere)
 
     center_sphere = o3d.geometry.TriangleMesh.create_sphere(radius=0.008)
-    center_sphere.translate(_camera_to_o3d(p_center.reshape(1, 3))[0])
-    center_sphere.paint_uniform_color(corridor_color)
+    _apply_rigid_transform(center_sphere, t=_camera_to_o3d(p_center.reshape(1, 3))[0])
+    _paint_uniform(center_sphere, corridor_color)
     center_sphere.compute_vertex_normals()
     geoms.append(center_sphere)
 
@@ -966,7 +1051,7 @@ def visualize_extraction_corridor_3d(
         f"[CORRIDOR-VIZ] Entnahmekorridor: halb={h_long*1000:.0f}x{h_short*1000:.0f}mm "
         f"lift={lift_h:.2f}m top={z_top:.3f}m ({source})"
     )
-    o3d.visualization.draw_geometries(geoms, window_name=title)
+    _draw_geometries(geoms, window_name=title)
 
 
 _VERIF_PASS_COLOR = [0.15, 0.92, 0.30]
@@ -1007,11 +1092,11 @@ def _make_ring_cam(center_cam, radius, color, n=48):
     )
     pts_o3d = _camera_to_o3d(pts)
     ls = o3d.geometry.LineSet()
-    ls.points = o3d.utility.Vector3dVector(pts_o3d)
-    ls.lines = o3d.utility.Vector2iVector(
+    ls.points = _vec3d(pts_o3d)
+    ls.lines = _vec2i(
         np.asarray([[i, (i + 1) % n] for i in range(n)], dtype=np.int32)
     )
-    ls.paint_uniform_color(color)
+    _paint_uniform(ls, color)
     return ls
 
 
@@ -1034,9 +1119,9 @@ def _make_gripper_footprint_rect(
     corners_cam = unproject_from_plane_xy(corners_xy, plane, heights=h)
     pts_o3d = _camera_to_o3d(corners_cam)
     ls = o3d.geometry.LineSet()
-    ls.points = o3d.utility.Vector3dVector(pts_o3d)
-    ls.lines = o3d.utility.Vector2iVector(np.asarray([[0, 1], [1, 2], [2, 3], [3, 0]], dtype=np.int32))
-    ls.paint_uniform_color(color)
+    ls.points = _vec3d(pts_o3d)
+    ls.lines = _vec2i(np.asarray([[0, 1], [1, 2], [2, 3], [3, 0]], dtype=np.int32))
+    _paint_uniform(ls, color)
     return ls
 
 
@@ -1065,9 +1150,9 @@ def _make_corridor_box_wireframe(
         + [(i, i + 4) for i in range(4)]
     )
     ls = o3d.geometry.LineSet()
-    ls.points = o3d.utility.Vector3dVector(pts)
-    ls.lines = o3d.utility.Vector2iVector(np.asarray(lines, dtype=np.int32))
-    ls.paint_uniform_color(color)
+    ls.points = _vec3d(pts)
+    ls.lines = _vec2i(np.asarray(lines, dtype=np.int32))
+    _paint_uniform(ls, color)
     return [ls]
 
 
@@ -1136,8 +1221,8 @@ def _make_text_panel(rows, anchor, line_height_m: float = 0.010, gap: float = 1.
             verts[:, 0] += ax
             verts[:, 1] += ay - i * step
             verts[:, 2] += az
-            tm.vertices = o3d.utility.Vector3dVector(verts)
-            tm.vertex_colors = o3d.utility.Vector3dVector(
+            tm.vertices = _vec3d(verts)
+            tm.vertex_colors = _vec3d(
                 np.tile(np.asarray(color, dtype=np.float64), (len(tm.vertices), 1))
             )
             tm.compute_vertex_normals()
@@ -1172,7 +1257,7 @@ def _show_verif_check(geoms, title: str, check) -> None:
     flag = "PASS (gruen)" if (check is not None and check.passed) else "FAIL (rot)"
     print(f"[VERIFY-VIZ] {title} ({flag}):")
     _log_verif_check(check)
-    o3d.visualization.draw_geometries(geoms, window_name=title)
+    _draw_geometries(geoms, window_name=title)
 
 
 def _mask_invalid_points_on_pallet(
@@ -1284,14 +1369,14 @@ def visualize_verification_3d(
 
     def _base_cloud(dim=0.30):
         bg = o3d.geometry.PointCloud()
-        bg.points = o3d.utility.Vector3dVector(base_points)
-        bg.colors = o3d.utility.Vector3dVector(base_colors * dim)
+        bg.points = _vec3d(base_points)
+        bg.colors = _vec3d(base_colors * dim)
         return bg
 
     def _grasp_sphere(color, radius=0.012):
         s = o3d.geometry.TriangleMesh.create_sphere(radius=radius)
-        s.translate(_camera_to_o3d(p_g.reshape(1, 3))[0])
-        s.paint_uniform_color(color)
+        _apply_rigid_transform(s, t=_camera_to_o3d(p_g.reshape(1, 3))[0])
+        _paint_uniform(s, color)
         s.compute_vertex_normals()
         return s
 
@@ -1313,14 +1398,14 @@ def visualize_verification_3d(
         geoms_ex = [_base_cloud()]
         if len(p_target):
             valid_pcd = o3d.geometry.PointCloud()
-            valid_pcd.points = o3d.utility.Vector3dVector(_camera_to_o3d(p_target))
-            valid_pcd.paint_uniform_color([0.20, 0.90, 0.35])
+            valid_pcd.points = _vec3d(_camera_to_o3d(p_target))
+            _paint_uniform(valid_pcd, [0.20, 0.90, 0.35])
             geoms_ex.append(valid_pcd)
         p_invalid = _mask_invalid_points_on_pallet(depth, mask, intr, z_pallet)
         if len(p_invalid):
             hole_pcd = o3d.geometry.PointCloud()
-            hole_pcd.points = o3d.utility.Vector3dVector(_camera_to_o3d(p_invalid))
-            hole_pcd.paint_uniform_color([0.95, 0.20, 0.20])
+            hole_pcd.points = _vec3d(_camera_to_o3d(p_invalid))
+            _paint_uniform(hole_pcd, [0.95, 0.20, 0.20])
             geoms_ex.append(hole_pcd)
         geoms_ex.append(
             _grasp_sphere(_verif_status_color(ex.passed if ex is not None else False))
@@ -1340,17 +1425,17 @@ def visualize_verification_3d(
             g_xy = project_to_plane_xy(p_g.reshape(1, 3), plane)[0]
             in_win = np.linalg.norm(xy - g_xy[None, :], axis=1) <= win_r
             win_pcd = o3d.geometry.PointCloud()
-            win_pcd.points = o3d.utility.Vector3dVector(
+            win_pcd.points = _vec3d(
                 _camera_to_o3d(p_target[in_win])
             )
-            win_pcd.paint_uniform_color([0.20, 0.90, 0.35])
+            _paint_uniform(win_pcd, [0.20, 0.90, 0.35])
             geoms_hm.append(win_pcd)
             if np.any(~in_win):
                 rest_pcd = o3d.geometry.PointCloud()
-                rest_pcd.points = o3d.utility.Vector3dVector(
+                rest_pcd.points = _vec3d(
                     _camera_to_o3d(p_target[~in_win])
                 )
-                rest_pcd.paint_uniform_color([1.0, 0.55, 0.10])
+                _paint_uniform(rest_pcd, [1.0, 0.55, 0.10])
                 geoms_hm.append(rest_pcd)
             geoms_hm.append(
                 _make_ring_cam(
@@ -1414,13 +1499,13 @@ def visualize_verification_3d(
                     near_pts = p_full[near]
                     if inside.any():
                         inl = o3d.geometry.PointCloud()
-                        inl.points = o3d.utility.Vector3dVector(_camera_to_o3d(near_pts[inside]))
-                        inl.paint_uniform_color([0.20, 0.90, 0.35])
+                        inl.points = _vec3d(_camera_to_o3d(near_pts[inside]))
+                        _paint_uniform(inl, [0.20, 0.90, 0.35])
                         geoms_bc.append(inl)
                     if np.any(~inside):
                         outl = o3d.geometry.PointCloud()
-                        outl.points = o3d.utility.Vector3dVector(_camera_to_o3d(near_pts[~inside]))
-                        outl.paint_uniform_color([0.95, 0.20, 0.20])
+                        outl.points = _vec3d(_camera_to_o3d(near_pts[~inside]))
+                        _paint_uniform(outl, [0.95, 0.20, 0.20])
                         geoms_bc.append(outl)
             except (KeyError, TypeError, ValueError):
                 pass
@@ -1455,7 +1540,7 @@ def visualize_verification_3d(
 
             bc_title = f"STUFE 1c OBB-Plausibilitaet: {bverdict} (gruen=Inlier, rot=Outlier)"
             print(f"[VERIFY-VIZ] Stufe 1c OBB-Check ({bverdict}): {'; '.join(reasons)}")
-            o3d.visualization.draw_geometries(geoms_bc, window_name=bc_title)
+            _draw_geometries(geoms_bc, window_name=bc_title)
 
     # ------------------------------------------------------------------ Stage 2
     st2 = _verif_stage(verification_result, 2)
@@ -1472,15 +1557,15 @@ def visualize_verification_3d(
                 min_points=int(cfg["stage2"]["robust_fit"]["min_points"]),
             )
             inl = o3d.geometry.PointCloud()
-            inl.points = o3d.utility.Vector3dVector(_camera_to_o3d(p_grip[inlier_mask]))
-            inl.paint_uniform_color([0.20, 0.90, 0.35])
+            inl.points = _vec3d(_camera_to_o3d(p_grip[inlier_mask]))
+            _paint_uniform(inl, [0.20, 0.90, 0.35])
             geoms.append(inl)
             if np.any(~inlier_mask):
                 out = o3d.geometry.PointCloud()
-                out.points = o3d.utility.Vector3dVector(
+                out.points = _vec3d(
                     _camera_to_o3d(p_grip[~inlier_mask])
                 )
-                out.paint_uniform_color([0.95, 0.20, 0.20])
+                _paint_uniform(out, [0.95, 0.20, 0.20])
                 geoms.append(out)
             # Fitted normal (blue) vs. approach axis (gray) at the grasp.
             arrow_len = 0.08
@@ -1548,7 +1633,7 @@ def visualize_verification_3d(
         grasp_z = float(_camera_to_o3d(p_g.reshape(1, 3))[0][2])
         anchor = _scene_panel_anchor(base_points, grasp_z)
         geoms.extend(_make_text_panel(panel_rows, anchor))
-        o3d.visualization.draw_geometries(geoms, window_name=title)
+        _draw_geometries(geoms, window_name=title)
 
     # ------------------------------------------------------------------ Stage 3
     st3 = _verif_stage(verification_result, 3)
@@ -1612,8 +1697,8 @@ def visualize_verification_3d(
         )
         if np.any(block):
             blk = o3d.geometry.PointCloud()
-            blk.points = o3d.utility.Vector3dVector(_camera_to_o3d(p_full[block]))
-            blk.paint_uniform_color([0.95, 0.10, 0.10])
+            blk.points = _vec3d(_camera_to_o3d(p_full[block]))
+            _paint_uniform(blk, [0.95, 0.10, 0.10])
             geoms.append(blk)
 
         geoms.extend(
@@ -1647,7 +1732,7 @@ def visualize_verification_3d(
                 f"             {('OK ' if c.passed else 'FAIL')} {c.name}: "
                 f"raw={c.raw_value:.4f} thr={c.threshold:.4f} margin={c.margin:.4f}"
             )
-        o3d.visualization.draw_geometries(geoms, window_name=title)
+        _draw_geometries(geoms, window_name=title)
 
     print(f"[VERIFY-VIZ] Verifikations-Visualisierung abgeschlossen (Verdikt={verdict}).")
 
@@ -1661,8 +1746,8 @@ def visualize_3d_colored(
     all_points, _, H, W, base_colors, _ = _load_pcd_for_viz(session_path, session_context)
 
     full_pcd = o3d.geometry.PointCloud()
-    full_pcd.points = o3d.utility.Vector3dVector(all_points)
-    full_pcd.colors = o3d.utility.Vector3dVector(base_colors)
+    full_pcd.points = _vec3d(all_points)
+    full_pcd.colors = _vec3d(base_colors)
     
     geoms = [full_pcd]
     unique_colors = _generate_unique_colors(len(masks))
@@ -1680,24 +1765,24 @@ def visualize_3d_colored(
         segment_points = all_points[linear_idx]
         
         pcd_segment = o3d.geometry.PointCloud()
-        pcd_segment.points = o3d.utility.Vector3dVector(segment_points)
+        pcd_segment.points = _vec3d(segment_points)
         color = unique_colors[i]
         
         if len(segment_points) > 100:
             pcd_surface = pcd_segment.voxel_down_sample(voxel_size=0.01)
             pcd_surface, _ = pcd_surface.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)
-            pcd_surface.colors = o3d.utility.Vector3dVector(
+            pcd_surface.colors = _vec3d(
                 np.tile(color, (len(pcd_surface.points), 1))
             )
         else:
             pcd_surface = pcd_segment
-            pcd_surface.colors = o3d.utility.Vector3dVector(
+            pcd_surface.colors = _vec3d(
                 np.tile(color, (len(segment_points), 1))
             )
         
         geoms.append(pcd_surface)
     
-    o3d.visualization.draw_geometries(geoms, window_name=window_name)
+    _draw_geometries(geoms, window_name=window_name)
 
 
 def visualize_3d_rgbd(session_path, session_context=None):
@@ -1707,10 +1792,10 @@ def visualize_3d_rgbd(session_path, session_context=None):
     all_points, _, _, _, base_colors, _ = _load_pcd_for_viz(session_path, session_context)
 
     pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(all_points)
-    pcd.colors = o3d.utility.Vector3dVector(base_colors)
+    pcd.points = _vec3d(all_points)
+    pcd.colors = _vec3d(base_colors)
     
-    o3d.visualization.draw_geometries([pcd], window_name="1/6: RGBD Punktwolke (Original-Farben)")
+    _draw_geometries([pcd], window_name="1/6: RGBD Punktwolke (Original-Farben)")
 
 
 def visualize_dino_boxes(session_path, dino_debug, stage="raw", session_context=None):
@@ -1753,8 +1838,8 @@ def visualize_dino_boxes(session_path, dino_debug, stage="raw", session_context=
         return
     
     full_pcd = o3d.geometry.PointCloud()
-    full_pcd.points = o3d.utility.Vector3dVector(all_points)
-    full_pcd.colors = o3d.utility.Vector3dVector(base_colors)
+    full_pcd.points = _vec3d(all_points)
+    full_pcd.colors = _vec3d(base_colors)
     
     geoms = [full_pcd]
     unique_colors = _generate_unique_colors(len(boxes))
@@ -1818,12 +1903,12 @@ def visualize_dino_boxes(session_path, dino_debug, stage="raw", session_context=
         ]
         
         line_set = o3d.geometry.LineSet()
-        line_set.points = o3d.utility.Vector3dVector(corners)
-        line_set.lines = o3d.utility.Vector2iVector(lines)
+        line_set.points = _vec3d(corners)
+        line_set.lines = _vec2i(lines)
         
         # Farbe für die Linien
         color = unique_colors[i]
-        line_set.colors = o3d.utility.Vector3dVector([color for _ in range(len(lines))])
+        line_set.colors = _vec3d([color for _ in range(len(lines))])
         
         geoms.append(line_set)
         
@@ -1834,12 +1919,12 @@ def visualize_dino_boxes(session_path, dino_debug, stage="raw", session_context=
         
         # Kleine Punktwolke für das Label (ID-Nummer)
         label_pcd = o3d.geometry.PointCloud()
-        label_pcd.points = o3d.utility.Vector3dVector([center_3d])
-        label_pcd.colors = o3d.utility.Vector3dVector([color])
+        label_pcd.points = _vec3d([center_3d])
+        label_pcd.colors = _vec3d([color])
         geoms.append(label_pcd)
     
     print(f"[VIZ] Zeige {len(boxes)} DINO Box-Rahmen ({stage})")
-    o3d.visualization.draw_geometries(geoms, window_name=window_title)
+    _draw_geometries(geoms, window_name=window_title)
 
 
 def _build_dino_box_wireframes(
@@ -1900,10 +1985,10 @@ def _build_dino_box_wireframes(
         lines = [[0, 1], [1, 2], [2, 3], [3, 0]]
 
         line_set = o3d.geometry.LineSet()
-        line_set.points = o3d.utility.Vector3dVector(corners)
-        line_set.lines = o3d.utility.Vector2iVector(lines)
+        line_set.points = _vec3d(corners)
+        line_set.lines = _vec2i(lines)
         color = box_colors[i % len(box_colors)]
-        line_set.colors = o3d.utility.Vector3dVector([color for _ in range(len(lines))])
+        line_set.colors = _vec3d([color for _ in range(len(lines))])
         geoms.append(line_set)
 
     return geoms
@@ -2449,8 +2534,8 @@ def visualize_dino_boxes_with_gradient_edges(
                         edge_count += 1
 
     pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(all_points)
-    pcd.colors = o3d.utility.Vector3dVector(colors)
+    pcd.points = _vec3d(all_points)
+    pcd.colors = _vec3d(colors)
 
     geoms = [pcd]
 
@@ -2472,7 +2557,7 @@ def visualize_dino_boxes_with_gradient_edges(
             f"Rand={m['border_ratio']*100:.1f}%, "
             f"z={zs.get('z_plane_mm', 0):.0f}mm)"
         )
-    o3d.visualization.draw_geometries(geoms, window_name=window_name)
+    _draw_geometries(geoms, window_name=window_name)
 
 
 def visualize_sobel_edges(session_path, viz_data, window_title_suffix="", session_context=None):
@@ -2504,11 +2589,11 @@ def visualize_sobel_edges(session_path, viz_data, window_title_suffix="", sessio
     colors[edges_flat > 0] = [0, 1, 0]
     
     pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(all_points)
-    pcd.colors = o3d.utility.Vector3dVector(colors)
+    pcd.points = _vec3d(all_points)
+    pcd.colors = _vec3d(colors)
     
     title = f"5/6: Gradienten/Spalten Analyse{window_title_suffix} (Blau=Flach, Rot=Steil, Grün=Kante)"
-    o3d.visualization.draw_geometries([pcd], window_name=title)
+    _draw_geometries([pcd], window_name=title)
 
 
 def visualize_per_box_gradient(session_path, viz_data, dino_debug, session_context=None):
@@ -2566,12 +2651,12 @@ def visualize_per_box_gradient(session_path, viz_data, dino_debug, session_conte
     colors_flat = base_colors.reshape(-1, 3)
     
     pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(all_points)
-    pcd.colors = o3d.utility.Vector3dVector(colors_flat)
+    pcd.points = _vec3d(all_points)
+    pcd.colors = _vec3d(colors_flat)
     
     segments_found = sum(a['num_segments'] for a in per_box if a)
     title = f"4/6: Per-Box Gradient-Analyse ({segments_found} Segmente total, Weiß=Trennlinien)"
-    o3d.visualization.draw_geometries([pcd], window_name=title)
+    _draw_geometries([pcd], window_name=title)
 
 
 def visualize_all_stage5_matches(
@@ -2618,8 +2703,8 @@ def visualize_all_stage5_matches(
         colors[idx] = rgb
 
     pcd = o3d.geometry.PointCloud()
-    pcd.points = o3d.utility.Vector3dVector(all_points)
-    pcd.colors = o3d.utility.Vector3dVector(colors)
+    pcd.points = _vec3d(all_points)
+    pcd.colors = _vec3d(colors)
 
     print(
         f"[VIZ] Stage-5: {len(kept)} kept (grün-blau), "
@@ -2638,7 +2723,7 @@ def visualize_all_stage5_matches(
             f"occluded_by='{m.get('_occluded_by', '?')}'  bbox={m.get('matched_box')}"
         )
 
-    o3d.visualization.draw_geometries([pcd], window_name=window_name)
+    _draw_geometries([pcd], window_name=window_name)
 
 
 def _hsv_to_rgb(h: float, s: float, v: float) -> list:
@@ -2673,6 +2758,10 @@ def visualize_3d(session_path, refined_masks, refined_labels, sobel_viz_data=Non
    13. Gripper footprint on package from verification.yaml (optional, Stage 12a)
    14. Extraction corridor at package widest extent (optional, Stage 12b)
     """
+    if not VIZ_ENABLE_3D:
+        print("[VIZ] 3D-Visualisierung deaktiviert (VIZ_ENABLE_3D=False in config.py).")
+        return None
+
     has_sam3d = sam3d_masks is not None and sam3d_labels is not None
     has_bottom = candidates is not None and len(candidates) > 0
     has_all_matches = bool(closed_matches) or bool(excluded_matches)
@@ -2944,9 +3033,9 @@ def capture_scene_screenshots(session_path, masks, labels, output_dir=None):
     
     # Basis-Punktwolke (grau)
     full_pcd = o3d.geometry.PointCloud()
-    full_pcd.points = o3d.utility.Vector3dVector(all_points)
+    full_pcd.points = _vec3d(all_points)
     gray = np.full((len(all_points), 3), 0.7)
-    full_pcd.colors = o3d.utility.Vector3dVector(gray)
+    full_pcd.colors = _vec3d(gray)
     
     geoms = [full_pcd]
     unique_colors = _generate_unique_colors(len(masks))
@@ -2983,18 +3072,18 @@ def capture_scene_screenshots(session_path, masks, labels, output_dir=None):
         mask_centers.append((i + 1, center_3d, unique_colors[i]))
         
         pcd_segment = o3d.geometry.PointCloud()
-        pcd_segment.points = o3d.utility.Vector3dVector(segment_points)
+        pcd_segment.points = _vec3d(segment_points)
         color = unique_colors[i]
         
         if len(segment_points) > 100:
             pcd_surface = pcd_segment.voxel_down_sample(voxel_size=0.01)
             pcd_surface, _ = pcd_surface.remove_statistical_outlier(nb_neighbors=20, std_ratio=2.0)
-            pcd_surface.colors = o3d.utility.Vector3dVector(
+            pcd_surface.colors = _vec3d(
                 np.tile(color, (len(pcd_surface.points), 1))
             )
         else:
             pcd_surface = pcd_segment
-            pcd_surface.colors = o3d.utility.Vector3dVector(
+            pcd_surface.colors = _vec3d(
                 np.tile(color, (len(segment_points), 1))
             )
         
@@ -3005,8 +3094,8 @@ def capture_scene_screenshots(session_path, masks, labels, output_dir=None):
         disc = o3d.geometry.TriangleMesh.create_cylinder(radius=0.05, height=0.002)
         disc_offset = center.copy()
         disc_offset[2] += 0.05
-        disc.translate(disc_offset)
-        disc.paint_uniform_color([1.0, 1.0, 1.0])
+        _apply_rigid_transform(disc, t=disc_offset)
+        _paint_uniform(disc, [1.0, 1.0, 1.0])
         disc.compute_vertex_normals()
         geoms.append(disc)
         
@@ -3036,8 +3125,8 @@ def capture_scene_screenshots(session_path, masks, labels, output_dir=None):
         
         if label_points:
             label_pcd = o3d.geometry.PointCloud()
-            label_pcd.points = o3d.utility.Vector3dVector(np.array(label_points))
-            label_pcd.colors = o3d.utility.Vector3dVector(np.array(label_colors))
+            label_pcd.points = _vec3d(np.array(label_points))
+            label_pcd.colors = _vec3d(np.array(label_colors))
             geoms.append(label_pcd)
     
     # Visualizer erstellen

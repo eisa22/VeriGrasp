@@ -30,6 +30,10 @@ except (FileNotFoundError, KeyError, TypeError):
 # Debug-Modus für Visualisierung
 DEBUG = True
 
+# 3D-Visualisierung (Open3D-Workarounds in visualizer.py für macOS+PyTorch)
+VIZ_ENABLE_3D = True
+VIZ_INTERACTIVE = True
+
 _LOCAL_DINO = PROJECT_ROOT / "LocalModels" / "GroundingDINO"
 DINO_MODEL_ID = str(_LOCAL_DINO) if _LOCAL_DINO.is_dir() else "IDEA-Research/grounding-dino-base"
 SAM_MODEL_ID  = "facebook/sam-vit-base"
