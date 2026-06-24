@@ -51,13 +51,13 @@ VisionPipeline/
 
 - Python 3.9+ (getestet mit 3.9)
 - CUDA-fähige GPU optional (CPU funktioniert)
-- Virtual Environment: `workspace/.venv` (lokal, nicht im Git)
+- Virtual Environment: `.venv` im Repo-Root (lokal, nicht im Git)
 
 ### Dependencies installieren
 
 ```bash
 # Virtual Environment aktivieren (vom Repo-Root)
-source workspace/.venv/bin/activate
+source .venv/bin/activate
 
 # Falls Pakete fehlen:
 pip install torch torchvision transformers
@@ -69,7 +69,7 @@ pip install open3d numpy pillow opencv-python scikit-learn scipy
 ### Haupt-Pipeline ausführen
 
 ```bash
-source workspace/.venv/bin/activate
+source .venv/bin/activate
 python main.py
 ```
 
@@ -81,8 +81,6 @@ python main.py
 python main.py --test      # alle Szenen → Results/
 python main.py --test 40   # erste 40 Szenen
 ```
-
-> **Hinweis:** Der Ordner `workspace/` enthält nur noch lokale Alt-Experimente und das venv — er wird von `main.py` nicht verwendet und ist nicht Teil der aktiven Pipeline.
 
 ### Konfiguration anpassen
 
