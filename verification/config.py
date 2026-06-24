@@ -56,6 +56,30 @@ _DEFAULT_CONFIG: dict[str, Any] = {
         # pipeline-reported candidate.top_surface_height.
         "top_height_tol_m": 0.03,
     },
+    "box_check": {
+        # Deterministic, visibility-aware OBB plausibility check (Stage 1).
+        # Min fraction of near-box points contained in the box (+eps).
+        "inlier_min": 0.80,
+        # Max median point-to-surface distance for near-surface points.
+        "surface_dist_median_max_m": 0.02,
+        # Max relative deviation of the robust per-axis span vs the box edge.
+        "extent_rel_dev_max": 0.15,
+        # Max angle between the PCA top-face normal and the box top normal.
+        "top_normal_angle_max_deg": 12.0,
+        # Below this many near-box points the box is UNVERIFIABLE.
+        "min_points_total": 300,
+        # Per expected-visible face: coverage below this -> UNVERIFIABLE.
+        "min_coverage": 0.60,
+        # Containment margin (m) added to the half extents for the inlier test.
+        "eps_m": 0.01,
+        # Band (m) defining "near the box surface / face".
+        "near_face_band_m": 0.03,
+        # Coverage raster per face (grid x grid cells).
+        "coverage_grid": 10,
+        # A face is expected-visible only if its outward normal faces the sensor
+        # by at least this cosine (generalises the strict normal.view<0 rule).
+        "face_visible_min_facing": 0.2,
+    },
     "stage2": {
         # Max planarity RMSE of the gripper window (a few mm compliance).
         "plane_rmse_max_m": 0.0025,
@@ -124,6 +148,11 @@ _DEFAULT_CONFIG: dict[str, Any] = {
         "weights": {
             "existence": 1.0,
             "top_height_match": 1.5,
+            "bbox_extent": 1.5,
+            "bbox_inlier": 1.0,
+            "bbox_surface_dist": 1.0,
+            "bbox_top_normal": 1.0,
+            "bbox_coverage": 1.0,
             "planarity": 2.0,
             "normal_angle": 2.0,
             "normal_scatter": 1.0,
@@ -143,6 +172,11 @@ _DEFAULT_CONFIG: dict[str, Any] = {
         "scales": {
             "existence": 0.4,
             "top_height_match": 0.03,
+            "bbox_extent": 0.15,
+            "bbox_inlier": 0.20,
+            "bbox_surface_dist": 0.02,
+            "bbox_top_normal": 12.0,
+            "bbox_coverage": 0.60,
             "planarity": 0.0025,
             "normal_angle": 30.0,
             "normal_scatter": 0.2,

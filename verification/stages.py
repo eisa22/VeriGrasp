@@ -18,6 +18,7 @@ from verification.geometry import (
     robust_plane_fit,
 )
 from verification.config import resolve_gripper
+from verification.box_check import UNVERIFIABLE, verify_box_placement
 from verification.types import CheckRecord, StageResult
 
 _LARGE_MARGIN = 1.0
@@ -31,6 +32,9 @@ def run_stage1(
     claimed_top_m: float,
     plane: tuple[float, float, float, float],
     cfg: dict,
+    p_full: np.ndarray | None = None,
+    parcel_obb: dict | None = None,
+    sensor_origin: tuple[float, float, float] = (0.0, 0.0, 0.0),
 ) -> StageResult:
     """Stage 1 - does the segmentation match the raw point cloud?
 
@@ -41,6 +45,11 @@ def run_stage1(
        point* (robust percentile over a planar window) agrees with the height
        the pipeline reported (``candidate.top_surface_height``). This measured
        height is the lift reference exported as ``z_top`` for Stage 3.
+
+    A third, deterministic OBB plausibility check is appended when ``p_full``
+    (raw scene cloud) and ``parcel_obb`` (center/extents/R) are available. It is
+    visibility-aware: ``UNVERIFIABLE`` abstains (passed=True, flagged) instead of
+    rejecting, so occlusion never causes a false reject.
     """
     s = cfg["stage1"]
     min_frac = float(s["min_valid_fraction"])
@@ -101,14 +110,97 @@ def run_stage1(
         )
     )
 
+    # --- Check 3: deterministic OBB plausibility (visibility-aware) ---
+    box_check_out: dict | None = None
+    if p_full is not None and parcel_obb is not None:
+        box_checks, box_check_out = _bbox_checks(
+            np.asarray(p_full, dtype=np.float64), parcel_obb, sensor_origin, cfg
+        )
+        checks.extend(box_checks)
+
     passed = all(c.passed for c in checks)
+    outputs: dict = {"z_top": z_top}
+    if box_check_out is not None:
+        outputs["box_check"] = box_check_out
     return StageResult(
         stage=1,
         name="segmentation_consistent",
         passed=passed,
         checks=checks,
-        outputs={"z_top": z_top},
+        outputs=outputs,
     )
+
+
+def _bbox_checks(
+    p_full: np.ndarray,
+    parcel_obb: dict,
+    sensor_origin: tuple[float, float, float],
+    cfg: dict,
+) -> tuple[list[CheckRecord], dict | None]:
+    """Map a deterministic BoxCheckResult onto Stage-1 CheckRecords.
+
+    Returns an empty list (skip) when the OBB lacks center/extents/R. On
+    ``UNVERIFIABLE`` every record is emitted with ``passed=True`` and a
+    ``unverifiable`` flag so the cascade abstains instead of rejecting.
+    """
+    try:
+        center = np.asarray(parcel_obb["center"], dtype=np.float64).reshape(3)
+        extents = np.asarray(parcel_obb["extents"], dtype=np.float64).reshape(3)
+        R = np.asarray(parcel_obb["R"], dtype=np.float64).reshape(3, 3)
+    except (KeyError, TypeError, ValueError):
+        return [], None
+
+    bc = cfg.get("box_check", {})
+    result = verify_box_placement(
+        p_full, center, R, extents, sensor_origin=sensor_origin, cfg=bc
+    )
+    unverifiable = result.verdict == UNVERIFIABLE
+
+    inlier_min = float(bc.get("inlier_min", 0.80))
+    sdist_max = float(bc.get("surface_dist_median_max_m", 0.02))
+    extent_max = float(bc.get("extent_rel_dev_max", 0.15))
+    angle_max = float(bc.get("top_normal_angle_max_deg", 12.0))
+    min_cov = float(bc.get("min_coverage", 0.60))
+
+    observed_devs = [
+        d for d, obs in zip(result.extent_rel_dev, result.extent_observed) if obs
+    ]
+    extent_raw = float(max(observed_devs)) if observed_devs else 0.0
+    angle_raw = (
+        float(result.top_normal_angle_deg)
+        if np.isfinite(result.top_normal_angle_deg)
+        else 0.0
+    )
+    vis_cov = [f.coverage for f in result.faces if f.expected_visible]
+    cov_raw = float(min(vis_cov)) if vis_cov else 1.0
+
+    reasons = list(result.reasons)
+    base_detail = {"box_verdict": result.verdict}
+    if unverifiable:
+        base_detail["unverifiable"] = True
+        base_detail["reasons"] = reasons
+
+    def _mk(name: str, raw: float, thr: float, margin: float, ok: bool) -> CheckRecord:
+        return CheckRecord(
+            name=name, stage=1, raw_value=raw, threshold=thr,
+            margin=margin, passed=(True if unverifiable else ok),
+            detail=dict(base_detail),
+        )
+
+    checks = [
+        _mk("bbox_extent", extent_raw, extent_max,
+            extent_max - extent_raw, extent_raw <= extent_max),
+        _mk("bbox_inlier", result.inlier_ratio, inlier_min,
+            result.inlier_ratio - inlier_min, result.inlier_ratio >= inlier_min),
+        _mk("bbox_surface_dist", result.surface_dist_median_m, sdist_max,
+            sdist_max - result.surface_dist_median_m,
+            result.surface_dist_median_m <= sdist_max),
+        _mk("bbox_top_normal", angle_raw, angle_max,
+            angle_max - angle_raw, angle_raw <= angle_max),
+        _mk("bbox_coverage", cov_raw, min_cov,
+            cov_raw - min_cov, cov_raw >= min_cov),
+    ]
+    return checks, result.to_serializable()
 
 
 def _normal_scatter(

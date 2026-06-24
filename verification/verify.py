@@ -105,8 +105,12 @@ def verify_grasp(
     stages: list[StageResult] = []
 
     # --- Stage 1 ---
+    sensor_origin = tuple(
+        float(x) for x in cfg.get("sensor_origin", (0.0, 0.0, 0.0))
+    )
     st1 = run_stage1(
-        p_target, len(p_target), n_mask_px, p_g, claimed_top, plane, cfg
+        p_target, len(p_target), n_mask_px, p_g, claimed_top, plane, cfg,
+        p_full=p_full, parcel_obb=parcel_obb, sensor_origin=sensor_origin,
     )
     stages.append(st1)
     z_top = st1.outputs.get("z_top")
@@ -158,6 +162,9 @@ def verify_grasp(
 
     soft = _soft_score(stages, cfg) if complete else None
 
+    box_check = st1.outputs.get("box_check") if st1 is not None else None
+    unverifiable = bool(box_check and box_check.get("verdict") == "UNVERIFIABLE")
+
     return VerificationResult(
         verdict=verdict,
         mode=mode,
@@ -167,4 +174,5 @@ def verify_grasp(
         soft_score=soft,
         candidate_id=getattr(candidate, "candidate_id", None),
         grasp_rank=getattr(grasp, "rank", None),
+        unverifiable=unverifiable,
     )

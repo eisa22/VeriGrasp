@@ -73,6 +73,9 @@ class VerificationResult:
     soft_score: float | None = None
     candidate_id: str | None = None
     grasp_rank: int | None = None
+    # True when the deterministic OBB check abstained (UNVERIFIABLE); the binary
+    # verdict still holds, but the box size/placement could not be judged.
+    unverifiable: bool = False
 
     @property
     def accepted(self) -> bool:
@@ -93,6 +96,7 @@ class VerificationResult:
             "soft_score": _safe_float(self.soft_score) if self.soft_score is not None else None,
             "candidate_id": self.candidate_id,
             "grasp_rank": self.grasp_rank,
+            "unverifiable": bool(self.unverifiable),
             "stages": [s.to_serializable() for s in self.stages],
         }
 
@@ -106,6 +110,7 @@ class VerificationResult:
             "soft_score": _safe_float(self.soft_score) if self.soft_score is not None else None,
             "candidate_id": self.candidate_id,
             "grasp_rank": self.grasp_rank,
+            "unverifiable": bool(self.unverifiable),
         }
 
 

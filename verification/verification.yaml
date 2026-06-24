@@ -22,6 +22,19 @@ stage1:
   top_percentile: 95.0         # robust local top height (rejects flying pixels)
   top_height_tol_m: 0.03       # allowed deviation from candidate.top_surface_height
 
+box_check:
+  # Deterministic, visibility-aware OBB plausibility check (Stage 1).
+  inlier_min: 0.80
+  surface_dist_median_max_m: 0.02
+  extent_rel_dev_max: 0.15
+  top_normal_angle_max_deg: 12.0
+  min_points_total: 300
+  min_coverage: 0.60
+  eps_m: 0.01
+  near_face_band_m: 0.03
+  coverage_grid: 10
+  face_visible_min_facing: 0.2
+
 stage2:
   plane_rmse_max_m: 0.0025
   normal_angle_max_deg: 30.0

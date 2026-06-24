@@ -376,6 +376,54 @@ def test_wrench_lever_rejects():
     assert res.decisive_check == "wrench_lever"
 
 
+def test_box_check_skipped_without_obb():
+    # No parcel_obb (candidate has no bottom) -> box check is skipped entirely.
+    depth, bbox, (r, c) = _scene_with_box()
+    sess = _session(depth)
+    cand = _candidate(bbox)
+    grasp = _grasp(r, c, 1.0)
+    res = verify_grasp(grasp, cand, sess, corridor=_corridor_for(cand, sess))
+    stage1 = next(s for s in res.stages if s.stage == 1)
+    names = [c.name for c in stage1.checks]
+    assert not any(n.startswith("bbox_") for n in names)
+    assert res.unverifiable is False
+
+
+def test_box_check_unverifiable_abstains():
+    # Force UNVERIFIABLE via an unreachable min_points_total: the box check must
+    # abstain (all bbox records passed, flagged) instead of rejecting.
+    depth, bbox, (r, c) = _scene_with_box()
+    sess = _session(depth)
+    cand = _candidate(bbox)
+    cand = _with_obb(cand, center=(0.0, 0.0, 1.1), extents=(0.2, 0.2, 0.2))
+    grasp = _grasp(r, c, 1.0)
+    cfg = load_verification_config()
+    cfg["box_check"]["min_points_total"] = 10_000_000
+    res = verify_grasp(
+        grasp, cand, sess, config=cfg, corridor=_corridor_for(cand, sess)
+    )
+    stage1 = next(s for s in res.stages if s.stage == 1)
+    bbox_checks = [c for c in stage1.checks if c.name.startswith("bbox_")]
+    assert bbox_checks, "box check should have emitted records"
+    assert all(c.passed for c in bbox_checks)  # abstain => all passed
+    assert all(c.detail.get("unverifiable") for c in bbox_checks)
+    assert res.unverifiable is True
+
+
+def test_box_check_undersized_obb_rejects_stage1():
+    # An OBB smaller than the observed top face: coverage stays high but the
+    # robust span exceeds the claimed edge -> FAIL on bbox_extent in stage 1.
+    depth, bbox, (r, c) = _scene_with_box()
+    sess = _session(depth)
+    cand = _candidate(bbox)
+    cand = _with_obb(cand, center=(0.0, 0.0, 1.1), extents=(0.1, 0.2, 0.2))
+    grasp = _grasp(r, c, 1.0)
+    res = verify_grasp(grasp, cand, sess, corridor=_corridor_for(cand, sess))
+    assert res.verdict == "REJECT", res.to_serializable()
+    assert res.decisive_stage == 1
+    assert res.decisive_check == "bbox_extent"
+
+
 def test_safety_corridor_height_default_is_30cm():
     from verification.config import resolve_corridor_height
 

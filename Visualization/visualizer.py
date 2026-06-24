@@ -1387,6 +1387,76 @@ def visualize_verification_3d(
         )
         _show_verif_check(geoms_hm, hm_title, hm)
 
+        # --- Check 3: deterministic OBB plausibility (visibility-aware) ---
+        box_check = st1.outputs.get("box_check") if st1 is not None else None
+        if box_check is not None and parcel_obb is not None:
+            geoms_bc = [_base_cloud()]
+            try:
+                corners = np.asarray(parcel_obb["corners_3d"], dtype=np.float64)
+                geoms_bc.append(_make_obb_solid_mesh(corners, [0.5, 0.5, 0.5], shade=0.12))
+                geoms_bc.extend(_make_obb_thick_edges(corners, [0.2, 0.85, 1.0], radius=0.004))
+            except (KeyError, TypeError, ValueError):
+                pass
+            # Colour near-box raw points by containment (inlier green / outlier red).
+            try:
+                center = np.asarray(parcel_obb["center"], dtype=np.float64).reshape(3)
+                extents = np.asarray(parcel_obb["extents"], dtype=np.float64).reshape(3)
+                Rm = np.asarray(parcel_obb["R"], dtype=np.float64).reshape(3, 3)
+                half = np.maximum(extents * 0.5, 1e-6)
+                bc_cfg = cfg.get("box_check", {})
+                band = float(bc_cfg.get("near_face_band_m", 0.03))
+                eps = float(bc_cfg.get("eps_m", 0.01))
+                local = (p_full - center[None, :]) @ Rm
+                near = np.all(np.abs(local) <= (half + band)[None, :], axis=1)
+                if near.any():
+                    loc_near = local[near]
+                    inside = np.all(np.abs(loc_near) <= (half + eps)[None, :], axis=1)
+                    near_pts = p_full[near]
+                    if inside.any():
+                        inl = o3d.geometry.PointCloud()
+                        inl.points = o3d.utility.Vector3dVector(_camera_to_o3d(near_pts[inside]))
+                        inl.paint_uniform_color([0.20, 0.90, 0.35])
+                        geoms_bc.append(inl)
+                    if np.any(~inside):
+                        outl = o3d.geometry.PointCloud()
+                        outl.points = o3d.utility.Vector3dVector(_camera_to_o3d(near_pts[~inside]))
+                        outl.paint_uniform_color([0.95, 0.20, 0.20])
+                        geoms_bc.append(outl)
+            except (KeyError, TypeError, ValueError):
+                pass
+
+            bx_ext = _verif_check(st1, "bbox_extent")
+            bx_inl = _verif_check(st1, "bbox_inlier")
+            bx_sd = _verif_check(st1, "bbox_surface_dist")
+            bx_tn = _verif_check(st1, "bbox_top_normal")
+            bx_cov = _verif_check(st1, "bbox_coverage")
+            bverdict = str(box_check.get("verdict", "?"))
+            reasons = list(box_check.get("reasons", []))
+            bc_rows = [
+                (f"STUFE 1c OBB-Check: {bverdict}", _PANEL_HEAD_COLOR),
+                _check_panel_row("bbox_extent", bx_ext),
+                _check_panel_row("bbox_inlier", bx_inl),
+                _check_panel_row("bbox_surface_dist", bx_sd),
+                _check_panel_row("bbox_top_normal", bx_tn),
+                _check_panel_row("bbox_coverage", bx_cov),
+            ]
+            for f in box_check.get("faces", []):
+                if f.get("expected_visible"):
+                    bc_rows.append((
+                        f"face {f['face']} cov={f['coverage']:.2f} n={f['n_points']}",
+                        _PANEL_PASS_COLOR if f["coverage"] >= float(
+                            cfg.get("box_check", {}).get("min_coverage", 0.6)
+                        ) else _PANEL_FAIL_COLOR,
+                    ))
+            for r in reasons[:6]:
+                bc_rows.append((f"- {r}", _PANEL_NA_COLOR))
+            anchor_bc = _scene_panel_anchor(base_points, float(_camera_to_o3d(p_g.reshape(1, 3))[0][2]))
+            geoms_bc.extend(_make_text_panel(bc_rows, anchor_bc))
+
+            bc_title = f"STUFE 1c OBB-Plausibilitaet: {bverdict} (gruen=Inlier, rot=Outlier)"
+            print(f"[VERIFY-VIZ] Stufe 1c OBB-Check ({bverdict}): {'; '.join(reasons)}")
+            o3d.visualization.draw_geometries(geoms_bc, window_name=bc_title)
+
     # ------------------------------------------------------------------ Stage 2
     st2 = _verif_stage(verification_result, 2)
     if st2 is not None:
