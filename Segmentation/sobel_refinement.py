@@ -450,7 +450,9 @@ def create_depth_filtered_mask_parameterfree(box, depth, H, W, pallet_relative=F
     }
 
 
-def apply_sobel_refinement(session_path, masks, labels, boxes=None, session_context=None):
+def apply_sobel_refinement(
+    session_path, masks, labels, boxes=None, scores=None, session_context=None
+):
     """
     PARAMETERFREI: Führt Gradientenanalyse mit automatischen Schwellwerten durch.
     
@@ -466,7 +468,7 @@ def apply_sobel_refinement(session_path, masks, labels, boxes=None, session_cont
         boxes: Liste der DINO Bounding Boxes
         
     Returns:
-        tuple: (refined_masks, refined_labels, visualization_data)
+        tuple: (refined_masks, refined_labels, refined_scores, visualization_data)
     """
     print("\n[SOBEL] Starte parameterfreie Gradientenanalyse...")
 
@@ -480,7 +482,8 @@ def apply_sobel_refinement(session_path, masks, labels, boxes=None, session_cont
         depth_path = get_depth_path(session_path)
         if not os.path.exists(depth_path):
             print("[ERROR] Depth map not found.")
-            return masks, labels, None
+            sc = scores if scores is not None else [1.0] * len(masks)
+            return masks, labels, sc, None
         depth = load_session_depth(session_path)
     H, W = depth.shape
     
@@ -530,7 +533,9 @@ def apply_sobel_refinement(session_path, masks, labels, boxes=None, session_cont
     # 4. Refinement der Masken
     refined_masks = []
     refined_labels = []
-    
+    refined_scores = []
+    input_scores = scores if scores is not None else [1.0] * len(masks)
+
     # Globale Min-Tiefe finden (oberste Ebene)
     valid_depths = depth[depth > 0]
     min_scene_depth = np.percentile(valid_depths, 1) if len(valid_depths) > 0 else 0
@@ -541,11 +546,12 @@ def apply_sobel_refinement(session_path, masks, labels, boxes=None, session_cont
         mask_np = np.asarray(mask) > 0
         if mask_np.sum() == 0:
             continue
-            
+
         # Maske ist bereits tiefengefiltert - einfach hinzufügen wenn groß genug
         if mask_np.sum() > 200:
             refined_masks.append(mask_np.astype(np.uint8))
             refined_labels.append(label)
+            refined_scores.append(float(input_scores[i]) if i < len(input_scores) else 1.0)
             print(f"  [OK] Maske {i} '{label}': {mask_np.sum()} Pixel")
             
     print(f"[SOBEL] Abgeschlossen. {len(masks)} -> {len(refined_masks)} Masken (PARAMETERFREI)")
@@ -558,4 +564,4 @@ def apply_sobel_refinement(session_path, masks, labels, boxes=None, session_cont
         "session_context": session_context,
     }
     
-    return refined_masks, refined_labels, viz_data
+    return refined_masks, refined_labels, refined_scores, viz_data

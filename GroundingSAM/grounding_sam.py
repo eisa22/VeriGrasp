@@ -223,7 +223,8 @@ def run_grounding_dino_only(session_path: str, dino_model=None, dino_processor=N
             "post_size_filter_boxes": [],
             "post_size_filter_labels": [],
             "post_iou_boxes": [],
-            "post_iou_labels": []
+            "post_iou_labels": [],
+            "post_iou_scores": [],
         }
         return [], [], [], None, debug_data
     
@@ -258,7 +259,10 @@ def run_grounding_dino_only(session_path: str, dino_model=None, dino_processor=N
         "post_size_filter_boxes": post_size_boxes,
         "post_size_filter_labels": post_size_labels,
         "post_iou_boxes": [b.copy() if isinstance(b, list) else list(b) for b in boxes],
-        "post_iou_labels": labels.copy()
+        "post_iou_labels": labels.copy(),
+        "post_iou_scores": [
+            float(s.item() if hasattr(s, "item") else s) for s in scores
+        ],
     }
     
     return boxes, scores, labels, orig_image, debug_data

@@ -488,8 +488,8 @@ def process_session(
     original_masks = [m.copy() for m in masks]
     original_labels = labels.copy()
     
-    refined_masks, refined_labels, sobel_viz_data = apply_sobel_refinement(
-        session_path, masks, labels, boxes, session_context=session_context
+    refined_masks, refined_labels, refined_scores, sobel_viz_data = apply_sobel_refinement(
+        session_path, masks, labels, boxes, scores=scores, session_context=session_context
     )
 
     # Phase 3b: DINO ∩ durchgängige Gradient-Kante → geschlossene Paket-Masken
@@ -515,8 +515,8 @@ def process_session(
         s6_masks = [m["mask"] for m in closed_matches]
         s6_boxes = [m["matched_box"] for m in closed_matches]
         s6_labels = [m["label"] for m in closed_matches]
-        s6_scores = [1.0] * len(closed_matches)
-        sam3d_masks, sam3d_boxes, _, sam3d_labels = refine_masks_3d(
+        s6_scores = [max(float(m.get("closure", 0.5)), 0.01) for m in closed_matches]
+        sam3d_masks, sam3d_boxes, sam3d_scores, sam3d_labels = refine_masks_3d(
             s6_masks, s6_boxes, s6_scores, s6_labels, session_path,
             session_context=session_context,
         )

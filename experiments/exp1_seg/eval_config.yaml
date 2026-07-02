@@ -1,0 +1,48 @@
+# Experiment 1 evaluation settings
+size_buckets_px2:
+  small_max: 900    # < 30^2
+  medium_max: 6400  # <= 80^2
+
+workspace_majority_threshold: 0.5
+min_visible_pixels_primary: 1
+visibility_mode: absolute
+visibility_relative_fraction: 0.01
+
+score_note: >
+  AP uses propagated DINO/closure scores; SAM3D has no native confidence.
+
+category_rows:
+  - baseline
+  - mixed
+  - dense
+  - chaotic
+  - lighting
+  - occlusion
+  - edge
+  - tilted
+  - angled_dense
+  - angled_chaotic
+  - angled_occluded
+
+# Named subsets for --test-set (inference + evaluation)
+test_sets:
+  smoke:
+    description: "Erste 5 Szenen — schneller Smoke-Test"
+    scene_indices: [0, 1, 2, 3, 4]
+  baseline:
+    description: "Dev-Band baseline (scene_000–055)"
+    index_range: [0, 55]
+  diverse:
+    description: "Je eine Szene pro Kategorie-Band (11 Szenen)"
+    scene_ids:
+      - scene_000
+      - scene_100
+      - scene_250
+      - scene_350
+      - scene_400
+      - scene_430
+      - scene_460
+      - scene_510
+      - scene_578
+      - scene_628
+      - scene_678
