@@ -1,0 +1,35 @@
+# Experiment 3 — Verification layer effectiveness
+
+# Matching (identical to Experiments 1/2)
+iou_threshold: 0.5
+workspace_majority_threshold: 0.5
+
+# Visibility filters (mirror Experiment 1/2)
+min_visible_pixels_primary: 1
+visibility_relative_fraction: 0.01
+
+# Grasp-validity oracle (deliberately different from verification thresholds)
+tol_contain_mm: 5
+tol_contact_mm: 20
+tol_normal_deg: 15
+
+# Suction footprint (verification.yaml gripper: 120 x 60 mm)
+gripper_width_m: 0.120
+gripper_length_m: 0.060
+
+# Vertical extraction corridor height (stage3.safety_corridor_height_m)
+corridor_height_m: 0.30
+
+# Category bands (Table 9.1b rows), same order as Experiments 1/2
+category_rows:
+  - baseline
+  - mixed
+  - dense
+  - chaotic
+  - lighting
+  - occlusion
+  - edge
+  - tilted
+  - angled_dense
+  - angled_chaotic
+  - angled_occluded
