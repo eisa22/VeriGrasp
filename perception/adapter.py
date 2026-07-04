@@ -209,15 +209,15 @@ def build_match_neighbors(
         pts = _backproject_mask(mask, depth, cx, cy)
         if len(pts) < 10:
             continue
-    heights = heights_above_plane(pts, plane)
-    xy = project_to_plane_xy(pts, plane)
-    zs = m.get("z_stats") or {}
-    if zs.get("z_plane_m") is not None:
-        top_h = float(zs["z_plane_m"])
-    elif m.get("z_plane_m") is not None:
-        top_h = float(m["z_plane_m"])
-    else:
-        top_h = float(np.percentile(heights, 95))
+        heights = heights_above_plane(pts, plane)
+        xy = project_to_plane_xy(pts, plane)
+        zs = m.get("z_stats") or {}
+        if zs.get("z_plane_m") is not None:
+            top_h = float(zs["z_plane_m"])
+        elif m.get("z_plane_m") is not None:
+            top_h = float(m["z_plane_m"])
+        else:
+            top_h = float(np.percentile(heights, 95))
         fp = _footprint_from_xy(xy)
         center = np.array(
             [(fp[0] + fp[2]) * 0.5, (fp[1] + fp[3]) * 0.5], dtype=np.float64
@@ -244,6 +244,7 @@ def build_candidates_from_sam3d(
     plane_model: np.ndarray,
     sam3d_boxes: list | None = None,
     session_context=None,
+    sam3d_scores: list | None = None,
 ) -> list[CandidateOut]:
     """Build CandidateOut list from SAM3D-refined masks."""
     fx, fy, cx, cy = _intrinsics_from_context(session_context)
@@ -261,6 +262,8 @@ def build_candidates_from_sam3d(
             mask, str(label), bbox, depth, plane, cx, cy, surface_normal, fx=fx, fy=fy
         )
         if cand is not None:
+            if sam3d_scores is not None and idx < len(sam3d_scores):
+                cand.debug["sam3d_score"] = float(sam3d_scores[idx])
             candidates.append(cand)
 
     return candidates

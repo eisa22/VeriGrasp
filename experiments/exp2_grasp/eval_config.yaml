@@ -1,0 +1,47 @@
+# Experiment 2 — Centroid and normal estimation accuracy
+
+# Matching (identical to Experiment 1: unique greedy, IoU >= threshold)
+iou_threshold: 0.5
+workspace_majority_threshold: 0.5
+
+# Visibility filters (mirror Experiment 1 primary/strict)
+min_visible_pixels_primary: 1
+visibility_relative_fraction: 0.01
+
+# Yaw folding: below this GT footprint aspect ratio, fold modulo 90 deg
+near_square_aspect: 1.2
+
+# Application-referenced rates
+rate_lat_mm: 30.0          # half the short side of the 120x60 mm suction field
+rate_theta_deg: [12.0, 30.0]  # bbox_top_normal / normal_angle tolerances
+
+# Category bands (Table 9.1b rows), same order as Experiment 1
+category_rows:
+  - baseline
+  - mixed
+  - dense
+  - chaotic
+  - lighting
+  - occlusion
+  - edge
+  - tilted
+  - angled_dense
+  - angled_chaotic
+  - angled_occluded
+
+# Soft/deformable packaging classes (OPEN POINT D).
+# Excluded from the per-band centroid/top-height rows; pooled into one
+# "soft" row (their GT top face overstates the visible surface by up to
+# 58 mm by dataset convention). Exact class_name strings from the dataset.
+soft_classes:
+  - Burlap_Sack
+  - Food_Packaging_Bag
+  - Paper_Coffee_Bag
+  - Paper_Shopping_Bag
+  - Small_Pouch
+  - Small_Shipping_Bag
+  - Space_Food_Bag
+  - Sachets_Package
+  - Envelope_Stack
+  - Vintage_Envelope
+  - Asset_Deformed_Package

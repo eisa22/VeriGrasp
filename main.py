@@ -59,6 +59,85 @@ from transformers import (
 )
 
 
+def _save_stage_prep_context(session_path: str, session_context) -> None:
+    """Persist the scene-preparation output (Stage 0) for offline evaluation.
+
+    Experiment 2 re-projects predicted and GT quantities into the pipeline's
+    fitted pallet plane; that plane is only available here, so it must be
+    written to disk once per scene.
+    """
+    from evaluation.masks import encode_masks_rle
+
+    ws = np.asarray(session_context.workspace_mask, dtype=bool)
+    rle = encode_masks_rle([ws.astype(np.uint8)])[0]
+    payload = {
+        "plane_model": [float(x) for x in session_context.plane_model],
+        "z_pallet_m": float(session_context.z_pallet_m),
+        "fx": float(session_context.fx),
+        "fy": float(session_context.fy),
+        "cx": float(session_context.cx),
+        "cy": float(session_context.cy),
+        "height": int(ws.shape[0]),
+        "width": int(ws.shape[1]),
+        "workspace_mask_rle": [int(v) for v in rle],
+    }
+    out_path = os.path.join(session_path, "stage_prep_context.json")
+    try:
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2)
+        print(f"[PREP] Kontext gespeichert -> {out_path}")
+    except OSError as exc:
+        print(f"[PREP] Speichern fehlgeschlagen ({out_path}): {exc}")
+
+
+def _save_stage8_candidates(session_path: str, candidates: list) -> None:
+    """Persist ALL enriched candidates (Stage 8) for offline evaluation.
+
+    pipeline_result.json / stage10 only carry the primary target; Experiment 2
+    scores every matched candidate, so centroid, OBB, bottom inference and the
+    candidate mask (RLE) are written for the full list.
+    """
+    from evaluation.masks import encode_masks_rle
+
+    height = width = None
+    entries = []
+    for c in candidates:
+        mask = (np.asarray(c.mask_2d) > 0).astype(np.uint8)
+        if height is None:
+            height, width = int(mask.shape[0]), int(mask.shape[1])
+        rle = encode_masks_rle([mask])[0]
+        b = c.bottom
+        entries.append({
+            "candidate_id": c.candidate_id,
+            "label": str(c.debug.get("label", "")),
+            "score": float(c.debug.get("sam3d_score", 0.0)),
+            "bbox_2d": [int(v) for v in c.bbox_2d],
+            "mask_rle": [int(v) for v in rle],
+            "centroid_3d": [float(v) for v in np.asarray(c.centroid_3d).tolist()],
+            "top_surface_height_m": float(c.top_surface_height),
+            "bottom_z_m": float(b.bottom_z) if b else None,
+            "height_m": float(b.height_m) if b else None,
+            "bottom_method": b.bottom_method if b else None,
+            "bottom_confidence": float(b.bottom_confidence) if b else None,
+            "neighbor_source": c.debug.get("neighbor_source"),
+            "parcel_obb": b.parcel_obb if b else None,
+        })
+
+    payload = {
+        "height": height,
+        "width": width,
+        "n_candidates": len(entries),
+        "candidates": entries,
+    }
+    out_path = os.path.join(session_path, "stage8_candidates.json")
+    try:
+        with open(out_path, "w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2, ensure_ascii=False)
+        print(f"[STAGE-8] {len(entries)} Kandidaten gespeichert -> {out_path}")
+    except OSError as exc:
+        print(f"[STAGE-8] Speichern fehlgeschlagen ({out_path}): {exc}")
+
+
 def _save_stage5_matches(session_path: str, kept: list, excluded: list) -> None:
     """Persist Stage-5 matches (all packages, kept + excluded) to JSON.
 
@@ -466,6 +545,7 @@ def process_session(
     if session_context is None:
         print(f"[SKIP] Session ohne Depth: {session_path}")
         return
+    _save_stage_prep_context(session_path, session_context)
 
     # Phase 1: DINO
     boxes, scores, labels, orig_image, dino_debug = run_grounding_dino_only(
@@ -539,6 +619,7 @@ def process_session(
             session_context.plane_model,
             sam3d_boxes=sam3d_boxes,
             session_context=session_context,
+            sam3d_scores=sam3d_scores,
         )
         pallet_plane = tuple(float(x) for x in session_context.plane_model)
         sobel_edges = sobel_viz_data.get("edges") if sobel_viz_data else None
@@ -581,6 +662,7 @@ def process_session(
             )
         dist = ", ".join(f"{k}={v}" for k, v in sorted(method_counts.items()))
         print(f"[BOTTOM] method distribution: {dist}")
+    _save_stage8_candidates(session_path, candidates)
 
     selection_result = None
     if candidates:
@@ -766,6 +848,11 @@ def main():
             "Ohne N: alle Szenen."
         ),
     )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Szenen mit existierender stage8_candidates.json überspringen.",
+    )
     args = parser.parse_args()
 
     test_mode = args.test is not None
@@ -801,6 +888,11 @@ def main():
 
     for index, session_path in enumerate(sessions, start=1):
         scene_name = os.path.basename(session_path.rstrip(os.sep))
+        if args.resume and os.path.exists(
+            os.path.join(session_path, "stage8_candidates.json")
+        ):
+            print(f"[{index}/{len(sessions)}] {scene_name} — übersprungen (--resume)")
+            continue
         print(f"\n{'=' * 72}")
         print(f"[{index}/{len(sessions)}] {scene_name}")
         print(f"{'=' * 72}")
