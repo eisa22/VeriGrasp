@@ -1,0 +1,29 @@
+data_root: Data/blender_dataset
+exp3_dir: Results/exp3/full_2026-07-05
+out_dir: Results/exp5/full_2026-07-05
+
+category_rows:
+  - baseline
+  - mixed
+  - dense
+  - chaotic
+  - lighting
+  - occlusion
+  - edge
+  - tilted
+  - angled_dense
+  - angled_chaotic
+  - angled_occluded
+
+soft_classes:
+  - Burlap_Sack
+  - Food_Packaging_Bag
+  - Paper_Coffee_Bag
+  - Paper_Shopping_Bag
+  - Small_Pouch
+  - Small_Shipping_Bag
+  - Space_Food_Bag
+  - Sachets_Package
+  - Envelope_Stack
+  - Vintage_Envelope
+  - Asset_Deformed_Package
