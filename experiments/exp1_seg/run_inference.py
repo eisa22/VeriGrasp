@@ -51,10 +51,14 @@ def _load_eval_config() -> dict:
         return yaml.safe_load(f) or {}
 
 
-def _run_dir(base: Path | None = None, test_set: str | None = None) -> Path:
+def _run_dir(
+    base: Path | None = None, test_set: str | None = None, variant: str = "baseline"
+) -> Path:
     stamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     root = base or (PROJECT_ROOT / "Results" / "exp1_seg")
     name = stamp if not test_set else f"{stamp}_test-{test_set}"
+    if variant != "baseline":
+        name = f"{name}_variant-{variant}"
     return root / name
 
 
@@ -110,6 +114,16 @@ def main() -> None:
     parser.add_argument("--data-root", type=str, default=None, help="Override dataset root")
     parser.add_argument("--run-dir", type=str, default=None, help="Existing or new run directory")
     parser.add_argument("--resume", action="store_true", help="Skip scenes with existing .npz")
+    parser.add_argument(
+        "--variant",
+        type=str,
+        default="baseline",
+        choices=["baseline", "sam3d"],
+        help=(
+            "Perception-Variante: 'baseline' = DINO→Sobel→Matching→SAM3D (Standard), "
+            "'sam3d' = DINO→SAM→Dedup→SAM3D (SAM-Masken statt Sobel/Matching)"
+        ),
+    )
     args = parser.parse_args()
 
     if args.gui and args.limit is None and args.test_set is None:
@@ -127,7 +141,11 @@ def main() -> None:
     pipe_cfg = load_pipeline_config()
     config_blob = {"pipeline": pipe_cfg, "eval": eval_cfg}
 
-    run_dir = Path(args.run_dir) if args.run_dir else _run_dir(test_set=args.test_set)
+    run_dir = (
+        Path(args.run_dir)
+        if args.run_dir
+        else _run_dir(test_set=args.test_set, variant=args.variant)
+    )
     run_dir.mkdir(parents=True, exist_ok=True)
     write_env_snapshot(run_dir, device, config_blob)
     write_config_snapshot(run_dir, config_blob)
@@ -154,6 +172,17 @@ def main() -> None:
     dino_processor = DinoProcessor.from_pretrained(DINO_MODEL_ID)
     dino_model = DinoModel.from_pretrained(DINO_MODEL_ID).to(device)
 
+    sam_model = sam_processor = None
+    if args.variant == "sam3d":
+        from transformers import SamModel, SamProcessor
+
+        from config import SAM_MODEL_ID
+        from perception.pipeline_sam3d import run_perception_sam3d
+
+        print(f"[EXP1] Variant 'sam3d': Loading SAM ({SAM_MODEL_ID})...")
+        sam_processor = SamProcessor.from_pretrained(SAM_MODEL_ID)
+        sam_model = SamModel.from_pretrained(SAM_MODEL_ID).to(device)
+
     n_ok = n_skip = n_err = 0
     for i, session_path in enumerate(sessions, 1):
         scene_id = Path(session_path).name
@@ -163,12 +192,21 @@ def main() -> None:
             continue
         print(f"[{i}/{len(sessions)}] {scene_id}")
         try:
-            art = run_perception(
-                session_path,
-                dino_model,
-                dino_processor,
-                visualize=args.gui,
-            )
+            if args.variant == "sam3d":
+                art = run_perception_sam3d(
+                    session_path,
+                    dino_model,
+                    dino_processor,
+                    sam_model,
+                    sam_processor,
+                )
+            else:
+                art = run_perception(
+                    session_path,
+                    dino_model,
+                    dino_processor,
+                    visualize=args.gui,
+                )
             save_artifacts(run_dir, scene_id, art)
             n_ok += 1
         except Exception as exc:
@@ -178,6 +216,7 @@ def main() -> None:
     manifest_out = {
         "data_root": get_data_root(),
         "test_set": args.test_set,
+        "variant": args.variant,
         "gui": args.gui,
         "n_sessions": len(sessions),
         "n_ok": n_ok,
