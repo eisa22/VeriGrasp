@@ -75,7 +75,7 @@ pipeline:
   MATCH_DEDUP_Z_DIFF_M: 0.005
   MATCH_DEDUP_Z_OCCLUDE_M: 0.02
   MAX_BOX_AREA_RATIO: 0.12
-  OPENAI_API_KEY: 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
+  OPENAI_API_KEY: REDACTED  # secret value removed after archiving; not used by the segmentation experiments
   PALLET_MAX_NORMAL_ANGLE_DEG: 25.0
   PALLET_MIN_INLIER_RATIO: 0.25
   PALLET_RANSAC_DISTANCE_M: 0.02

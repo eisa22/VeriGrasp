@@ -8,7 +8,10 @@ the thesis' result chapters traces to a file in this archive; the mapping
 is given below.
 
 Integrity: `MANIFEST.sha256` lists a SHA-256 checksum for every file in
-this archive. Verify with:
+this archive. One post-archiving redaction was applied: the
+`OPENAI_API_KEY` value in the two Exp.-1 `config_snapshot.yaml` files was
+replaced by `REDACTED` (a leaked secret; the key is not used by any of
+the evaluated experiments, which never call the LLM orchestrator). Verify with:
 
 ```bash
 cd results_archive && shasum -a 256 -c MANIFEST.sha256
