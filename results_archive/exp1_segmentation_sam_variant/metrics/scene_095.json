@@ -1,0 +1,142 @@
+{
+  "scene_id": "scene_095",
+  "category": "mixed",
+  "viewpoint": "top_down",
+  "status": "ok",
+  "visibility": {
+    "mode": "absolute",
+    "absolute_min": 1,
+    "relative_fraction": 0.01,
+    "threshold_px": 1
+  },
+  "gt_counts": {
+    "eval": 15,
+    "invisible": 0,
+    "out_of_scope": 0,
+    "total_instances": 15
+  },
+  "stages": {
+    "D": {
+      "point": "D",
+      "ap": 0.0,
+      "ap50": 0.0,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.0,
+      "mean_iou": 0.0,
+      "pq": 0.0,
+      "sq": 0.0,
+      "rq": 0.0,
+      "precision": 0.0,
+      "recall": 0.06666666666666667,
+      "f1": 0.0,
+      "tp": 1,
+      "fp": 1,
+      "fn": 14,
+      "n_pred": 2,
+      "n_gt_eval": 15,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9333333333333333,
+      "box_recall": 0.06666666666666667
+    },
+    "S": {
+      "point": "S",
+      "ap": 0.06666666666666667,
+      "ap50": 0.06666666666666667,
+      "ap75": 0.06666666666666667,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 1.0,
+      "mean_iou": 0.988660251665433,
+      "pq": 0.11631297078416859,
+      "sq": 0.988660251665433,
+      "rq": 0.11764705882352941,
+      "precision": 0.5,
+      "recall": 0.06666666666666667,
+      "f1": 0.11764705882352941,
+      "tp": 1,
+      "fp": 1,
+      "fn": 14,
+      "n_pred": 2,
+      "n_gt_eval": 15,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.5,
+      "miss_rate": 0.9333333333333333,
+      "box_recall": null
+    },
+    "M": {
+      "point": "M",
+      "ap": 0.06666666666666667,
+      "ap50": 0.06666666666666667,
+      "ap75": 0.06666666666666667,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 1.0,
+      "mean_iou": 0.988660251665433,
+      "pq": 0.11631297078416859,
+      "sq": 0.988660251665433,
+      "rq": 0.11764705882352941,
+      "precision": 0.5,
+      "recall": 0.06666666666666667,
+      "f1": 0.11764705882352941,
+      "tp": 1,
+      "fp": 1,
+      "fn": 14,
+      "n_pred": 2,
+      "n_gt_eval": 15,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.5,
+      "miss_rate": 0.9333333333333333,
+      "box_recall": null
+    },
+    "F": {
+      "point": "F",
+      "ap": 0.2422710622710622,
+      "ap50": 0.27106227106227104,
+      "ap75": 0.27106227106227104,
+      "ap_small": 0.0,
+      "ap_medium": 0.2657967032967033,
+      "ap_large": 1.0,
+      "mean_iou": 0.9640859462481459,
+      "pq": 0.4131796912492054,
+      "sq": 0.9640859462481459,
+      "rq": 0.42857142857142855,
+      "precision": 0.46153846153846156,
+      "recall": 0.4,
+      "f1": 0.42857142857142855,
+      "tp": 6,
+      "fp": 7,
+      "fn": 9,
+      "n_pred": 13,
+      "n_gt_eval": 15,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.15384615384615385,
+      "hallucination_rate": 0.38461538461538464,
+      "miss_rate": 0.6,
+      "box_recall": null
+    }
+  },
+  "class_recall_F": {
+    "Cardboard Box.001": {
+      "tp": 1,
+      "fn": 1
+    },
+    "Vegetable_Crate": {
+      "tp": 4,
+      "fn": 4
+    },
+    "Small Packet": {
+      "tp": 0,
+      "fn": 4
+    },
+    "Black Package": {
+      "tp": 1,
+      "fn": 0
+    }
+  }
+}

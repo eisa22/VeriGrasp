@@ -1,0 +1,190 @@
+{
+  "scene_id": "scene_517",
+  "category": "occlusion",
+  "viewpoint": "top_down",
+  "status": "ok",
+  "visibility": {
+    "mode": "relative_median",
+    "absolute_min": 1,
+    "relative_fraction": 0.01,
+    "threshold_px": 5
+  },
+  "gt_counts": {
+    "eval": 29,
+    "invisible": 10,
+    "out_of_scope": 0,
+    "total_instances": 39
+  },
+  "stages": {
+    "D": {
+      "point": "D",
+      "ap": 0.0,
+      "ap50": 0.0,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.0,
+      "mean_iou": 0.0,
+      "pq": 0.0,
+      "sq": 0.0,
+      "rq": 0.0,
+      "precision": 0.0,
+      "recall": 0.10344827586206896,
+      "f1": 0.0,
+      "tp": 3,
+      "fp": 0,
+      "fn": 26,
+      "n_pred": 3,
+      "n_gt_eval": 29,
+      "over_segmentation_rate": 0.13793103448275862,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.8620689655172413,
+      "box_recall": 0.10344827586206896
+    },
+    "S": {
+      "point": "S",
+      "ap": 0.05517241379310345,
+      "ap50": 0.05747126436781609,
+      "ap75": 0.05747126436781609,
+      "ap_small": 0.0,
+      "ap_medium": 0.041666666666666664,
+      "ap_large": 1.0,
+      "mean_iou": 0.9411420449795167,
+      "pq": 0.11764275562243959,
+      "sq": 0.9411420449795167,
+      "rq": 0.125,
+      "precision": 0.6666666666666666,
+      "recall": 0.06896551724137931,
+      "f1": 0.125,
+      "tp": 2,
+      "fp": 1,
+      "fn": 27,
+      "n_pred": 3,
+      "n_gt_eval": 29,
+      "over_segmentation_rate": 0.034482758620689655,
+      "merge_rate": 0.3333333333333333,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9310344827586207,
+      "box_recall": null
+    },
+    "M": {
+      "point": "M",
+      "ap": 0.06551724137931034,
+      "ap50": 0.06896551724137931,
+      "ap75": 0.06896551724137931,
+      "ap_small": 0.0,
+      "ap_medium": 0.0625,
+      "ap_large": 1.0,
+      "mean_iou": 0.9402351402724218,
+      "pq": 0.12132066326095765,
+      "sq": 0.9402351402724218,
+      "rq": 0.12903225806451613,
+      "precision": 1.0,
+      "recall": 0.06896551724137931,
+      "f1": 0.12903225806451613,
+      "tp": 2,
+      "fp": 0,
+      "fn": 27,
+      "n_pred": 2,
+      "n_gt_eval": 29,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9310344827586207,
+      "box_recall": null
+    },
+    "F": {
+      "point": "F",
+      "ap": 0.06551724137931034,
+      "ap50": 0.06896551724137931,
+      "ap75": 0.06896551724137931,
+      "ap_small": 0.0,
+      "ap_medium": 0.0625,
+      "ap_large": 1.0,
+      "mean_iou": 0.9402351402724218,
+      "pq": 0.12132066326095765,
+      "sq": 0.9402351402724218,
+      "rq": 0.12903225806451613,
+      "precision": 1.0,
+      "recall": 0.06896551724137931,
+      "f1": 0.12903225806451613,
+      "tp": 2,
+      "fp": 0,
+      "fn": 27,
+      "n_pred": 2,
+      "n_gt_eval": 29,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9310344827586207,
+      "box_recall": null
+    }
+  },
+  "class_recall_F": {
+    "Space_Food_Bag": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Vintage_Envelope": {
+      "tp": 0,
+      "fn": 4
+    },
+    "POP_Drinks_Pack": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Paper_Shopping_Bag": {
+      "tp": 0,
+      "fn": 1
+    },
+    "SM_Little_Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Sachets_Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Envelope_Stack": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Small Packet": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Asset_Package_in_paper_with_rope": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Small_Pouch": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Amazon_A2_Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Food_Packaging_Bag": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Small_Shipping_Bag": {
+      "tp": 0,
+      "fn": 2
+    },
+    "\u041a\u0443\u0431": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Black Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Ikea Cardboard Package": {
+      "tp": 2,
+      "fn": 3
+    }
+  }
+}

@@ -1,0 +1,142 @@
+{
+  "scene_id": "scene_008",
+  "category": "baseline",
+  "viewpoint": "top_down",
+  "status": "ok",
+  "visibility": {
+    "mode": "absolute",
+    "absolute_min": 1,
+    "relative_fraction": 0.01,
+    "threshold_px": 1
+  },
+  "gt_counts": {
+    "eval": 6,
+    "invisible": 0,
+    "out_of_scope": 0,
+    "total_instances": 6
+  },
+  "stages": {
+    "D": {
+      "point": "D",
+      "ap": 0.0,
+      "ap50": 0.0,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.0,
+      "mean_iou": 0.0,
+      "pq": 0.0,
+      "sq": 0.0,
+      "rq": 0.0,
+      "precision": 0.0,
+      "recall": 0.16666666666666666,
+      "f1": 0.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 5,
+      "n_pred": 1,
+      "n_gt_eval": 6,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.6666666666666666,
+      "box_recall": 0.16666666666666666
+    },
+    "S": {
+      "point": "S",
+      "ap": 0.13333333333333333,
+      "ap50": 0.16666666666666666,
+      "ap75": 0.16666666666666666,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.3333333333333333,
+      "mean_iou": 0.8655741001407601,
+      "pq": 0.24730688575450288,
+      "sq": 0.8655741001407601,
+      "rq": 0.2857142857142857,
+      "precision": 1.0,
+      "recall": 0.16666666666666666,
+      "f1": 0.2857142857142857,
+      "tp": 1,
+      "fp": 0,
+      "fn": 5,
+      "n_pred": 1,
+      "n_gt_eval": 6,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.8333333333333334,
+      "box_recall": null
+    },
+    "M": {
+      "point": "M",
+      "ap": 0.13333333333333333,
+      "ap50": 0.16666666666666666,
+      "ap75": 0.16666666666666666,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.3333333333333333,
+      "mean_iou": 0.8655741001407601,
+      "pq": 0.24730688575450288,
+      "sq": 0.8655741001407601,
+      "rq": 0.2857142857142857,
+      "precision": 1.0,
+      "recall": 0.16666666666666666,
+      "f1": 0.2857142857142857,
+      "tp": 1,
+      "fp": 0,
+      "fn": 5,
+      "n_pred": 1,
+      "n_gt_eval": 6,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.8333333333333334,
+      "box_recall": null
+    },
+    "F": {
+      "point": "F",
+      "ap": 0.2,
+      "ap50": 0.3333333333333333,
+      "ap75": 0.16666666666666666,
+      "ap_small": 0.0,
+      "ap_medium": 0.16666666666666666,
+      "ap_large": 0.3333333333333333,
+      "mean_iou": 0.7720735389926463,
+      "pq": 0.38603676949632315,
+      "sq": 0.7720735389926463,
+      "rq": 0.5,
+      "precision": 1.0,
+      "recall": 0.3333333333333333,
+      "f1": 0.5,
+      "tp": 2,
+      "fp": 0,
+      "fn": 4,
+      "n_pred": 2,
+      "n_gt_eval": 6,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.6666666666666666,
+      "box_recall": null
+    }
+  },
+  "class_recall_F": {
+    "Black Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Cardboard Box.001": {
+      "tp": 0,
+      "fn": 1
+    },
+    "China Package": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Ikea Cardboard Package": {
+      "tp": 2,
+      "fn": 0
+    }
+  }
+}

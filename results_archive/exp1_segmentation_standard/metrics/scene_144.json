@@ -1,0 +1,140 @@
+{
+  "scene_id": "scene_144",
+  "category": "mixed",
+  "viewpoint": "top_down",
+  "status": "ok",
+  "gt_counts": {
+    "eval": 8,
+    "invisible": 0,
+    "out_of_scope": 0,
+    "total_instances": 8
+  },
+  "stages": {
+    "D": {
+      "point": "D",
+      "ap": 0.0,
+      "ap50": 0.0,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.0,
+      "mean_iou": 0.0,
+      "pq": 0.0,
+      "sq": 0.0,
+      "rq": 0.0,
+      "precision": 0.0,
+      "recall": 0.375,
+      "f1": 0.0,
+      "tp": 3,
+      "fp": 0,
+      "fn": 5,
+      "n_pred": 3,
+      "n_gt_eval": 8,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.3333333333333333,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.625,
+      "box_recall": 0.375
+    },
+    "S": {
+      "point": "S",
+      "ap": 0.2,
+      "ap50": 0.25,
+      "ap75": 0.25,
+      "ap_small": 0.0,
+      "ap_medium": 0.4,
+      "ap_large": 0.0,
+      "mean_iou": 0.8859601919055944,
+      "pq": 0.35438407676223777,
+      "sq": 0.8859601919055944,
+      "rq": 0.4,
+      "precision": 1.0,
+      "recall": 0.25,
+      "f1": 0.4,
+      "tp": 2,
+      "fp": 0,
+      "fn": 6,
+      "n_pred": 2,
+      "n_gt_eval": 8,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.75,
+      "box_recall": null
+    },
+    "M": {
+      "point": "M",
+      "ap": 0.0,
+      "ap50": 0.0,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.0,
+      "mean_iou": 0.0,
+      "pq": 0.0,
+      "sq": 0.0,
+      "rq": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 8,
+      "n_pred": 0,
+      "n_gt_eval": 8,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 1.0,
+      "box_recall": null
+    },
+    "F": {
+      "point": "F",
+      "ap": 0.0,
+      "ap50": 0.0,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.0,
+      "mean_iou": 0.0,
+      "pq": 0.0,
+      "sq": 0.0,
+      "rq": 0.0,
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 8,
+      "n_pred": 0,
+      "n_gt_eval": 8,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 1.0,
+      "box_recall": null
+    }
+  },
+  "class_recall_F": {
+    "Amazon_Book_Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Small_Shipping_Bag": {
+      "tp": 0,
+      "fn": 3
+    },
+    "\u041a\u0443\u0431": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Asset_Large_cartoon_Box": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Small Packet": {
+      "tp": 0,
+      "fn": 1
+    }
+  }
+}

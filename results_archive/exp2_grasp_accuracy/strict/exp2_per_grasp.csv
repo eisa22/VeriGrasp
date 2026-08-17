@@ -1,0 +1,729 @@
+scene_id,category_band,gt_class,theta_deg,within_12deg,within_30deg,status
+scene_000,baseline,China Package,8.8040589318783e-05,True,True,evaluated
+scene_001,baseline,,,,,no_target
+scene_002,baseline,Ikea Cardboard Package,3.073855792725071e-05,True,True,evaluated
+scene_003,baseline,China Package,7.348717892467302e-05,True,True,evaluated
+scene_004,baseline,Ikea Cardboard Package,3.166219890220867e-05,True,True,evaluated
+scene_005,baseline,Cardboard Box SQ01.001,0.5087770067686946,True,True,evaluated
+scene_006,baseline,Куб,1.781552104964188e-05,True,True,evaluated
+scene_007,baseline,Gros Carton,7.08544132801049e-05,True,True,evaluated
+scene_008,baseline,Ikea Cardboard Package,5.1138895759317934e-05,True,True,evaluated
+scene_009,baseline,Colis VistaPrint,5.1715503701613556e-05,True,True,evaluated
+scene_010,baseline,Big Package cardboard,6.612894674575105e-05,True,True,evaluated
+scene_011,baseline,China Package,3.877121213454149e-05,True,True,evaluated
+scene_012,baseline,Куб,1.8699227417103935e-05,True,True,evaluated
+scene_013,baseline,Asset_Large_cartoon_Box,1.4069867000898533,True,True,evaluated
+scene_014,baseline,,,,,no_target
+scene_015,baseline,,,,,no_target
+scene_016,baseline,,,,,no_target
+scene_017,baseline,,,,,target_unmatched
+scene_018,baseline,Ikea Cardboard Package,4.592187682664371e-05,True,True,evaluated
+scene_019,baseline,Big Package cardboard,7.436146326616367e-05,True,True,evaluated
+scene_020,baseline,Carton Magdeleine,5.1991911153510894e-05,True,True,evaluated
+scene_021,baseline,Colis VistaPrint,8.238882809689861e-05,True,True,evaluated
+scene_022,baseline,Gros Carton,2.9353620713228692e-05,True,True,evaluated
+scene_023,baseline,Black Package,8.701017623191741e-06,True,True,evaluated
+scene_024,baseline,,,,,target_unmatched
+scene_025,baseline,,,,,no_target
+scene_026,baseline,Carton Magdeleine,9.734322150681177e-05,True,True,evaluated
+scene_027,baseline,Colis VistaPrint,5.202796191786434e-05,True,True,evaluated
+scene_028,baseline,Ikea Cardboard Package,1.3178251266377239e-05,True,True,evaluated
+scene_029,baseline,Cardboard Box SQ01.001,0.8664760095269368,True,True,evaluated
+scene_030,baseline,Black Package,5.204535952848577e-05,True,True,evaluated
+scene_031,baseline,Ikea Cardboard Package,5.782231260605552e-05,True,True,evaluated
+scene_032,baseline,Colis VistaPrint,6.199750388213088e-05,True,True,evaluated
+scene_033,baseline,Cardboard Box.001,5.131667179759182e-05,True,True,evaluated
+scene_034,baseline,Ikea Cardboard Package,5.497246370617042e-05,True,True,evaluated
+scene_035,baseline,,,,,no_target
+scene_036,baseline,Куб,5.239075222203442e-05,True,True,evaluated
+scene_037,baseline,Ikea Cardboard Package,2.3883343106565655e-05,True,True,evaluated
+scene_038,baseline,Big Package cardboard,9.378386148655769e-05,True,True,evaluated
+scene_039,baseline,Cardboard box,1.0885952743964467,True,True,evaluated
+scene_040,baseline,Gros Carton,3.282971291103074e-05,True,True,evaluated
+scene_041,baseline,Big Package cardboard,0.00013116124740044478,True,True,evaluated
+scene_042,baseline,Asset_Large_cartoon_Box,0.9999774860541218,True,True,evaluated
+scene_043,baseline,China Package,2.778462498890617e-05,True,True,evaluated
+scene_044,baseline,China Package,1.3780317628294338e-05,True,True,evaluated
+scene_045,baseline,China Package,1.4936717771389802e-05,True,True,evaluated
+scene_046,baseline,Big Package cardboard,6.069672719110111e-05,True,True,evaluated
+scene_047,baseline,Cardboard Box SQ01.001,0.7489974753535452,True,True,evaluated
+scene_048,baseline,Black Package,7.168343375041693e-05,True,True,evaluated
+scene_049,baseline,,,,,no_target
+scene_050,baseline,,,,,no_target
+scene_051,baseline,Ikea Cardboard Package,4.988601267842359e-05,True,True,evaluated
+scene_052,baseline,Ikea Cardboard Package,8.714495862421556e-05,True,True,evaluated
+scene_053,baseline,,,,,target_unmatched
+scene_054,baseline,Colis VistaPrint,3.589938882092906e-05,True,True,evaluated
+scene_055,baseline,,,,,target_unmatched
+scene_056,mixed,Colis VistaPrint,1.3859476860982509e-05,True,True,evaluated
+scene_057,mixed,Colis VistaPrint,0.0001294807167444096,True,True,evaluated
+scene_058,mixed,,,,,target_unmatched
+scene_059,mixed,,,,,no_target
+scene_060,mixed,Amazon_Book_Package,6.827598404804938e-05,True,True,evaluated
+scene_061,mixed,Big Package cardboard,1.971601551727428e-05,True,True,evaluated
+scene_062,mixed,Ikea Cardboard Package,5.723527226234808e-05,True,True,evaluated
+scene_063,mixed,China Package,1.849060758003609e-05,True,True,evaluated
+scene_064,mixed,POP_Drinks_Pack,0.7684505271374393,True,True,evaluated
+scene_065,mixed,Asset_Large_cartoon_Box,1.3791501047802197,True,True,evaluated
+scene_066,mixed,,,,,no_target
+scene_067,mixed,POP_Drinks_Pack,0.47287652201268127,True,True,evaluated
+scene_068,mixed,Carton Magdeleine,1.913867317021402e-05,True,True,evaluated
+scene_069,mixed,,,,,no_target
+scene_070,mixed,China Package,4.3127041909448916e-05,True,True,evaluated
+scene_071,mixed,Gros Carton,8.154794734319746e-05,True,True,evaluated
+scene_072,mixed,,,,,no_target
+scene_073,mixed,Asset_Deformed_Package,12.563507029905582,False,True,evaluated
+scene_074,mixed,Asset_Deformed_Package,11.621390545911062,True,True,evaluated
+scene_075,mixed,Asset_Deformed_Package,12.671418995460519,False,True,evaluated
+scene_076,mixed,Vintage_Envelope,7.821945912470229e-05,True,True,evaluated
+scene_077,mixed,Gros Carton,0.00010205406934812713,True,True,evaluated
+scene_078,mixed,Big Package cardboard,3.3163729308236565e-05,True,True,evaluated
+scene_079,mixed,Storage_Box_with_Lid,4.0086939043506435e-05,True,True,evaluated
+scene_080,mixed,,,,,target_unmatched
+scene_081,mixed,Storage_Box_with_Lid,5.0475674993055163e-05,True,True,evaluated
+scene_082,mixed,,,,,no_target
+scene_083,mixed,Cardboard Box SQ01.001,0.9780952748915581,True,True,evaluated
+scene_084,mixed,Carton Magdeleine,1.6249231276385124e-05,True,True,evaluated
+scene_085,mixed,,,,,no_target
+scene_086,mixed,Black Package,3.8281356201287136e-05,True,True,evaluated
+scene_087,mixed,,,,,no_target
+scene_088,mixed,POP_Drinks_Pack,0.3977755136776067,True,True,evaluated
+scene_089,mixed,Asset_Large_cartoon_Box,1.0000388401946987,True,True,evaluated
+scene_090,mixed,Asset_Deformed_Package,11.78611977865612,True,True,evaluated
+scene_091,mixed,,,,,no_target
+scene_092,mixed,,,,,no_target
+scene_093,mixed,Ikea Cardboard Package,2.4711744414082342e-05,True,True,evaluated
+scene_094,mixed,China Package,1.1843786336956005e-05,True,True,evaluated
+scene_095,mixed,Cardboard Box.001,6.572778657724724e-05,True,True,evaluated
+scene_096,mixed,Gros Carton,0.0001112026641309465,True,True,evaluated
+scene_097,mixed,China Package,3.8954528347460766e-05,True,True,evaluated
+scene_098,mixed,China Package,4.128089896095343e-05,True,True,evaluated
+scene_099,mixed,,,,,no_target
+scene_100,mixed,,,,,no_target
+scene_101,mixed,Asset_Package_in_paper_with_rope,4.018286595752965,True,True,evaluated
+scene_102,mixed,Cardboard Box.001,1.9539810020908466e-05,True,True,evaluated
+scene_103,mixed,Asset_Deformed_Package,14.034588418089962,False,True,evaluated
+scene_104,mixed,Big Package cardboard,6.117172462015568e-05,True,True,evaluated
+scene_105,mixed,Amazon_Book_Package,8.50623124404367e-05,True,True,evaluated
+scene_106,mixed,Big Package cardboard,1.7758417911471937e-05,True,True,evaluated
+scene_107,mixed,Big Package cardboard,5.557977552088774e-05,True,True,evaluated
+scene_108,mixed,POP_Drinks_Pack,0.025022090739595458,True,True,evaluated
+scene_109,mixed,Amazon_A2_Package,0.1989820515221124,True,True,evaluated
+scene_110,mixed,Ikea Cardboard Package,3.819314538043407e-05,True,True,evaluated
+scene_111,mixed,China Package,4.418105654066297e-05,True,True,evaluated
+scene_112,mixed,Asset_Deformed_Package,12.153291118148031,False,True,evaluated
+scene_113,mixed,,,,,target_unmatched
+scene_114,mixed,Ikea Cardboard Package,4.744295289285892e-05,True,True,evaluated
+scene_115,mixed,,,,,no_target
+scene_116,mixed,,,,,no_target
+scene_117,mixed,Cardboard Box SQ01.001,1.0157093677153908,True,True,evaluated
+scene_118,mixed,Colis VistaPrint,0.00012017299807099944,True,True,evaluated
+scene_119,mixed,Colis VistaPrint,4.0224987050115815e-05,True,True,evaluated
+scene_120,mixed,Amazon_A2_Package,0.39045817225503493,True,True,evaluated
+scene_121,mixed,Ikea Cardboard Package,6.307107246393872e-05,True,True,evaluated
+scene_122,mixed,Asset_Deformed_Package,10.6346911216911,True,True,evaluated
+scene_123,mixed,Colis VistaPrint,6.710415090430545e-05,True,True,evaluated
+scene_124,mixed,Big Package cardboard,2.152326232378219e-05,True,True,evaluated
+scene_125,mixed,,,,,no_target
+scene_126,mixed,Asset_Deformed_Package,12.61686133069278,False,True,evaluated
+scene_127,mixed,Big Package cardboard,5.7588382524483685e-05,True,True,evaluated
+scene_128,mixed,,,,,no_target
+scene_129,mixed,Gros Carton,5.682349988858316e-05,True,True,evaluated
+scene_130,mixed,Colis VistaPrint,4.7092699153264636e-05,True,True,evaluated
+scene_131,mixed,Asset_Deformed_Package,13.066721049744544,False,True,evaluated
+scene_132,mixed,,,,,no_target
+scene_133,mixed,Gros Carton,1.385577855210735e-05,True,True,evaluated
+scene_134,mixed,Colis VistaPrint,3.163238190657061e-05,True,True,evaluated
+scene_135,mixed,Ikea Cardboard Package,5.652603823896922e-05,True,True,evaluated
+scene_136,mixed,Cardboard Box.001,4.098099007467218e-05,True,True,evaluated
+scene_137,mixed,,,,,no_target
+scene_138,mixed,Paper_Shopping_Bag,9.403475954700108,True,True,evaluated
+scene_139,mixed,Black Package,4.104613614599533e-05,True,True,evaluated
+scene_140,mixed,,,,,no_target
+scene_141,mixed,Amazon_Book_Package,9.052957816816448e-05,True,True,evaluated
+scene_142,mixed,,,,,no_target
+scene_143,mixed,Big Package cardboard,2.9332472093803746e-05,True,True,evaluated
+scene_144,mixed,,,,,no_target
+scene_145,mixed,Big Package cardboard,1.8182559893291706e-05,True,True,evaluated
+scene_146,mixed,,,,,no_target
+scene_147,mixed,Куб,9.340143943046724e-05,True,True,evaluated
+scene_148,mixed,Ikea Cardboard Package,4.4588542563890856e-05,True,True,evaluated
+scene_149,mixed,Amazon_Book_Package,6.469520940127185e-05,True,True,evaluated
+scene_150,mixed,Asset_Deformed_Package,10.049553170701115,True,True,evaluated
+scene_151,mixed,Black Package,3.5353493818262315e-05,True,True,evaluated
+scene_152,mixed,Asset_Large_cartoon_Box,1.3791094022334072,True,True,evaluated
+scene_153,mixed,,,,,no_target
+scene_154,mixed,Gros Carton,5.4453741439396257e-05,True,True,evaluated
+scene_155,mixed,POP_Drinks_Pack,0.13532928375852232,True,True,evaluated
+scene_156,mixed,Big Package cardboard,1.918622378243645e-05,True,True,evaluated
+scene_157,mixed,POP_Drinks_Pack,0.8290673728529289,True,True,evaluated
+scene_158,mixed,Amazon_A2_Package,0.5428074261339844,True,True,evaluated
+scene_159,mixed,,,,,no_target
+scene_160,mixed,,,,,no_target
+scene_161,mixed,China Package,7.080941041819881e-05,True,True,evaluated
+scene_162,mixed,Storage_Box_with_Lid,1.910599972505643e-05,True,True,evaluated
+scene_163,mixed,Asset_Deformed_Package,11.55258647172881,True,True,evaluated
+scene_164,mixed,Colis VistaPrint,2.8541741445918652e-05,True,True,evaluated
+scene_165,mixed,Colis VistaPrint,4.941946258661542e-05,True,True,evaluated
+scene_166,mixed,Куб,5.508898441836373e-05,True,True,evaluated
+scene_167,mixed,Amazon_Book_Package,7.887666455277674e-05,True,True,evaluated
+scene_168,mixed,,,,,no_target
+scene_169,mixed,Asset_Deformed_Package,8.527358743080075,True,True,evaluated
+scene_170,mixed,Asset_Deformed_Package,12.964035221406577,False,True,evaluated
+scene_171,mixed,Amazon_Book_Package,2.169658351845863e-06,True,True,evaluated
+scene_172,mixed,China Package,0.00010970109155580544,True,True,evaluated
+scene_173,mixed,Amazon_A2_Package,0.5498712649541602,True,True,evaluated
+scene_174,mixed,,,,,no_target
+scene_175,mixed,Gros Carton,5.05318264534552e-05,True,True,evaluated
+scene_176,mixed,Carton Magdeleine,6.829337089575238e-05,True,True,evaluated
+scene_177,mixed,Colis VistaPrint,8.635664502770521e-05,True,True,evaluated
+scene_178,mixed,,,,,no_target
+scene_179,mixed,Storage_Box_with_Lid,3.4705370179759784e-05,True,True,evaluated
+scene_180,mixed,Colis VistaPrint,9.068638392980106e-05,True,True,evaluated
+scene_181,mixed,,,,,no_target
+scene_182,mixed,,,,,no_target
+scene_183,mixed,,,,,no_target
+scene_184,mixed,Big Package cardboard,1.409759540888913e-05,True,True,evaluated
+scene_185,mixed,,,,,no_target
+scene_186,mixed,Envelope_Stack,6.7646941558388995,True,True,evaluated
+scene_187,mixed,Asset_Deformed_Package,13.681435987327411,False,True,evaluated
+scene_188,mixed,Asset_Package_in_paper_with_rope,2.5343983236159153,True,True,evaluated
+scene_189,mixed,Ikea Cardboard Package,3.42121653826893e-05,True,True,evaluated
+scene_190,mixed,China Package,6.239697618160445e-05,True,True,evaluated
+scene_191,mixed,Gros Carton,7.768563552962913e-05,True,True,evaluated
+scene_192,mixed,Colis VistaPrint,8.362033174417137e-05,True,True,evaluated
+scene_193,mixed,Black Package,3.1214818562444785e-05,True,True,evaluated
+scene_194,mixed,Cardboard Box SQ01.001,0.8232576113654378,True,True,evaluated
+scene_195,mixed,,,,,no_target
+scene_196,mixed,Colis VistaPrint,5.429653898146202e-05,True,True,evaluated
+scene_197,mixed,Cardboard Box SQ01.001,1.217789140235858,True,True,evaluated
+scene_198,mixed,China Package,2.2621328990024333e-05,True,True,evaluated
+scene_199,mixed,,,,,no_target
+scene_200,dense,Amazon_A2_Package,0.5910595433308609,True,True,evaluated
+scene_201,dense,Amazon_Book_Package,3.6828299643576865e-05,True,True,evaluated
+scene_202,dense,Carton Magdeleine,2.3522768548281263e-05,True,True,evaluated
+scene_203,dense,Small Packet,6.998728159472451e-05,True,True,evaluated
+scene_204,dense,Amazon_Book_Package,4.3547906384747654e-05,True,True,evaluated
+scene_205,dense,Vintage_Envelope,2.5070793070467024e-05,True,True,evaluated
+scene_206,dense,Small Packet,7.983249971190759e-05,True,True,evaluated
+scene_207,dense,Storage_Box_with_Lid,3.365291040737957e-05,True,True,evaluated
+scene_208,dense,Colis VistaPrint,5.009105319674681e-05,True,True,evaluated
+scene_209,dense,Asset_Package_in_paper_with_rope,4.589345063491297,True,True,evaluated
+scene_210,dense,Amazon_A2_Package,0.5922325131578834,True,True,evaluated
+scene_211,dense,Amazon_Book_Package,3.563007714788891e-05,True,True,evaluated
+scene_212,dense,Storage_Box_with_Lid,1.3706152267956194e-05,True,True,evaluated
+scene_213,dense,Vintage_Envelope,0.00011357108666007208,True,True,evaluated
+scene_214,dense,Куб,5.236094188815148e-05,True,True,evaluated
+scene_215,dense,POP_Drinks_Pack,0.9891416353408556,True,True,evaluated
+scene_216,dense,,,,,target_unmatched
+scene_217,dense,Carton Magdeleine,4.731464400187442e-05,True,True,evaluated
+scene_218,dense,Amazon_Book_Package,4.098972564888756e-05,True,True,evaluated
+scene_219,dense,Куб,6.677983397062447e-05,True,True,evaluated
+scene_220,dense,Carton Magdeleine,2.9892370973161418e-05,True,True,evaluated
+scene_221,dense,Amazon_A2_Package,1.1223519152488688,True,True,evaluated
+scene_222,dense,China Package,1.4916317951999707e-05,True,True,evaluated
+scene_223,dense,Amazon_A2_Package,0.4739406991375883,True,True,evaluated
+scene_224,dense,Colis VistaPrint,0.00010438501978946381,True,True,evaluated
+scene_225,dense,Colis VistaPrint,6.251701487557569e-05,True,True,evaluated
+scene_226,dense,China Package,5.873758565424902e-05,True,True,evaluated
+scene_227,dense,Carton Magdeleine,0.00010081783482360308,True,True,evaluated
+scene_228,dense,Amazon_Book_Package,6.127809529684235e-05,True,True,evaluated
+scene_229,dense,Amazon_Book_Package,9.60153719652216e-05,True,True,evaluated
+scene_230,dense,,,,,no_target
+scene_231,dense,Amazon_A2_Package,0.5745523307283076,True,True,evaluated
+scene_232,dense,Amazon_A2_Package,1.6996637735599258e-05,True,True,evaluated
+scene_233,dense,,,,,target_unmatched
+scene_234,dense,Amazon_A2_Package,0.5008912262955919,True,True,evaluated
+scene_235,dense,Amazon_Book_Package,4.5204207837285986e-05,True,True,evaluated
+scene_236,dense,Amazon_Book_Package,1.945942025965721e-05,True,True,evaluated
+scene_237,dense,Paper_Shopping_Bag,15.400370360981713,False,True,evaluated
+scene_238,dense,,,,,no_target
+scene_239,dense,Paper_Shopping_Bag,7.705716394442144,True,True,evaluated
+scene_240,dense,Amazon_Book_Package,4.802418888917448e-05,True,True,evaluated
+scene_241,dense,Black Package,5.025498440140057e-05,True,True,evaluated
+scene_242,dense,Small_Shipping_Bag,1.1890530674717858e-05,True,True,evaluated
+scene_243,dense,Carton Magdeleine,3.730117707461575e-05,True,True,evaluated
+scene_244,dense,Amazon_Book_Package,3.212959598949994e-05,True,True,evaluated
+scene_245,dense,,,,,target_unmatched
+scene_246,dense,Amazon_Book_Package,5.6431542436064716e-05,True,True,evaluated
+scene_247,dense,Amazon_Book_Package,3.8701181720923846e-05,True,True,evaluated
+scene_248,dense,Amazon_A2_Package,0.5874928218272722,True,True,evaluated
+scene_249,dense,Vintage_Envelope,7.706098174926608e-05,True,True,evaluated
+scene_250,dense,Vintage_Envelope,5.742733293271531e-05,True,True,evaluated
+scene_251,dense,Amazon_Book_Package,3.746594443211764e-05,True,True,evaluated
+scene_252,dense,Amazon_Book_Package,2.851313986812154e-05,True,True,evaluated
+scene_253,dense,Colis VistaPrint,4.277858102926189e-05,True,True,evaluated
+scene_254,dense,Amazon_A2_Package,0.5850773671449705,True,True,evaluated
+scene_255,dense,Amazon_A2_Package,0.5784674651050408,True,True,evaluated
+scene_256,dense,SM_Little_Package,3.1914570139623786,True,True,evaluated
+scene_257,dense,Amazon_A2_Package,0.6166487322729209,True,True,evaluated
+scene_258,dense,Paper_Shopping_Bag,13.294282221392656,False,True,evaluated
+scene_259,dense,Amazon_A2_Package,0.4939516641838288,True,True,evaluated
+scene_260,dense,Small Packet,3.6153844798262714e-05,True,True,evaluated
+scene_261,dense,POP_Drinks_Pack,0.19131176660164254,True,True,evaluated
+scene_262,dense,Amazon_Book_Package,3.66153404756924e-05,True,True,evaluated
+scene_263,dense,Storage_Box_with_Lid,4.2068845970732564e-05,True,True,evaluated
+scene_264,dense,Black Package,0.00013233349401963956,True,True,evaluated
+scene_265,dense,Amazon_A2_Package,0.5438066491428968,True,True,evaluated
+scene_266,dense,Space_Food_Bag,2.302197958143297,True,True,evaluated
+scene_267,dense,Carton Magdeleine,5.6206121008961705e-05,True,True,evaluated
+scene_268,dense,,,,,target_unmatched
+scene_269,dense,Ikea Cardboard Package,7.003247063083206e-05,True,True,evaluated
+scene_270,dense,Small Packet,0.00010879602536984108,True,True,evaluated
+scene_271,dense,Vintage_Envelope,5.755472628047028e-05,True,True,evaluated
+scene_272,dense,POP_Drinks_Pack,0.7660079893454049,True,True,evaluated
+scene_273,dense,Small Packet,3.535103345172791e-05,True,True,evaluated
+scene_274,dense,Paper_Shopping_Bag,13.993251715069436,False,True,evaluated
+scene_275,dense,Carton Magdeleine,3.664815865428649e-05,True,True,evaluated
+scene_276,dense,Asset_Package_in_paper_with_rope,2.7530065403060004,True,True,evaluated
+scene_277,dense,Small_Shipping_Bag,4.655385428699674e-05,True,True,evaluated
+scene_278,dense,Amazon_A2_Package,0.5610798862705864,True,True,evaluated
+scene_279,dense,Louis_Vuitton_Package,6.623213239449688e-05,True,True,evaluated
+scene_280,dense,Colis VistaPrint,2.8388424805842416e-05,True,True,evaluated
+scene_281,dense,Vintage_Envelope,6.519519184642606e-05,True,True,evaluated
+scene_282,dense,Carton Magdeleine,0.00018177482803190693,True,True,evaluated
+scene_283,dense,Asset_Package_in_paper_with_rope,3.8986118935441048,True,True,evaluated
+scene_284,dense,,,,,no_target
+scene_285,dense,Carton Magdeleine,2.0740570803890724e-05,True,True,evaluated
+scene_286,dense,Colis VistaPrint,5.0147053783673254e-05,True,True,evaluated
+scene_287,dense,Amazon_A2_Package,0.5643801732186935,True,True,evaluated
+scene_288,dense,Amazon_A2_Package,0.5115761884971133,True,True,evaluated
+scene_289,dense,Amazon_Book_Package,1.7079479425817856e-05,True,True,evaluated
+scene_290,dense,Paper_Shopping_Bag,15.807972515114894,False,True,evaluated
+scene_291,dense,Amazon_Book_Package,4.049413012808717e-05,True,True,evaluated
+scene_292,dense,Black Package,3.1030928858387743e-06,True,True,evaluated
+scene_293,dense,POP_Drinks_Pack,0.7603252525044469,True,True,evaluated
+scene_294,dense,Amazon_A2_Package,0.4715153115496726,True,True,evaluated
+scene_295,dense,POP_Drinks_Pack,0.6520633254477397,True,True,evaluated
+scene_296,dense,Black Package,1.196963343835126e-05,True,True,evaluated
+scene_297,dense,Colis VistaPrint,4.038517265762599e-05,True,True,evaluated
+scene_298,dense,Amazon_A2_Package,0.46385619208412365,True,True,evaluated
+scene_299,dense,Куб,1.9618273825911192e-05,True,True,evaluated
+scene_300,dense,SM_Little_Package,1.7459004303522363,True,True,evaluated
+scene_301,dense,Amazon_A2_Package,0.602156569634816,True,True,evaluated
+scene_302,dense,,,,,target_unmatched
+scene_303,dense,SM_Little_Package,3.1283595798753674,True,True,evaluated
+scene_304,dense,Small Packet,0.00011911352927917108,True,True,evaluated
+scene_305,dense,China Package,4.007216511630608e-05,True,True,evaluated
+scene_306,dense,Small_Shipping_Bag,1.5881561439615396e-05,True,True,evaluated
+scene_307,dense,Louis_Vuitton_Package,8.864513842117199e-05,True,True,evaluated
+scene_308,dense,Куб,3.7851532965730015e-05,True,True,evaluated
+scene_309,dense,Amazon_Book_Package,5.450438721668838e-05,True,True,evaluated
+scene_310,dense,Small Packet,6.808844701878154e-05,True,True,evaluated
+scene_311,dense,Amazon_A2_Package,4.290229265844019,True,True,evaluated
+scene_312,dense,Amazon_Book_Package,2.0618393713970204e-05,True,True,evaluated
+scene_313,dense,,,,,target_unmatched
+scene_314,dense,Amazon_A2_Package,0.8214402544920886,True,True,evaluated
+scene_315,dense,Black Package,3.9639542055486323e-05,True,True,evaluated
+scene_316,dense,Asset_Package_in_paper_with_rope,1.7964013354987376,True,True,evaluated
+scene_317,dense,Amazon_Book_Package,6.289845476393322e-05,True,True,evaluated
+scene_318,dense,Small Packet,5.3342526966012654e-05,True,True,evaluated
+scene_319,dense,Small Packet,2.703656263934747e-05,True,True,evaluated
+scene_320,dense,Vintage_Envelope,3.5296110181294714e-05,True,True,evaluated
+scene_321,dense,Amazon_A2_Package,0.5705336343534388,True,True,evaluated
+scene_322,dense,Black Package,9.21527505628247e-05,True,True,evaluated
+scene_323,dense,Amazon_Book_Package,9.176911415602587e-05,True,True,evaluated
+scene_324,dense,Amazon_Book_Package,2.1905162572639258e-05,True,True,evaluated
+scene_325,dense,Envelope_Stack,1.9720166106785506,True,True,evaluated
+scene_326,dense,Куб,5.7540027850336025e-05,True,True,evaluated
+scene_327,dense,POP_Drinks_Pack,0.43167263535362704,True,True,evaluated
+scene_328,dense,SM_Little_Package,0.3510828048690122,True,True,evaluated
+scene_329,dense,Paper_Shopping_Bag,12.35410939784725,False,True,evaluated
+scene_330,dense,Small_Shipping_Bag,3.710925639783441e-05,True,True,evaluated
+scene_331,dense,Amazon_A2_Package,0.6104748034805785,True,True,evaluated
+scene_332,dense,Amazon_Book_Package,5.890952783859367e-05,True,True,evaluated
+scene_333,dense,Louis_Vuitton_Package,4.34944221294195e-05,True,True,evaluated
+scene_334,dense,Paper_Shopping_Bag,15.00251053699497,False,True,evaluated
+scene_335,dense,Vintage_Envelope,9.497797494699608e-05,True,True,evaluated
+scene_336,dense,Amazon_A2_Package,0.5943749771232738,True,True,evaluated
+scene_337,dense,Amazon_A2_Package,0.48362778802170786,True,True,evaluated
+scene_338,dense,Amazon_A2_Package,0.4753028036398898,True,True,evaluated
+scene_339,dense,Colis VistaPrint,5.276228878862946e-05,True,True,evaluated
+scene_340,dense,China Package,2.088602153508713e-05,True,True,evaluated
+scene_341,dense,Amazon_Book_Package,3.9235747931270106e-05,True,True,evaluated
+scene_342,dense,Storage_Box_with_Lid,3.754389792689396e-05,True,True,evaluated
+scene_343,dense,SM_Little_Package,1.2326813024199281,True,True,evaluated
+scene_344,dense,Куб,5.4373257132828934e-05,True,True,evaluated
+scene_345,dense,Small Packet,5.646152624837941,True,True,evaluated
+scene_346,dense,SM_Little_Package,3.113148036847211,True,True,evaluated
+scene_347,dense,Louis_Vuitton_Package,0.00012159940805934487,True,True,evaluated
+scene_348,dense,SM_Little_Package,3.8325232884400102,True,True,evaluated
+scene_349,dense,Amazon_Book_Package,5.032493283686939e-05,True,True,evaluated
+scene_350,chaotic,Ikea Cardboard Package,0.0020767044525588987,True,True,evaluated
+scene_351,chaotic,,,,,no_target
+scene_352,chaotic,Small Packet,0.00136243358015952,True,True,evaluated
+scene_353,chaotic,Small Packet,0.004510817222066872,True,True,evaluated
+scene_354,chaotic,Amazon_Book_Package,3.7060337799281915e-05,True,True,evaluated
+scene_355,chaotic,Amazon_Book_Package,0.023894454447322626,True,True,evaluated
+scene_356,chaotic,Envelope_Stack,4.980231685009008,True,True,evaluated
+scene_357,chaotic,Amazon_A2_Package,0.8479771979717295,True,True,evaluated
+scene_358,chaotic,Amazon_Book_Package,3.323081758228383e-05,True,True,evaluated
+scene_359,chaotic,Amazon_A2_Package,0.6114844512847853,True,True,evaluated
+scene_360,chaotic,Small Packet,5.001984670165599e-05,True,True,evaluated
+scene_361,chaotic,Small_Shipping_Bag,0.0021603339420055855,True,True,evaluated
+scene_362,chaotic,Amazon_A2_Package,0.509285825289916,True,True,evaluated
+scene_363,chaotic,,,,,no_target
+scene_364,chaotic,Black Package,0.0009148189609427954,True,True,evaluated
+scene_365,chaotic,Paper_Shopping_Bag,14.386457257636001,False,True,evaluated
+scene_366,chaotic,Amazon_A2_Package,1.0541039527906308,True,True,evaluated
+scene_367,chaotic,Envelope_Stack,5.062484236732492,True,True,evaluated
+scene_368,chaotic,,,,,no_target
+scene_369,chaotic,Small Packet,0.013320490315312385,True,True,evaluated
+scene_370,chaotic,Colis VistaPrint,6.496136408153355e-05,True,True,evaluated
+scene_371,chaotic,Amazon_A2_Package,0.533256147983457,True,True,evaluated
+scene_372,chaotic,Carton Magdeleine,1.4313958405722772e-05,True,True,evaluated
+scene_373,chaotic,,,,,no_target
+scene_374,chaotic,Amazon_Book_Package,0.03749458481873758,True,True,evaluated
+scene_375,chaotic,Louis_Vuitton_Package,0.0015109769107046742,True,True,evaluated
+scene_376,chaotic,Small_Shipping_Bag,7.323448698159189e-05,True,True,evaluated
+scene_377,chaotic,Amazon_Book_Package,2.5185612663333013e-05,True,True,evaluated
+scene_378,chaotic,Colis VistaPrint,5.538804624405291e-05,True,True,evaluated
+scene_379,chaotic,Asset_Package_in_paper_with_rope,1.7625186322435233,True,True,evaluated
+scene_380,chaotic,Paper_Coffee_Bag,1.2887322447907017,True,True,evaluated
+scene_381,chaotic,Black Package,7.462692762897527e-05,True,True,evaluated
+scene_382,chaotic,Louis_Vuitton_Package,0.003463657503705771,True,True,evaluated
+scene_383,chaotic,Amazon_A2_Package,0.815728155245796,True,True,evaluated
+scene_384,chaotic,Vintage_Envelope,0.027793986319337046,True,True,evaluated
+scene_385,chaotic,Amazon_A2_Package,0.6092660304997289,True,True,evaluated
+scene_386,chaotic,Amazon_A2_Package,0.5143429725640795,True,True,evaluated
+scene_387,chaotic,Space_Food_Bag,1.698118772834486,True,True,evaluated
+scene_388,chaotic,Amazon_A2_Package,1.0417257354158216,True,True,evaluated
+scene_389,chaotic,Amazon_A2_Package,0.3698785854157216,True,True,evaluated
+scene_390,chaotic,Black Package,7.49749241942835e-05,True,True,evaluated
+scene_391,chaotic,,,,,no_target
+scene_392,chaotic,Small Packet,0.007167350250091158,True,True,evaluated
+scene_393,chaotic,Amazon_A2_Package,0.7022987792096744,True,True,evaluated
+scene_394,chaotic,Amazon_Book_Package,1.296117954690296e-05,True,True,evaluated
+scene_395,chaotic,Куб,0.00530365054300208,True,True,evaluated
+scene_396,chaotic,Amazon_Book_Package,0.00010169237509254412,True,True,evaluated
+scene_397,chaotic,Amazon_Book_Package,0.014555408511363381,True,True,evaluated
+scene_398,chaotic,Small Packet,0.01200310379981755,True,True,evaluated
+scene_399,chaotic,Amazon_A2_Package,0.46543210283311925,True,True,evaluated
+scene_400,chaotic,POP_Drinks_Pack,0.09175454318930576,True,True,evaluated
+scene_401,chaotic,Amazon_Book_Package,7.277087194822933e-05,True,True,evaluated
+scene_402,chaotic,China Package,5.7344040319128074e-05,True,True,evaluated
+scene_403,chaotic,Packaging_Tube,2.19725363987816,True,True,evaluated
+scene_404,chaotic,Amazon_A2_Package,0.530342175772775,True,True,evaluated
+scene_405,chaotic,Amazon_A2_Package,0.4441186924567518,True,True,evaluated
+scene_406,chaotic,SM_Little_Package,3.899204480595776,True,True,evaluated
+scene_407,chaotic,Asset_Package_in_paper_with_rope,0.4668649876747036,True,True,evaluated
+scene_408,chaotic,Amazon_A2_Package,0.7687156028148124,True,True,evaluated
+scene_409,chaotic,Asset_Package_in_paper_with_rope,1.4276560777039382,True,True,evaluated
+scene_410,chaotic,,,,,no_target
+scene_411,chaotic,,,,,target_unmatched
+scene_412,chaotic,,,,,target_unmatched
+scene_413,chaotic,Asset_Package_in_paper_with_rope,1.153744512958873,True,True,evaluated
+scene_414,chaotic,Small Packet,3.9400037810866406e-05,True,True,evaluated
+scene_415,chaotic,Amazon_Book_Package,0.0001113692982502999,True,True,evaluated
+scene_416,chaotic,Amazon_A2_Package,0.38255267507904306,True,True,evaluated
+scene_417,chaotic,Big Package cardboard,2.1044185612604558e-05,True,True,evaluated
+scene_418,chaotic,Small Packet,5.974297328695061e-05,True,True,evaluated
+scene_419,chaotic,Asset_Package_in_paper_with_rope,3.2441155640649493,True,True,evaluated
+scene_420,chaotic,,,,,no_grasp
+scene_421,chaotic,Amazon_A2_Package,0.5515237080454853,True,True,evaluated
+scene_422,chaotic,Amazon_Book_Package,0.03909880572213892,True,True,evaluated
+scene_423,chaotic,Amazon_A2_Package,0.505053752969472,True,True,evaluated
+scene_424,chaotic,Carton Magdeleine,4.5426578588547124e-05,True,True,evaluated
+scene_425,chaotic,Amazon_A2_Package,0.4088349261401979,True,True,evaluated
+scene_426,chaotic,Small_Shipping_Bag,2.3601780749619646e-05,True,True,evaluated
+scene_427,chaotic,Space_Food_Bag,27.032638484693127,False,True,evaluated
+scene_428,chaotic,Small_Shipping_Bag,6.245077889585118e-05,True,True,evaluated
+scene_429,chaotic,Storage_Box_with_Lid,0.0012237017695443328,True,True,evaluated
+scene_430,lighting,Amazon_A2_Package,0.5674058072343957,True,True,evaluated
+scene_431,lighting,Small Packet,2.4344674461934764e-05,True,True,evaluated
+scene_432,lighting,,,,,target_unmatched
+scene_433,lighting,,,,,no_target
+scene_434,lighting,Storage_Box_with_Lid,4.433172206154843e-05,True,True,evaluated
+scene_435,lighting,,,,,no_grasp
+scene_436,lighting,SM_Little_Package,3.4647678055143856,True,True,evaluated
+scene_437,lighting,Black Package,6.682310610224534e-05,True,True,evaluated
+scene_438,lighting,Small Packet,5.175857574039294e-05,True,True,evaluated
+scene_439,lighting,,,,,target_unmatched
+scene_440,lighting,Asset_Package_in_paper_with_rope,1.9104549332079026,True,True,evaluated
+scene_441,lighting,,,,,target_unmatched
+scene_442,lighting,China Package,2.8765479510609763e-05,True,True,evaluated
+scene_443,lighting,Amazon_A2_Package,0.5064768204605051,True,True,evaluated
+scene_444,lighting,Amazon_Book_Package,3.3125325631204454e-05,True,True,evaluated
+scene_445,lighting,Amazon_Book_Package,3.216887507556538e-05,True,True,evaluated
+scene_446,lighting,Louis_Vuitton_Package,1.843362368094302e-05,True,True,evaluated
+scene_447,lighting,Amazon_Book_Package,2.6950645647163054e-05,True,True,evaluated
+scene_448,lighting,China Package,4.982969809062491e-05,True,True,evaluated
+scene_449,lighting,Amazon_Book_Package,7.57602129606116e-05,True,True,evaluated
+scene_450,lighting,Colis VistaPrint,6.019070232854964e-05,True,True,evaluated
+scene_451,lighting,Amazon_Book_Package,3.382897698599192e-05,True,True,evaluated
+scene_452,lighting,Asset_Large_cartoon_Box,0.7760898771961142,True,True,evaluated
+scene_453,lighting,Carton Magdeleine,0.0001060390815734945,True,True,evaluated
+scene_454,lighting,Amazon_Book_Package,6.791542278963941e-05,True,True,evaluated
+scene_455,lighting,,,,,target_unmatched
+scene_456,lighting,Amazon_Book_Package,1.0909972016715229e-05,True,True,evaluated
+scene_457,lighting,Amazon_A2_Package,0.8589568619589292,True,True,evaluated
+scene_458,lighting,Asset_Large_cartoon_Box,1.0000016795071853,True,True,evaluated
+scene_459,lighting,Amazon_A2_Package,0.5543973293059706,True,True,evaluated
+scene_460,lighting,Amazon_Book_Package,3.94164731086356e-05,True,True,evaluated
+scene_461,lighting,Carton Magdeleine,7.105075534377695e-05,True,True,evaluated
+scene_462,lighting,Vintage_Envelope,12.327164321722893,False,True,evaluated
+scene_463,lighting,Black Package,2.6673759592231898e-05,True,True,evaluated
+scene_464,lighting,Colis VistaPrint,1.7026793528389488e-05,True,True,evaluated
+scene_465,lighting,Small_Shipping_Bag,8.387254150093032e-05,True,True,evaluated
+scene_466,lighting,Amazon_A2_Package,0.5744619519963255,True,True,evaluated
+scene_467,lighting,SM_Little_Package,1.730066573012648,True,True,evaluated
+scene_468,lighting,Amazon_A2_Package,0.5805929670344733,True,True,evaluated
+scene_469,lighting,Amazon_Book_Package,4.936867042552715e-05,True,True,evaluated
+scene_470,lighting,Storage_Box_with_Lid,3.39091981683134e-05,True,True,evaluated
+scene_471,lighting,Amazon_A2_Package,0.4516054239487293,True,True,evaluated
+scene_472,lighting,Small_Shipping_Bag,0.00010144165116526489,True,True,evaluated
+scene_473,lighting,Small_Shipping_Bag,0.00011491427759892887,True,True,evaluated
+scene_474,lighting,Vintage_Envelope,7.753779290663434e-05,True,True,evaluated
+scene_475,lighting,China Package,0.00011116128462006118,True,True,evaluated
+scene_476,lighting,,,,,no_target
+scene_477,lighting,Amazon_Book_Package,4.8299461968160774e-05,True,True,evaluated
+scene_478,lighting,Amazon_A2_Package,0.5304846335994524,True,True,evaluated
+scene_479,lighting,Amazon_A2_Package,0.40821665011203234,True,True,evaluated
+scene_480,occlusion,Ikea Cardboard Package,3.4253854241193535e-05,True,True,evaluated
+scene_481,occlusion,Gros Carton,3.175627776729583e-05,True,True,evaluated
+scene_482,occlusion,Ikea Cardboard Package,1.6950168118405392e-05,True,True,evaluated
+scene_483,occlusion,,,,,no_target
+scene_484,occlusion,Ikea Cardboard Package,3.0136348444383712e-05,True,True,evaluated
+scene_485,occlusion,Ikea Cardboard Package,8.858831472304831e-05,True,True,evaluated
+scene_486,occlusion,Ikea Cardboard Package,1.840219298978991e-05,True,True,evaluated
+scene_487,occlusion,Gros Carton,3.0153064255606367e-05,True,True,evaluated
+scene_488,occlusion,Ikea Cardboard Package,2.610921145472909e-05,True,True,evaluated
+scene_489,occlusion,Ikea Cardboard Package,1.9853970923341805e-05,True,True,evaluated
+scene_490,occlusion,Ikea Cardboard Package,5.442061147380063e-05,True,True,evaluated
+scene_491,occlusion,Ikea Cardboard Package,3.18834460041588e-05,True,True,evaluated
+scene_492,occlusion,Ikea Cardboard Package,5.2895032112997816e-05,True,True,evaluated
+scene_493,occlusion,Ikea Cardboard Package,1.788861919731372e-05,True,True,evaluated
+scene_494,occlusion,Gros Carton,0.10519942387239867,True,True,evaluated
+scene_495,occlusion,Ikea Cardboard Package,6.99721878449631e-05,True,True,evaluated
+scene_496,occlusion,Ikea Cardboard Package,8.025831457791846e-05,True,True,evaluated
+scene_497,occlusion,,,,,no_target
+scene_498,occlusion,,,,,no_target
+scene_499,occlusion,Gros Carton,6.312927502054003e-05,True,True,evaluated
+scene_500,occlusion,,,,,no_target
+scene_501,occlusion,Ikea Cardboard Package,3.466339273335982e-06,True,True,evaluated
+scene_502,occlusion,Ikea Cardboard Package,3.215016102481846e-05,True,True,evaluated
+scene_503,occlusion,Ikea Cardboard Package,5.24712497076422e-05,True,True,evaluated
+scene_504,occlusion,Gros Carton,9.005444701448008e-05,True,True,evaluated
+scene_505,occlusion,,,,,no_target
+scene_506,occlusion,Ikea Cardboard Package,4.575760723989131e-05,True,True,evaluated
+scene_507,occlusion,Ikea Cardboard Package,6.930506791098235e-05,True,True,evaluated
+scene_508,occlusion,Ikea Cardboard Package,3.136175160524779e-05,True,True,evaluated
+scene_509,occlusion,Ikea Cardboard Package,6.960673220456451e-05,True,True,evaluated
+scene_510,occlusion,Ikea Cardboard Package,4.938783629549655e-05,True,True,evaluated
+scene_511,occlusion,Ikea Cardboard Package,6.730072715938618e-05,True,True,evaluated
+scene_512,occlusion,Ikea Cardboard Package,1.801655665496404e-05,True,True,evaluated
+scene_513,occlusion,Gros Carton,6.004066678929311e-05,True,True,evaluated
+scene_514,occlusion,Ikea Cardboard Package,6.00862269069897e-05,True,True,evaluated
+scene_515,occlusion,Cardboard Box SQ01.001,1.5127849355888838,True,True,evaluated
+scene_516,occlusion,Ikea Cardboard Package,4.214676635839419e-05,True,True,evaluated
+scene_517,occlusion,Ikea Cardboard Package,3.367155524052815e-05,True,True,evaluated
+scene_518,occlusion,Ikea Cardboard Package,6.718859162208586e-05,True,True,evaluated
+scene_519,occlusion,Ikea Cardboard Package,1.4822322276434292e-05,True,True,evaluated
+scene_520,occlusion,Gros Carton,3.0927774351565634e-05,True,True,evaluated
+scene_521,occlusion,,,,,no_target
+scene_522,occlusion,Ikea Cardboard Package,8.592153644560528e-05,True,True,evaluated
+scene_523,occlusion,Ikea Cardboard Package,2.2225405231060135e-05,True,True,evaluated
+scene_524,occlusion,Ikea Cardboard Package,5.650391557231731e-05,True,True,evaluated
+scene_525,occlusion,Ikea Cardboard Package,8.197310241563922e-05,True,True,evaluated
+scene_526,occlusion,Ikea Cardboard Package,5.321499858713973e-05,True,True,evaluated
+scene_527,occlusion,Ikea Cardboard Package,5.5016589345354477e-05,True,True,evaluated
+scene_528,occlusion,,,,,no_target
+scene_529,occlusion,Cardboard Box SQ01.001,0.6037252160659204,True,True,evaluated
+scene_530,edge,Ikea Cardboard Package,8.360180780682965e-05,True,True,evaluated
+scene_531,edge,Куб,0.00515141308825037,True,True,evaluated
+scene_532,edge,Colis VistaPrint,0.002124252678789178,True,True,evaluated
+scene_533,edge,,,,,no_target
+scene_534,edge,Colis VistaPrint,0.001405028396376694,True,True,evaluated
+scene_535,edge,Colis VistaPrint,0.002717539514225982,True,True,evaluated
+scene_536,edge,Asset_Package_in_paper_with_rope,1.4426477354313358,True,True,evaluated
+scene_537,edge,Asset_Package_in_paper_with_rope,3.6703968505557025,True,True,evaluated
+scene_538,edge,China Package,0.000620286762474967,True,True,evaluated
+scene_539,edge,Black Package,6.667666054032487e-05,True,True,evaluated
+scene_540,edge,Ikea Cardboard Package,5.6911713149831267e-05,True,True,evaluated
+scene_541,edge,,,,,target_unmatched
+scene_542,edge,,,,,target_unmatched
+scene_543,edge,Storage_Box_with_Lid,3.602244820370546e-05,True,True,evaluated
+scene_544,edge,Storage_Box_with_Lid,0.002876081079980583,True,True,evaluated
+scene_545,edge,Storage_Box_with_Lid,2.286414820988582e-05,True,True,evaluated
+scene_546,edge,Black Package,0.0013455100706419951,True,True,evaluated
+scene_547,edge,POP_Drinks_Pack,0.13152511694851549,True,True,evaluated
+scene_548,edge,Asset_Package_in_paper_with_rope,1.3169049749925565,True,True,evaluated
+scene_549,edge,,,,,no_target
+scene_550,edge,Colis VistaPrint,7.361064356194373e-05,True,True,evaluated
+scene_551,edge,Black Package,3.493754568090121e-05,True,True,evaluated
+scene_552,edge,Colis VistaPrint,0.005780672334197133,True,True,evaluated
+scene_553,edge,,,,,no_target
+scene_554,edge,Asset_Package_in_paper_with_rope,2.779640378396315,True,True,evaluated
+scene_555,edge,Asset_Package_in_paper_with_rope,3.9141514958380608,True,True,evaluated
+scene_556,edge,Ikea Cardboard Package,2.9910981479516986e-05,True,True,evaluated
+scene_557,edge,Storage_Box_with_Lid,0.0011297693194908475,True,True,evaluated
+scene_558,edge,Colis VistaPrint,0.0028528541256782765,True,True,evaluated
+scene_559,edge,,,,,target_unmatched
+scene_560,tilted,Amazon_A2_Package,0.5457604572567318,True,True,evaluated
+scene_561,tilted,,,,,no_target
+scene_562,tilted,Carton Magdeleine,0.0019222746323332223,True,True,evaluated
+scene_563,tilted,Amazon_A2_Package,0.600731156182903,True,True,evaluated
+scene_564,tilted,Asset_Package_in_paper_with_rope,4.392539274269866,True,True,evaluated
+scene_565,tilted,Amazon_A2_Package,0.587695880433244,True,True,evaluated
+scene_566,tilted,Small Packet,0.008177461899451526,True,True,evaluated
+scene_567,tilted,Amazon_Book_Package,0.004176362896257776,True,True,evaluated
+scene_568,tilted,Amazon_A2_Package,0.4614196655164684,True,True,evaluated
+scene_569,tilted,Small_Shipping_Bag,0.006696725279968952,True,True,evaluated
+scene_570,tilted,Vintage_Envelope,0.0058784883153147095,True,True,evaluated
+scene_571,tilted,Куб,0.0025423922703319475,True,True,evaluated
+scene_572,tilted,Amazon_Book_Package,0.01256278769966303,True,True,evaluated
+scene_573,tilted,Cardboard Box SQ01.001,0.0005709120612470574,True,True,evaluated
+scene_574,tilted,,,,,target_unmatched
+scene_575,tilted,Paper_Shopping_Bag,14.506356380199845,False,True,evaluated
+scene_576,tilted,Amazon_A2_Package,0.5506741461831389,True,True,evaluated
+scene_577,tilted,Amazon_A2_Package,0.5718522111482267,True,True,evaluated
+scene_578,angled_dense,,,,,no_target
+scene_579,angled_chaotic,,,,,no_target
+scene_580,angled_occluded,Ikea Cardboard Package,0.006049366304720438,True,True,evaluated
+scene_581,angled_dense,,,,,no_target
+scene_582,angled_chaotic,,,,,no_target
+scene_583,angled_occluded,,,,,target_unmatched
+scene_584,angled_dense,,,,,no_target
+scene_585,angled_chaotic,,,,,no_target
+scene_586,angled_occluded,Ikea Cardboard Package,0.006399263711643045,True,True,evaluated
+scene_587,angled_dense,,,,,target_unmatched
+scene_588,angled_chaotic,Envelope_Stack,1.2127142646966054,True,True,evaluated
+scene_589,angled_occluded,,,,,no_grasp
+scene_590,angled_dense,,,,,no_target
+scene_591,angled_chaotic,,,,,no_target
+scene_592,angled_occluded,,,,,target_unmatched
+scene_593,angled_dense,,,,,target_unmatched
+scene_594,angled_chaotic,,,,,no_target
+scene_595,angled_occluded,,,,,target_unmatched
+scene_596,angled_dense,Black Package,80.9681999918889,False,False,evaluated
+scene_597,angled_chaotic,,,,,target_unmatched
+scene_598,angled_occluded,,,,,no_target
+scene_599,angled_dense,,,,,target_unmatched
+scene_600,angled_chaotic,,,,,target_unmatched
+scene_601,angled_occluded,Ikea Cardboard Package,0.00306697349918708,True,True,evaluated
+scene_602,angled_dense,,,,,no_target
+scene_603,angled_chaotic,,,,,target_unmatched
+scene_604,angled_occluded,,,,,target_unmatched
+scene_605,angled_dense,,,,,target_unmatched
+scene_606,angled_chaotic,Amazon_Book_Package,0.02865218425856481,True,True,evaluated
+scene_607,angled_occluded,Gros Carton,0.0051355087595606405,True,True,evaluated
+scene_608,angled_dense,,,,,target_unmatched
+scene_609,angled_chaotic,Amazon_Book_Package,0.02203309157004005,True,True,evaluated
+scene_610,angled_occluded,,,,,target_unmatched
+scene_611,angled_dense,,,,,target_unmatched
+scene_612,angled_chaotic,,,,,no_target
+scene_613,angled_occluded,Ikea Cardboard Package,0.005648086947578059,True,True,evaluated
+scene_614,angled_dense,,,,,target_unmatched
+scene_615,angled_chaotic,,,,,no_target
+scene_616,angled_occluded,,,,,target_unmatched
+scene_617,angled_dense,,,,,no_target
+scene_618,angled_chaotic,,,,,target_unmatched
+scene_619,angled_occluded,,,,,target_unmatched
+scene_620,angled_dense,,,,,target_unmatched
+scene_621,angled_chaotic,,,,,target_unmatched
+scene_622,angled_occluded,,,,,no_target
+scene_623,angled_dense,Envelope_Stack,2.759842104283817,True,True,evaluated
+scene_624,angled_chaotic,,,,,target_unmatched
+scene_625,angled_occluded,Ikea Cardboard Package,0.008046351153996358,True,True,evaluated
+scene_626,angled_dense,,,,,target_unmatched
+scene_627,angled_chaotic,,,,,target_unmatched
+scene_628,angled_occluded,,,,,target_unmatched
+scene_629,angled_dense,,,,,target_unmatched
+scene_630,angled_chaotic,,,,,no_target
+scene_631,angled_occluded,,,,,no_target
+scene_632,angled_dense,,,,,target_unmatched
+scene_633,angled_chaotic,,,,,no_target
+scene_634,angled_occluded,,,,,target_unmatched
+scene_635,angled_dense,,,,,target_unmatched
+scene_636,angled_chaotic,,,,,target_unmatched
+scene_637,angled_occluded,Ikea Cardboard Package,0.003984513975592435,True,True,evaluated
+scene_638,angled_dense,Louis_Vuitton_Package,0.0013693038225168356,True,True,evaluated
+scene_639,angled_chaotic,,,,,no_target
+scene_640,angled_occluded,,,,,target_unmatched
+scene_641,angled_dense,Storage_Box_with_Lid,0.0020988210126666345,True,True,evaluated
+scene_642,angled_chaotic,,,,,target_unmatched
+scene_643,angled_occluded,,,,,no_target
+scene_644,angled_dense,,,,,target_unmatched
+scene_645,angled_chaotic,Amazon_Book_Package,0.00592096346085147,True,True,evaluated
+scene_646,angled_occluded,,,,,no_target
+scene_647,angled_dense,,,,,no_target
+scene_648,angled_chaotic,,,,,target_unmatched
+scene_649,angled_occluded,,,,,target_unmatched
+scene_650,angled_dense,Colis VistaPrint,0.006600811993780084,True,True,evaluated
+scene_651,angled_chaotic,,,,,no_target
+scene_652,angled_occluded,,,,,target_unmatched
+scene_653,angled_dense,,,,,no_target
+scene_654,angled_chaotic,Amazon_Book_Package,0.01808280442978118,True,True,evaluated
+scene_655,angled_occluded,,,,,no_target
+scene_656,angled_dense,,,,,no_target
+scene_657,angled_chaotic,Vintage_Envelope,0.043852784299222555,True,True,evaluated
+scene_658,angled_occluded,,,,,no_target
+scene_659,angled_dense,,,,,target_unmatched
+scene_660,angled_chaotic,,,,,target_unmatched
+scene_661,angled_occluded,,,,,target_unmatched
+scene_662,angled_dense,Amazon_A2_Package,0.40748081427898153,True,True,evaluated
+scene_663,angled_chaotic,Colis VistaPrint,0.010683822327484318,True,True,evaluated
+scene_664,angled_occluded,Ikea Cardboard Package,0.018528305895717315,True,True,evaluated
+scene_665,angled_dense,Colis VistaPrint,0.0035014936326193393,True,True,evaluated
+scene_666,angled_chaotic,,,,,target_unmatched
+scene_667,angled_occluded,Gros Carton,0.006620221324397559,True,True,evaluated
+scene_668,angled_dense,,,,,no_target
+scene_669,angled_chaotic,,,,,target_unmatched
+scene_670,angled_occluded,Ikea Cardboard Package,0.006452001409092021,True,True,evaluated
+scene_671,angled_dense,,,,,no_target
+scene_672,angled_chaotic,,,,,target_unmatched
+scene_673,angled_occluded,Cardboard Box SQ01.001,1.3710771777825592,True,True,evaluated
+scene_674,angled_dense,,,,,target_unmatched
+scene_675,angled_chaotic,Small_Shipping_Bag,0.03135893571407047,True,True,evaluated
+scene_676,angled_occluded,,,,,no_target
+scene_677,angled_dense,,,,,target_unmatched
+scene_678,angled_chaotic,,,,,no_target
+scene_679,angled_occluded,,,,,no_target
+scene_680,angled_dense,,,,,target_unmatched
+scene_681,angled_chaotic,Small Packet,0.008930177451764722,True,True,evaluated
+scene_682,angled_occluded,,,,,no_target
+scene_683,angled_dense,,,,,no_target
+scene_684,angled_chaotic,,,,,target_unmatched
+scene_685,angled_occluded,,,,,target_unmatched
+scene_686,angled_dense,,,,,no_target
+scene_687,angled_chaotic,,,,,target_unmatched
+scene_688,angled_occluded,,,,,no_target
+scene_689,angled_dense,SM_Little_Package,0.22894394853672984,True,True,evaluated
+scene_690,angled_chaotic,,,,,target_unmatched
+scene_691,angled_occluded,Ikea Cardboard Package,0.007405272046345094,True,True,evaluated
+scene_692,angled_dense,Amazon_A2_Package,0.3789764342730253,True,True,evaluated
+scene_693,angled_chaotic,,,,,target_unmatched
+scene_694,angled_occluded,,,,,no_target
+scene_695,angled_dense,,,,,target_unmatched
+scene_696,angled_chaotic,,,,,no_target
+scene_697,angled_occluded,,,,,no_target
+scene_698,angled_dense,Asset_Package_in_paper_with_rope,2.761365841747431,True,True,evaluated
+scene_699,angled_chaotic,,,,,target_unmatched
+scene_700,angled_occluded,,,,,target_unmatched
+scene_701,angled_dense,,,,,target_unmatched
+scene_702,angled_chaotic,Ikea Cardboard Package,0.00887834580073721,True,True,evaluated
+scene_703,angled_occluded,,,,,target_unmatched
+scene_704,angled_dense,,,,,no_target
+scene_705,angled_chaotic,Куб,0.013549726952810454,True,True,evaluated
+scene_706,angled_occluded,,,,,no_target
+scene_707,angled_dense,,,,,target_unmatched
+scene_708,angled_chaotic,,,,,target_unmatched
+scene_709,angled_occluded,Ikea Cardboard Package,0.008225689552628198,True,True,evaluated
+scene_710,angled_dense,,,,,target_unmatched
+scene_711,angled_chaotic,,,,,target_unmatched
+scene_712,angled_occluded,Ikea Cardboard Package,0.00826363557225684,True,True,evaluated
+scene_713,angled_dense,,,,,no_target
+scene_714,angled_chaotic,Storage_Box_with_Lid,0.006412344094770996,True,True,evaluated
+scene_715,angled_occluded,,,,,no_target
+scene_716,angled_dense,China Package,0.008987574819104066,True,True,evaluated
+scene_717,angled_chaotic,Colis VistaPrint,0.010500883044552213,True,True,evaluated
+scene_718,angled_occluded,,,,,no_target
+scene_719,angled_dense,,,,,target_unmatched
+scene_720,angled_chaotic,,,,,target_unmatched
+scene_721,angled_occluded,Ikea Cardboard Package,0.02570974046083351,True,True,evaluated
+scene_722,angled_dense,Colis VistaPrint,0.005784072628854184,True,True,evaluated
+scene_723,angled_chaotic,,,,,target_unmatched
+scene_724,angled_occluded,,,,,target_unmatched
+scene_725,angled_dense,,,,,no_target
+scene_726,angled_chaotic,,,,,no_target
+scene_727,angled_occluded,Ikea Cardboard Package,0.004474507205377533,True,True,evaluated

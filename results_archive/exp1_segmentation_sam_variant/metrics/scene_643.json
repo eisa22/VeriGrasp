@@ -1,0 +1,186 @@
+{
+  "scene_id": "scene_643",
+  "category": "angled_occluded",
+  "viewpoint": "angled",
+  "status": "ok",
+  "visibility": {
+    "mode": "absolute",
+    "absolute_min": 1,
+    "relative_fraction": 0.01,
+    "threshold_px": 1
+  },
+  "gt_counts": {
+    "eval": 22,
+    "invisible": 16,
+    "out_of_scope": 0,
+    "total_instances": 38
+  },
+  "stages": {
+    "D": {
+      "point": "D",
+      "ap": 0.0,
+      "ap50": 0.0,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.0,
+      "mean_iou": 0.0,
+      "pq": 0.0,
+      "sq": 0.0,
+      "rq": 0.0,
+      "precision": 0.0,
+      "recall": 0.045454545454545456,
+      "f1": 0.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 21,
+      "n_pred": 1,
+      "n_gt_eval": 22,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9090909090909091,
+      "box_recall": 0.045454545454545456
+    },
+    "S": {
+      "point": "S",
+      "ap": 0.004545454545454545,
+      "ap50": 0.045454545454545456,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.16666666666666666,
+      "ap_large": 0.0,
+      "mean_iou": 0.5330275229357798,
+      "pq": 0.04635021938571998,
+      "sq": 0.5330275229357798,
+      "rq": 0.08695652173913043,
+      "precision": 1.0,
+      "recall": 0.045454545454545456,
+      "f1": 0.08695652173913045,
+      "tp": 1,
+      "fp": 0,
+      "fn": 21,
+      "n_pred": 1,
+      "n_gt_eval": 22,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9545454545454546,
+      "box_recall": null
+    },
+    "M": {
+      "point": "M",
+      "ap": 0.004545454545454545,
+      "ap50": 0.045454545454545456,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.16666666666666666,
+      "ap_large": 0.0,
+      "mean_iou": 0.5330275229357798,
+      "pq": 0.04635021938571998,
+      "sq": 0.5330275229357798,
+      "rq": 0.08695652173913043,
+      "precision": 1.0,
+      "recall": 0.045454545454545456,
+      "f1": 0.08695652173913045,
+      "tp": 1,
+      "fp": 0,
+      "fn": 21,
+      "n_pred": 1,
+      "n_gt_eval": 22,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9545454545454546,
+      "box_recall": null
+    },
+    "F": {
+      "point": "F",
+      "ap": 0.004545454545454545,
+      "ap50": 0.045454545454545456,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.16666666666666666,
+      "ap_large": 0.0,
+      "mean_iou": 0.5394828791055206,
+      "pq": 0.04691155470482788,
+      "sq": 0.5394828791055206,
+      "rq": 0.08695652173913043,
+      "precision": 1.0,
+      "recall": 0.045454545454545456,
+      "f1": 0.08695652173913045,
+      "tp": 1,
+      "fp": 0,
+      "fn": 21,
+      "n_pred": 1,
+      "n_gt_eval": 22,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9545454545454546,
+      "box_recall": null
+    }
+  },
+  "class_recall_F": {
+    "Ikea Cardboard Package": {
+      "tp": 1,
+      "fn": 5
+    },
+    "Vegetable_Crate": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Envelope_Stack": {
+      "tp": 0,
+      "fn": 1
+    },
+    "\u041a\u0443\u0431": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Asset_Package_in_paper_with_rope": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Small Packet": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Paper_Shopping_Bag": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Amazon_A2_Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Packaging_Tube": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Colis VistaPrint": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Small_Pouch": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Small_Shipping_Bag": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Louis_Vuitton_Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Powder_Blush": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Cardboard Box SQ01.001": {
+      "tp": 0,
+      "fn": 1
+    }
+  }
+}

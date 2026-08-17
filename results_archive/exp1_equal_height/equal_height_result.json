@@ -1,0 +1,45 @@
+{
+ "totals": {
+  "pairs": 1990,
+  "singles": 12952,
+  "std": {
+   "sep": 34,
+   "merged": 63,
+   "neither": 1893,
+   "false_split": 18
+  },
+  "sam": {
+   "sep": 58,
+   "merged": 118,
+   "neither": 1814,
+   "false_split": 64
+  }
+ },
+ "per_band_pairs": {
+  "baseline": 60,
+  "mixed": 215,
+  "dense": 689,
+  "chaotic": 164,
+  "lighting": 164,
+  "occlusion": 98,
+  "edge": 26,
+  "tilted": 64,
+  "angled": 510
+ },
+ "examples_sam_sep_std_merged": [
+  {
+   "scene": "scene_408",
+   "pair": [
+    3,
+    9
+   ],
+   "band": "chaotic"
+  }
+ ],
+ "n_examples": 1,
+ "params": {
+  "tol_mm": 10,
+  "min_pix": 50,
+  "dilate_px": 5
+ }
+}

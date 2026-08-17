@@ -1,0 +1,150 @@
+{
+  "scene_id": "scene_192",
+  "category": "mixed",
+  "viewpoint": "top_down",
+  "status": "ok",
+  "visibility": {
+    "mode": "relative_median",
+    "absolute_min": 1,
+    "relative_fraction": 0.01,
+    "threshold_px": 10
+  },
+  "gt_counts": {
+    "eval": 17,
+    "invisible": 0,
+    "out_of_scope": 0,
+    "total_instances": 17
+  },
+  "stages": {
+    "D": {
+      "point": "D",
+      "ap": 0.0,
+      "ap50": 0.0,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.0,
+      "mean_iou": 0.0,
+      "pq": 0.0,
+      "sq": 0.0,
+      "rq": 0.0,
+      "precision": 0.0,
+      "recall": 0.058823529411764705,
+      "f1": 0.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 16,
+      "n_pred": 1,
+      "n_gt_eval": 17,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9411764705882353,
+      "box_recall": 0.058823529411764705
+    },
+    "S": {
+      "point": "S",
+      "ap": 0.052941176470588235,
+      "ap50": 0.058823529411764705,
+      "ap75": 0.058823529411764705,
+      "ap_small": 0.0,
+      "ap_medium": 0.1111111111111111,
+      "ap_large": 0.0,
+      "mean_iou": 0.9415347137637028,
+      "pq": 0.10461496819596697,
+      "sq": 0.9415347137637028,
+      "rq": 0.1111111111111111,
+      "precision": 1.0,
+      "recall": 0.058823529411764705,
+      "f1": 0.1111111111111111,
+      "tp": 1,
+      "fp": 0,
+      "fn": 16,
+      "n_pred": 1,
+      "n_gt_eval": 17,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9411764705882353,
+      "box_recall": null
+    },
+    "M": {
+      "point": "M",
+      "ap": 0.052941176470588235,
+      "ap50": 0.058823529411764705,
+      "ap75": 0.058823529411764705,
+      "ap_small": 0.0,
+      "ap_medium": 0.1111111111111111,
+      "ap_large": 0.0,
+      "mean_iou": 0.9093788063337394,
+      "pq": 0.1010420895926377,
+      "sq": 0.9093788063337394,
+      "rq": 0.1111111111111111,
+      "precision": 1.0,
+      "recall": 0.058823529411764705,
+      "f1": 0.1111111111111111,
+      "tp": 1,
+      "fp": 0,
+      "fn": 16,
+      "n_pred": 1,
+      "n_gt_eval": 17,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9411764705882353,
+      "box_recall": null
+    },
+    "F": {
+      "point": "F",
+      "ap": 0.052941176470588235,
+      "ap50": 0.058823529411764705,
+      "ap75": 0.058823529411764705,
+      "ap_small": 0.0,
+      "ap_medium": 0.1111111111111111,
+      "ap_large": 0.0,
+      "mean_iou": 0.9093788063337394,
+      "pq": 0.1010420895926377,
+      "sq": 0.9093788063337394,
+      "rq": 0.1111111111111111,
+      "precision": 1.0,
+      "recall": 0.058823529411764705,
+      "f1": 0.1111111111111111,
+      "tp": 1,
+      "fp": 0,
+      "fn": 16,
+      "n_pred": 1,
+      "n_gt_eval": 17,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9411764705882353,
+      "box_recall": null
+    }
+  },
+  "class_recall_F": {
+    "Colis VistaPrint": {
+      "tp": 1,
+      "fn": 2
+    },
+    "Packaging_Tube": {
+      "tp": 0,
+      "fn": 6
+    },
+    "Cardboard Box SQ01.001": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Paper_Shopping_Bag": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Paper_Coffee_Bag": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Small_Shipping_Bag": {
+      "tp": 0,
+      "fn": 2
+    }
+  }
+}

@@ -1,0 +1,186 @@
+{
+  "scene_id": "scene_400",
+  "category": "chaotic",
+  "viewpoint": "top_down",
+  "status": "ok",
+  "visibility": {
+    "mode": "relative_median",
+    "absolute_min": 1,
+    "relative_fraction": 0.01,
+    "threshold_px": 6
+  },
+  "gt_counts": {
+    "eval": 31,
+    "invisible": 4,
+    "out_of_scope": 0,
+    "total_instances": 35
+  },
+  "stages": {
+    "D": {
+      "point": "D",
+      "ap": 0.0,
+      "ap50": 0.0,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.0,
+      "mean_iou": 0.0,
+      "pq": 0.0,
+      "sq": 0.0,
+      "rq": 0.0,
+      "precision": 0.0,
+      "recall": 0.06451612903225806,
+      "f1": 0.0,
+      "tp": 2,
+      "fp": 0,
+      "fn": 29,
+      "n_pred": 2,
+      "n_gt_eval": 31,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9354838709677419,
+      "box_recall": 0.06451612903225806
+    },
+    "S": {
+      "point": "S",
+      "ap": 0.02258064516129032,
+      "ap50": 0.06451612903225806,
+      "ap75": 0.016129032258064516,
+      "ap_small": 0.0,
+      "ap_medium": 0.14285714285714285,
+      "ap_large": 0.5,
+      "mean_iou": 0.7204621560271405,
+      "pq": 0.08732874618510794,
+      "sq": 0.7204621560271405,
+      "rq": 0.12121212121212122,
+      "precision": 1.0,
+      "recall": 0.06451612903225806,
+      "f1": 0.12121212121212122,
+      "tp": 2,
+      "fp": 0,
+      "fn": 29,
+      "n_pred": 2,
+      "n_gt_eval": 31,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.5,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9354838709677419,
+      "box_recall": null
+    },
+    "M": {
+      "point": "M",
+      "ap": 0.03870967741935484,
+      "ap50": 0.06451612903225806,
+      "ap75": 0.03225806451612903,
+      "ap_small": 0.0,
+      "ap_medium": 0.07142857142857142,
+      "ap_large": 1.0,
+      "mean_iou": 0.7806019766676837,
+      "pq": 0.0946184214142647,
+      "sq": 0.7806019766676837,
+      "rq": 0.12121212121212122,
+      "precision": 1.0,
+      "recall": 0.06451612903225806,
+      "f1": 0.12121212121212122,
+      "tp": 2,
+      "fp": 0,
+      "fn": 29,
+      "n_pred": 2,
+      "n_gt_eval": 31,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.5,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9354838709677419,
+      "box_recall": null
+    },
+    "F": {
+      "point": "F",
+      "ap": 0.03870967741935484,
+      "ap50": 0.06451612903225806,
+      "ap75": 0.03225806451612903,
+      "ap_small": 0.0,
+      "ap_medium": 0.07142857142857142,
+      "ap_large": 1.0,
+      "mean_iou": 0.7806019766676837,
+      "pq": 0.0946184214142647,
+      "sq": 0.7806019766676837,
+      "rq": 0.12121212121212122,
+      "precision": 1.0,
+      "recall": 0.06451612903225806,
+      "f1": 0.12121212121212122,
+      "tp": 2,
+      "fp": 0,
+      "fn": 29,
+      "n_pred": 2,
+      "n_gt_eval": 31,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.5,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9354838709677419,
+      "box_recall": null
+    }
+  },
+  "class_recall_F": {
+    "Louis_Vuitton_Package": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Ikea Cardboard Package": {
+      "tp": 0,
+      "fn": 2
+    },
+    "ML_Box": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Paper_Shopping_Bag": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Packaging_Tube": {
+      "tp": 0,
+      "fn": 6
+    },
+    "Small Packet": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Small_Pouch": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Vintage_Envelope": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Storage_Box_with_Lid": {
+      "tp": 0,
+      "fn": 1
+    },
+    "POP_Drinks_Pack": {
+      "tp": 1,
+      "fn": 0
+    },
+    "Food_Packaging_Bag": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Amazon_A2_Package": {
+      "tp": 1,
+      "fn": 0
+    },
+    "Space_Food_Bag": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Paper_Coffee_Bag": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Powder_Blush": {
+      "tp": 0,
+      "fn": 3
+    }
+  }
+}

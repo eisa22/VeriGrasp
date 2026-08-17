@@ -1,0 +1,218 @@
+{
+  "scene_id": "scene_221",
+  "category": "dense",
+  "viewpoint": "top_down",
+  "status": "ok",
+  "visibility": {
+    "mode": "absolute",
+    "absolute_min": 1,
+    "relative_fraction": 0.01,
+    "threshold_px": 1
+  },
+  "gt_counts": {
+    "eval": 39,
+    "invisible": 2,
+    "out_of_scope": 0,
+    "total_instances": 41
+  },
+  "stages": {
+    "D": {
+      "point": "D",
+      "ap": 0.0,
+      "ap50": 0.0,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.0,
+      "mean_iou": 0.0,
+      "pq": 0.0,
+      "sq": 0.0,
+      "rq": 0.0,
+      "precision": 0.0,
+      "recall": 0.07692307692307693,
+      "f1": 0.0,
+      "tp": 3,
+      "fp": 0,
+      "fn": 36,
+      "n_pred": 3,
+      "n_gt_eval": 39,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.8461538461538461,
+      "box_recall": 0.07692307692307693
+    },
+    "S": {
+      "point": "S",
+      "ap": 0.0641025641025641,
+      "ap50": 0.07692307692307693,
+      "ap75": 0.07692307692307693,
+      "ap_small": 0.0,
+      "ap_medium": 0.02222222222222222,
+      "ap_large": 1.0,
+      "mean_iou": 0.8989500587401625,
+      "pq": 0.12842143696288036,
+      "sq": 0.8989500587401625,
+      "rq": 0.14285714285714285,
+      "precision": 1.0,
+      "recall": 0.07692307692307693,
+      "f1": 0.14285714285714288,
+      "tp": 3,
+      "fp": 0,
+      "fn": 36,
+      "n_pred": 3,
+      "n_gt_eval": 39,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9230769230769231,
+      "box_recall": null
+    },
+    "M": {
+      "point": "M",
+      "ap": 0.05854700854700854,
+      "ap50": 0.07692307692307693,
+      "ap75": 0.07692307692307693,
+      "ap_small": 0.0,
+      "ap_medium": 0.06666666666666667,
+      "ap_large": 0.6666666666666666,
+      "mean_iou": 0.8826808394522946,
+      "pq": 0.1260972627788992,
+      "sq": 0.8826808394522946,
+      "rq": 0.14285714285714285,
+      "precision": 1.0,
+      "recall": 0.07692307692307693,
+      "f1": 0.14285714285714288,
+      "tp": 3,
+      "fp": 0,
+      "fn": 36,
+      "n_pred": 3,
+      "n_gt_eval": 39,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9230769230769231,
+      "box_recall": null
+    },
+    "F": {
+      "point": "F",
+      "ap": 0.05854700854700854,
+      "ap50": 0.07692307692307693,
+      "ap75": 0.07692307692307693,
+      "ap_small": 0.0,
+      "ap_medium": 0.06666666666666667,
+      "ap_large": 0.6666666666666666,
+      "mean_iou": 0.8826808394522946,
+      "pq": 0.1260972627788992,
+      "sq": 0.8826808394522946,
+      "rq": 0.14285714285714285,
+      "precision": 1.0,
+      "recall": 0.07692307692307693,
+      "f1": 0.14285714285714288,
+      "tp": 3,
+      "fp": 0,
+      "fn": 36,
+      "n_pred": 3,
+      "n_gt_eval": 39,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9230769230769231,
+      "box_recall": null
+    }
+  },
+  "class_recall_F": {
+    "Cardboard Box SQ01.001": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Envelope_Stack": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Asset_Large_cartoon_Box": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Paper_Shopping_Bag": {
+      "tp": 0,
+      "fn": 2
+    },
+    "ML_Box": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Louis_Vuitton_Package": {
+      "tp": 0,
+      "fn": 2
+    },
+    "SM_Little_Package": {
+      "tp": 1,
+      "fn": 1
+    },
+    "Black Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "China Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Colis VistaPrint": {
+      "tp": 0,
+      "fn": 2
+    },
+    "POP_Drinks_Pack": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Ikea Cardboard Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Packaging_Tube": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Small Packet": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Asset_Package_in_paper_with_rope": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Sachets_Package": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Vintage_Envelope": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Food_Packaging_Bag": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Amazon_Book_Package": {
+      "tp": 1,
+      "fn": 2
+    },
+    "Paper_Coffee_Bag": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Powder_Blush": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Small_Pouch": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Amazon_A2_Package": {
+      "tp": 1,
+      "fn": 0
+    }
+  }
+}

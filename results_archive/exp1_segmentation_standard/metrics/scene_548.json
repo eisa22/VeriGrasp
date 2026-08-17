@@ -1,0 +1,160 @@
+{
+  "scene_id": "scene_548",
+  "category": "edge",
+  "viewpoint": "top_down",
+  "status": "ok",
+  "gt_counts": {
+    "eval": 17,
+    "invisible": 0,
+    "out_of_scope": 0,
+    "total_instances": 17
+  },
+  "stages": {
+    "D": {
+      "point": "D",
+      "ap": 0.0,
+      "ap50": 0.0,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.0,
+      "mean_iou": 0.0,
+      "pq": 0.0,
+      "sq": 0.0,
+      "rq": 0.0,
+      "precision": 0.0,
+      "recall": 0.11764705882352941,
+      "f1": 0.0,
+      "tp": 2,
+      "fp": 1,
+      "fn": 15,
+      "n_pred": 3,
+      "n_gt_eval": 17,
+      "over_segmentation_rate": 0.11764705882352941,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.8823529411764706,
+      "box_recall": 0.11764705882352941
+    },
+    "S": {
+      "point": "S",
+      "ap": 0.0784313725490196,
+      "ap50": 0.09803921568627451,
+      "ap75": 0.09803921568627451,
+      "ap_small": 0.0,
+      "ap_medium": 0.1111111111111111,
+      "ap_large": 0.1111111111111111,
+      "mean_iou": 0.8998887610889162,
+      "pq": 0.17997775221778325,
+      "sq": 0.8998887610889162,
+      "rq": 0.2,
+      "precision": 0.6666666666666666,
+      "recall": 0.11764705882352941,
+      "f1": 0.2,
+      "tp": 2,
+      "fp": 1,
+      "fn": 15,
+      "n_pred": 3,
+      "n_gt_eval": 17,
+      "over_segmentation_rate": 0.058823529411764705,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.8823529411764706,
+      "box_recall": null
+    },
+    "M": {
+      "point": "M",
+      "ap": 0.09705882352941177,
+      "ap50": 0.11764705882352941,
+      "ap75": 0.11764705882352941,
+      "ap_small": 0.0,
+      "ap_medium": 0.05555555555555555,
+      "ap_large": 0.3333333333333333,
+      "mean_iou": 0.8972094989409238,
+      "pq": 0.18888621030335237,
+      "sq": 0.8972094989409238,
+      "rq": 0.21052631578947367,
+      "precision": 1.0,
+      "recall": 0.11764705882352941,
+      "f1": 0.21052631578947367,
+      "tp": 2,
+      "fp": 0,
+      "fn": 15,
+      "n_pred": 2,
+      "n_gt_eval": 17,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.8823529411764706,
+      "box_recall": null
+    },
+    "F": {
+      "point": "F",
+      "ap": 0.09705882352941177,
+      "ap50": 0.11764705882352941,
+      "ap75": 0.11764705882352941,
+      "ap_small": 0.0,
+      "ap_medium": 0.05555555555555555,
+      "ap_large": 0.3333333333333333,
+      "mean_iou": 0.908832934861383,
+      "pq": 0.19133324944450167,
+      "sq": 0.908832934861383,
+      "rq": 0.21052631578947367,
+      "precision": 1.0,
+      "recall": 0.11764705882352941,
+      "f1": 0.21052631578947367,
+      "tp": 2,
+      "fp": 0,
+      "fn": 15,
+      "n_pred": 2,
+      "n_gt_eval": 17,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.8823529411764706,
+      "box_recall": null
+    }
+  },
+  "class_recall_F": {
+    "POP_Drinks_Pack": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Asset_Package_in_paper_with_rope": {
+      "tp": 1,
+      "fn": 3
+    },
+    "Small_Pouch": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Paper_Coffee_Bag": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Sachets_Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Cardboard Box SQ01.001": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Space_Food_Bag": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Black Package": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Vegetable_Crate": {
+      "tp": 1,
+      "fn": 0
+    },
+    "SM_Little_Package": {
+      "tp": 0,
+      "fn": 1
+    }
+  }
+}

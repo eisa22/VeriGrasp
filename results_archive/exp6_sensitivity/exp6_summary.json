@@ -1,0 +1,597 @@
+{
+  "meta": {
+    "exp3_run_id": "full_2026-07-05",
+    "git_commit": "7af27502914ee0338e5b5b9f95ac9aa754eae01c",
+    "n_grasps": 616,
+    "default_reproduction": {
+      "far_match": true,
+      "frr_match": true
+    },
+    "raw_value_mapping": [
+      {
+        "check_param": "existence.min_valid_fraction",
+        "unit": "ratio",
+        "direction": "pass_if_geq",
+        "default": 0.6,
+        "domain": [
+          0.0,
+          1.0
+        ],
+        "grid_type": "log"
+      },
+      {
+        "check_param": "top_height_match.top_height_tol_m",
+        "unit": "m",
+        "direction": "pass_if_leq",
+        "default": 0.03,
+        "domain": [
+          0.0,
+          null
+        ],
+        "grid_type": "log"
+      },
+      {
+        "check_param": "bbox_extent.extent_rel_dev_max",
+        "unit": "rel_dev",
+        "direction": "pass_if_leq",
+        "default": 0.15,
+        "domain": [
+          0.0,
+          null
+        ],
+        "grid_type": "log"
+      },
+      {
+        "check_param": "bbox_inlier.inlier_min",
+        "unit": "ratio",
+        "direction": "pass_if_geq",
+        "default": 0.8,
+        "domain": [
+          0.0,
+          1.0
+        ],
+        "grid_type": "log"
+      },
+      {
+        "check_param": "bbox_surface_dist.surface_dist_median_max_m",
+        "unit": "m",
+        "direction": "pass_if_leq",
+        "default": 0.02,
+        "domain": [
+          0.0,
+          null
+        ],
+        "grid_type": "log"
+      },
+      {
+        "check_param": "bbox_top_normal.top_normal_angle_max_deg",
+        "unit": "deg",
+        "direction": "pass_if_leq",
+        "default": 12.0,
+        "domain": [
+          0.0,
+          180.0
+        ],
+        "grid_type": "log"
+      },
+      {
+        "check_param": "bbox_coverage.min_coverage",
+        "unit": "ratio",
+        "direction": "pass_if_geq",
+        "default": 0.6,
+        "domain": [
+          0.0,
+          1.0
+        ],
+        "grid_type": "log"
+      },
+      {
+        "check_param": "planarity.plane_rmse_max_m",
+        "unit": "m",
+        "direction": "pass_if_leq",
+        "default": 0.0025,
+        "domain": [
+          0.0,
+          null
+        ],
+        "grid_type": "log"
+      },
+      {
+        "check_param": "normal_angle.normal_angle_max_deg",
+        "unit": "deg",
+        "direction": "pass_if_leq",
+        "default": 30.0,
+        "domain": [
+          0.0,
+          180.0
+        ],
+        "grid_type": "log"
+      },
+      {
+        "check_param": "normal_scatter.normal_scatter_max",
+        "unit": "ratio",
+        "direction": "pass_if_leq",
+        "default": 0.2,
+        "domain": [
+          0.0,
+          null
+        ],
+        "grid_type": "log"
+      },
+      {
+        "check_param": "suction_area.min_area_ratio",
+        "unit": "ratio",
+        "direction": "pass_if_geq",
+        "default": 0.95,
+        "domain": [
+          0.0,
+          1.0
+        ],
+        "grid_type": "linear"
+      },
+      {
+        "check_param": "edge_clearance.edge_clearance_min_m",
+        "unit": "m",
+        "direction": "pass_if_geq",
+        "default": 0.03,
+        "domain": [
+          0.0,
+          null
+        ],
+        "grid_type": "log"
+      },
+      {
+        "check_param": "data_gaps.max_empty_cell_fraction",
+        "unit": "ratio",
+        "direction": "pass_if_leq",
+        "default": 0.08,
+        "domain": [
+          0.0,
+          1.0
+        ],
+        "grid_type": "log"
+      },
+      {
+        "check_param": "depth_seam.depth_seam_span_ratio",
+        "unit": "ratio",
+        "direction": "pass_if_lt",
+        "default": 0.4,
+        "domain": [
+          0.0,
+          1.0
+        ],
+        "grid_type": "log"
+      },
+      {
+        "check_param": "surface_warp.max_peak_to_valley_m",
+        "unit": "m",
+        "direction": "pass_if_leq",
+        "default": 0.008,
+        "domain": [
+          0.0,
+          null
+        ],
+        "grid_type": "log"
+      },
+      {
+        "check_param": "normal_alignment.normal_alignment_max_deg",
+        "unit": "deg",
+        "direction": "pass_if_leq",
+        "default": 30.0,
+        "domain": [
+          0.0,
+          180.0
+        ],
+        "grid_type": "log"
+      },
+      {
+        "check_param": "surface_warp_robust.max_peak_to_valley_robust_m",
+        "unit": "m",
+        "direction": "pass_if_leq",
+        "default": 0.006,
+        "domain": [
+          0.0,
+          null
+        ],
+        "grid_type": "log"
+      },
+      {
+        "check_param": "suction_force.holdability_safety_factor",
+        "unit": "factor",
+        "direction": "pass_if_geq",
+        "default": 2.0,
+        "domain": [
+          0.0,
+          null
+        ],
+        "grid_type": "log"
+      },
+      {
+        "check_param": "wrench_lever.moment_threshold",
+        "unit": "Nm",
+        "direction": "pass_if_leq",
+        "default": 4.32,
+        "domain": [
+          0.0,
+          null
+        ],
+        "grid_type": "log"
+      },
+      {
+        "check_param": "corridor_clear.noise_point_tolerance",
+        "unit": "count",
+        "direction": "pass_if_leq",
+        "default": 5.0,
+        "domain": [
+          0.0,
+          null
+        ],
+        "grid_type": "integer"
+      }
+    ],
+    "excluded_checks": [
+      {
+        "check_param": "existence.min_points",
+        "reason": "n_valid not in CSV; never binding at default (ratio-only gate)"
+      },
+      {
+        "check_param": "corridor_clear.safety_corridor_height_m",
+        "reason": "does not affect cascade pass (only n_blocking vs noise tolerance)"
+      },
+      {
+        "check_param": "stage2.vacuum_pressure_pa",
+        "reason": "hardware parameter; sweep safety factor only"
+      }
+    ],
+    "runtime_s": 0.10825066699908348,
+    "grid_flags": [
+      {
+        "check_param": "existence.min_valid_fraction",
+        "grid_type": "log",
+        "grid_clamped": false
+      },
+      {
+        "check_param": "top_height_match.top_height_tol_m",
+        "grid_type": "log",
+        "grid_clamped": false
+      },
+      {
+        "check_param": "bbox_extent.extent_rel_dev_max",
+        "grid_type": "log",
+        "grid_clamped": false
+      },
+      {
+        "check_param": "bbox_inlier.inlier_min",
+        "grid_type": "log",
+        "grid_clamped": false
+      },
+      {
+        "check_param": "bbox_surface_dist.surface_dist_median_max_m",
+        "grid_type": "log",
+        "grid_clamped": false
+      },
+      {
+        "check_param": "bbox_top_normal.top_normal_angle_max_deg",
+        "grid_type": "log",
+        "grid_clamped": false
+      },
+      {
+        "check_param": "bbox_coverage.min_coverage",
+        "grid_type": "log",
+        "grid_clamped": false
+      },
+      {
+        "check_param": "planarity.plane_rmse_max_m",
+        "grid_type": "log",
+        "grid_clamped": false
+      },
+      {
+        "check_param": "normal_angle.normal_angle_max_deg",
+        "grid_type": "log",
+        "grid_clamped": false
+      },
+      {
+        "check_param": "normal_scatter.normal_scatter_max",
+        "grid_type": "log",
+        "grid_clamped": false
+      },
+      {
+        "check_param": "suction_area.min_area_ratio",
+        "grid_type": "linear",
+        "grid_clamped": false
+      },
+      {
+        "check_param": "edge_clearance.edge_clearance_min_m",
+        "grid_type": "log",
+        "grid_clamped": false
+      },
+      {
+        "check_param": "data_gaps.max_empty_cell_fraction",
+        "grid_type": "log",
+        "grid_clamped": false
+      },
+      {
+        "check_param": "depth_seam.depth_seam_span_ratio",
+        "grid_type": "log",
+        "grid_clamped": false
+      },
+      {
+        "check_param": "surface_warp.max_peak_to_valley_m",
+        "grid_type": "log",
+        "grid_clamped": false
+      },
+      {
+        "check_param": "normal_alignment.normal_alignment_max_deg",
+        "grid_type": "log",
+        "grid_clamped": false
+      },
+      {
+        "check_param": "surface_warp_robust.max_peak_to_valley_robust_m",
+        "grid_type": "log",
+        "grid_clamped": false
+      },
+      {
+        "check_param": "suction_force.holdability_safety_factor",
+        "grid_type": "log",
+        "grid_clamped": false
+      },
+      {
+        "check_param": "wrench_lever.moment_threshold",
+        "grid_type": "log",
+        "grid_clamped": false
+      },
+      {
+        "check_param": "corridor_clear.noise_point_tolerance",
+        "grid_type": "integer",
+        "grid_clamped": false
+      }
+    ],
+    "pairwise_rev": 2
+  },
+  "reference": {
+    "far": 0.4444444444444444,
+    "frr": 0.21364985163204747
+  },
+  "table_ranges": [
+    {
+      "check_param": "existence.min_valid_fraction",
+      "default": 0.6,
+      "range_lo": 0.15,
+      "range_hi": 1.0,
+      "frr_at_half": 0.21364985163204747,
+      "frr_at_double": 0.21364985163204747,
+      "far_at_half": 0.4444444444444444,
+      "far_at_double": 0.4444444444444444,
+      "class": "unstressed"
+    },
+    {
+      "check_param": "top_height_match.top_height_tol_m",
+      "default": 0.03,
+      "range_lo": 0.0075,
+      "range_hi": 0.12,
+      "frr_at_half": 0.21364985163204747,
+      "frr_at_double": 0.21364985163204747,
+      "far_at_half": 0.44086021505376344,
+      "far_at_double": 0.4444444444444444,
+      "class": "tolerant"
+    },
+    {
+      "check_param": "bbox_extent.extent_rel_dev_max",
+      "default": 0.15,
+      "range_lo": 0.11905507889761496,
+      "range_hi": 0.15,
+      "frr_at_half": 0.34124629080118696,
+      "frr_at_double": 0.1513353115727003,
+      "far_at_half": 0.32616487455197135,
+      "far_at_double": 0.4874551971326165,
+      "class": "critical"
+    },
+    {
+      "check_param": "bbox_inlier.inlier_min",
+      "default": 0.8,
+      "range_lo": 0.2,
+      "range_hi": 0.8744852722211677,
+      "frr_at_half": 0.20771513353115728,
+      "frr_at_double": 0.8783382789317508,
+      "far_at_half": 0.45161290322580644,
+      "far_at_double": 0.0967741935483871,
+      "class": "critical"
+    },
+    {
+      "check_param": "bbox_surface_dist.surface_dist_median_max_m",
+      "default": 0.02,
+      "range_lo": 0.005,
+      "range_hi": 0.08,
+      "frr_at_half": 0.22551928783382788,
+      "frr_at_double": 0.21364985163204747,
+      "far_at_half": 0.4265232974910394,
+      "far_at_double": 0.4444444444444444,
+      "class": "tolerant"
+    },
+    {
+      "check_param": "bbox_top_normal.top_normal_angle_max_deg",
+      "default": 12.0,
+      "range_lo": 3.0,
+      "range_hi": 48.0,
+      "frr_at_half": 0.22255192878338279,
+      "frr_at_double": 0.21364985163204747,
+      "far_at_half": 0.43010752688172044,
+      "far_at_double": 0.4444444444444444,
+      "class": "tolerant"
+    },
+    {
+      "check_param": "bbox_coverage.min_coverage",
+      "default": 0.6,
+      "range_lo": 0.15,
+      "range_hi": 0.8537700941163708,
+      "frr_at_half": 0.21364985163204747,
+      "frr_at_double": 0.2997032640949555,
+      "far_at_half": 0.4444444444444444,
+      "far_at_double": 0.30824372759856633,
+      "class": "critical"
+    },
+    {
+      "check_param": "planarity.plane_rmse_max_m",
+      "default": 0.0025,
+      "range_lo": 0.000625,
+      "range_hi": 0.01,
+      "frr_at_half": 0.21364985163204747,
+      "frr_at_double": 0.21364985163204747,
+      "far_at_half": 0.4444444444444444,
+      "far_at_double": 0.4444444444444444,
+      "class": "tolerant"
+    },
+    {
+      "check_param": "normal_angle.normal_angle_max_deg",
+      "default": 30.0,
+      "range_lo": 18.898815748423097,
+      "range_hi": 120.0,
+      "frr_at_half": 0.27002967359050445,
+      "frr_at_double": 0.21364985163204747,
+      "far_at_half": 0.41935483870967744,
+      "far_at_double": 0.45161290322580644,
+      "class": "critical"
+    },
+    {
+      "check_param": "normal_scatter.normal_scatter_max",
+      "default": 0.2,
+      "range_lo": 0.05,
+      "range_hi": 0.8,
+      "frr_at_half": 0.21364985163204747,
+      "frr_at_double": 0.21364985163204747,
+      "far_at_half": 0.4444444444444444,
+      "far_at_double": 0.4444444444444444,
+      "class": "tolerant"
+    },
+    {
+      "check_param": "suction_area.min_area_ratio",
+      "default": 0.95,
+      "range_lo": 0.9364583333333334,
+      "range_hi": 1.0,
+      "frr_at_half": 0.20474777448071216,
+      "frr_at_double": 0.2166172106824926,
+      "far_at_half": 0.4551971326164875,
+      "far_at_double": 0.4265232974910394,
+      "class": "critical"
+    },
+    {
+      "check_param": "edge_clearance.edge_clearance_min_m",
+      "default": 0.03,
+      "range_lo": 0.0075,
+      "range_hi": 0.03,
+      "frr_at_half": 0.21364985163204747,
+      "frr_at_double": 1.0,
+      "far_at_half": 0.4444444444444444,
+      "far_at_double": 0.0,
+      "class": "critical"
+    },
+    {
+      "check_param": "data_gaps.max_empty_cell_fraction",
+      "default": 0.08,
+      "range_lo": 0.02,
+      "range_hi": 0.32,
+      "frr_at_half": 0.21364985163204747,
+      "frr_at_double": 0.20771513353115728,
+      "far_at_half": 0.4444444444444444,
+      "far_at_double": 0.4444444444444444,
+      "class": "tolerant"
+    },
+    {
+      "check_param": "depth_seam.depth_seam_span_ratio",
+      "default": 0.4,
+      "range_lo": 0.1,
+      "range_hi": 1.0,
+      "frr_at_half": 0.21364985163204747,
+      "frr_at_double": 0.21364985163204747,
+      "far_at_half": 0.4444444444444444,
+      "far_at_double": 0.4444444444444444,
+      "class": "tolerant"
+    },
+    {
+      "check_param": "surface_warp.max_peak_to_valley_m",
+      "default": 0.008,
+      "range_lo": 0.002,
+      "range_hi": 0.032,
+      "frr_at_half": 0.23738872403560832,
+      "frr_at_double": 0.21364985163204747,
+      "far_at_half": 0.4121863799283154,
+      "far_at_double": 0.45161290322580644,
+      "class": "tolerant"
+    },
+    {
+      "check_param": "normal_alignment.normal_alignment_max_deg",
+      "default": 30.0,
+      "range_lo": 7.5,
+      "range_hi": 120.0,
+      "frr_at_half": 0.21364985163204747,
+      "frr_at_double": 0.21364985163204747,
+      "far_at_half": 0.4444444444444444,
+      "far_at_double": 0.4444444444444444,
+      "class": "tolerant"
+    },
+    {
+      "check_param": "surface_warp_robust.max_peak_to_valley_robust_m",
+      "default": 0.006,
+      "range_lo": 0.0015,
+      "range_hi": 0.024,
+      "frr_at_half": 0.23738872403560832,
+      "frr_at_double": 0.21364985163204747,
+      "far_at_half": 0.4157706093189964,
+      "far_at_double": 0.4444444444444444,
+      "class": "tolerant"
+    },
+    {
+      "check_param": "suction_force.holdability_safety_factor",
+      "default": 2.0,
+      "range_lo": 0.5,
+      "range_hi": 5.039684199579493,
+      "frr_at_half": 0.21364985163204747,
+      "frr_at_double": 0.24629080118694363,
+      "far_at_half": 0.4444444444444444,
+      "far_at_double": 0.44086021505376344,
+      "class": "moderate"
+    },
+    {
+      "check_param": "wrench_lever.moment_threshold",
+      "default": 4.32,
+      "range_lo": 2.16,
+      "range_hi": 17.28,
+      "frr_at_half": 0.2551928783382789,
+      "frr_at_double": 0.20771513353115728,
+      "far_at_half": 0.44086021505376344,
+      "far_at_double": 0.4444444444444444,
+      "class": "moderate"
+    },
+    {
+      "check_param": "corridor_clear.noise_point_tolerance",
+      "default": 5.0,
+      "range_lo": 0.0,
+      "range_hi": 20.0,
+      "frr_at_half": 0.2166172106824926,
+      "frr_at_double": 0.21364985163204747,
+      "far_at_half": 0.4444444444444444,
+      "far_at_double": 0.44802867383512546,
+      "class": "tolerant"
+    }
+  ],
+  "interaction": {
+    "check_a": "suction_area.min_area_ratio",
+    "check_b": "bbox_extent.extent_rel_dev_max",
+    "max_far_deviation": 0.12186379928315416,
+    "max_frr_deviation": 0.06231454005934717,
+    "independent": false,
+    "within_range_far_deviation": 0.014336917562723983,
+    "within_range_frr_deviation": 0.0,
+    "extra_pairwise": [
+      {
+        "check_a": "bbox_extent.extent_rel_dev_max",
+        "check_b": "bbox_inlier.inlier_min",
+        "max_far_deviation": 0.1254480286738351,
+        "max_frr_deviation": 0.09198813056379823,
+        "independent": false,
+        "within_range_far_deviation": 0.014336917562723983,
+        "within_range_frr_deviation": 0.005934718100890191
+      }
+    ]
+  }
+}

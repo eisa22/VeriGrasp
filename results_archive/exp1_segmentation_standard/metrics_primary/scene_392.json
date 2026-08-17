@@ -1,0 +1,194 @@
+{
+  "scene_id": "scene_392",
+  "category": "chaotic",
+  "viewpoint": "top_down",
+  "status": "ok",
+  "visibility": {
+    "mode": "absolute",
+    "absolute_min": 1,
+    "relative_fraction": 0.01,
+    "threshold_px": 1
+  },
+  "gt_counts": {
+    "eval": 32,
+    "invisible": 0,
+    "out_of_scope": 0,
+    "total_instances": 32
+  },
+  "stages": {
+    "D": {
+      "point": "D",
+      "ap": 0.0,
+      "ap50": 0.0,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.0,
+      "mean_iou": 0.0,
+      "pq": 0.0,
+      "sq": 0.0,
+      "rq": 0.0,
+      "precision": 0.0,
+      "recall": 0.0625,
+      "f1": 0.0,
+      "tp": 2,
+      "fp": 0,
+      "fn": 30,
+      "n_pred": 2,
+      "n_gt_eval": 32,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.5,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.90625,
+      "box_recall": 0.0625
+    },
+    "S": {
+      "point": "S",
+      "ap": 0.04375,
+      "ap50": 0.0625,
+      "ap75": 0.0625,
+      "ap_small": 0.0,
+      "ap_medium": 0.14285714285714285,
+      "ap_large": 0.0,
+      "mean_iou": 0.8201776994459922,
+      "pq": 0.09649149405246966,
+      "sq": 0.8201776994459922,
+      "rq": 0.11764705882352941,
+      "precision": 1.0,
+      "recall": 0.0625,
+      "f1": 0.11764705882352941,
+      "tp": 2,
+      "fp": 0,
+      "fn": 30,
+      "n_pred": 2,
+      "n_gt_eval": 32,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9375,
+      "box_recall": null
+    },
+    "M": {
+      "point": "M",
+      "ap": 0.021875,
+      "ap50": 0.03125,
+      "ap75": 0.03125,
+      "ap_small": 0.0,
+      "ap_medium": 0.07142857142857142,
+      "ap_large": 0.0,
+      "mean_iou": 0.8095684803001876,
+      "pq": 0.04906475638182955,
+      "sq": 0.8095684803001876,
+      "rq": 0.06060606060606061,
+      "precision": 1.0,
+      "recall": 0.03125,
+      "f1": 0.06060606060606061,
+      "tp": 1,
+      "fp": 0,
+      "fn": 31,
+      "n_pred": 1,
+      "n_gt_eval": 32,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.96875,
+      "box_recall": null
+    },
+    "F": {
+      "point": "F",
+      "ap": 0.021875,
+      "ap50": 0.03125,
+      "ap75": 0.03125,
+      "ap_small": 0.0,
+      "ap_medium": 0.07142857142857142,
+      "ap_large": 0.0,
+      "mean_iou": 0.8095684803001876,
+      "pq": 0.04906475638182955,
+      "sq": 0.8095684803001876,
+      "rq": 0.06060606060606061,
+      "precision": 1.0,
+      "recall": 0.03125,
+      "f1": 0.06060606060606061,
+      "tp": 1,
+      "fp": 0,
+      "fn": 31,
+      "n_pred": 1,
+      "n_gt_eval": 32,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.96875,
+      "box_recall": null
+    }
+  },
+  "class_recall_F": {
+    "POP_Drinks_Pack": {
+      "tp": 0,
+      "fn": 1
+    },
+    "ML_Box": {
+      "tp": 0,
+      "fn": 1
+    },
+    "SM_Little_Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "\u041a\u0443\u0431": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Storage_Box_with_Lid": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Paper_Shopping_Bag": {
+      "tp": 0,
+      "fn": 4
+    },
+    "Amazon_A2_Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Space_Food_Bag": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Powder_Blush": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Vintage_Envelope": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Small_Pouch": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Paper_Coffee_Bag": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Louis_Vuitton_Package": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Sachets_Package": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Small Packet": {
+      "tp": 1,
+      "fn": 2
+    },
+    "Vegetable_Crate": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Small_Shipping_Bag": {
+      "tp": 0,
+      "fn": 1
+    }
+  }
+}

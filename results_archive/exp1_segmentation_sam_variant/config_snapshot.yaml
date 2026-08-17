@@ -1,0 +1,108 @@
+eval:
+  category_rows:
+  - baseline
+  - mixed
+  - dense
+  - chaotic
+  - lighting
+  - occlusion
+  - edge
+  - tilted
+  - angled_dense
+  - angled_chaotic
+  - angled_occluded
+  min_visible_pixels_primary: 1
+  score_note: 'AP uses propagated DINO/closure scores; SAM3D has no native confidence.
+
+    '
+  size_buckets_px2:
+    medium_max: 6400
+    small_max: 900
+  test_sets:
+    baseline:
+      description: "Dev-Band baseline (scene_000\u2013055)"
+      index_range:
+      - 0
+      - 55
+    diverse:
+      description: Je eine Szene pro Kategorie-Band (11 Szenen)
+      scene_ids:
+      - scene_000
+      - scene_100
+      - scene_250
+      - scene_350
+      - scene_400
+      - scene_430
+      - scene_460
+      - scene_510
+      - scene_578
+      - scene_628
+      - scene_678
+    smoke:
+      description: "Erste 5 Szenen \u2014 schneller Smoke-Test"
+      scene_indices:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+  visibility_mode: absolute
+  visibility_relative_fraction: 0.01
+  workspace_majority_threshold: 0.5
+pipeline:
+  BASE_PATH: /Users/samueleinspieler/Documents/workspace_thesis/master_thesis/Data/blender_dataset
+  BOX_THRESHOLD: 0.3
+  CAMERA_CX: 320.0
+  CAMERA_CY: 240.0
+  CAMERA_FX: 497.77777777777777
+  CAMERA_FY: 497.77777777777777
+  CAMERA_HEIGHT: 480
+  CAMERA_WIDTH: 640
+  DEBUG: true
+  DINO_MODEL_ID: IDEA-Research/grounding-dino-base
+  MATCH_BORDER_TOUCH_RATIO: 0.05
+  MATCH_CLOSURE_RATIO: 0.65
+  MATCH_DEDUP_CONTAINMENT: 0.2
+  MATCH_DEDUP_CONTAINMENT_DEEP: 0.05
+  MATCH_DEDUP_CONTAINMENT_FAR: 0.1
+  MATCH_DEDUP_IOU: 0.1
+  MATCH_DEDUP_IOU_DEEP: 0.02
+  MATCH_DEDUP_IOU_FAR: 0.05
+  MATCH_DEDUP_KEEP_CLOSER: false
+  MATCH_DEDUP_USE_BBOX: true
+  MATCH_DEDUP_USE_DINO_BBOX: true
+  MATCH_DEDUP_Z_DEEP_M: 0.1
+  MATCH_DEDUP_Z_DIFF_M: 0.005
+  MATCH_DEDUP_Z_OCCLUDE_M: 0.02
+  MAX_BOX_AREA_RATIO: 0.12
+  OPENAI_API_KEY: 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
+  PALLET_MAX_NORMAL_ANGLE_DEG: 25.0
+  PALLET_MIN_INLIER_RATIO: 0.25
+  PALLET_RANSAC_DISTANCE_M: 0.02
+  PALLET_RANSAC_ITERATIONS: 1000
+  PALLET_RANSAC_N: 3
+  PALLET_RANSAC_STRIDE: 4
+  PALLET_RANSAC_Y_MIN_RATIO: 0.5
+  PROJECT_ROOT: /Users/samueleinspieler/Documents/workspace_thesis/master_thesis
+  RELATIVE_IOU_NMS_THRESH: 0.3
+  SAM3D_CHALLENGE_THRESHOLD: 0.08
+  SAM3D_DBSCAN_EPS_LARGE: 0.03
+  SAM3D_DBSCAN_MIN_SAMPLES_LARGE: 30
+  SAM3D_Z_RANGE_THRESHOLD: 0.05
+  SAM_DEDUPLICATION_IOU: 0.85
+  SAM_GRID_SIZE: 16
+  SAM_MASK_MIN_AREA: 500
+  SAM_MODEL_ID: facebook/sam-vit-base
+  SESSION_PATH: /Users/samueleinspieler/Documents/workspace_thesis/master_thesis/Data/blender_dataset
+  TEXT_PROMPT:
+  - cardboard box
+  - small cardboard box
+  - shipping box
+  - parcel
+  TEXT_THRESHOLD: 0.25
+  VIZ_ENABLE_3D: true
+  VIZ_INTERACTIVE: true
+  WORKSPACE_MIN_BOX_OVERLAP: 0.5
+  WORKSPACE_X_MARGIN_LEFT: 0.15
+  WORKSPACE_X_MARGIN_RIGHT: 0.15
+  Z_ALIGN_MIN_KEEP_RATIO: 0.25

@@ -1,0 +1,965 @@
+{
+  "meta": {
+    "exp3_run_id": "full_2026-07-05",
+    "git_commit": "c9663d5d7708f89f86d57a9ec06f2f6477c41f6a",
+    "n_grasps": 616,
+    "reconstruction_check": {
+      "n_checked": 616,
+      "n_mismatch": 0,
+      "soft_max_diff": 4.218847493575595e-15
+    },
+    "unverifiable_semantics": "pass",
+    "criterion_mapping_version": "thesis_tab_verif_mapping+v1_force_estimate",
+    "runtime_s": 11.312714957999999
+  },
+  "reference": {
+    "far": 0.4444444444444444,
+    "frr": 0.21364985163204747,
+    "accept_precision": 0.6812339331619537,
+    "base_rate": 0.547077922077922
+  },
+  "table_loo_criterion": [
+    {
+      "criterion": "surface_planarity",
+      "delta_far": 0.03584229390681004,
+      "delta_frr": -0.005934718100890191,
+      "delta_precision": -0.015398521690631939,
+      "n_flipped": 12
+    },
+    {
+      "criterion": "normal_consistency",
+      "delta_far": 0.010752688172043057,
+      "delta_frr": 0.0,
+      "delta_precision": -0.005213524998688435,
+      "n_flipped": 3
+    },
+    {
+      "criterion": "depth_quality",
+      "delta_far": 0.0035842293906810374,
+      "delta_frr": -0.005934718100890191,
+      "delta_precision": -0.00011148418236184288,
+      "n_flipped": 3
+    },
+    {
+      "criterion": "min_suction_area",
+      "delta_far": 0.010752688172043057,
+      "delta_frr": -0.014836795252225504,
+      "delta_precision": -0.0011331774944474127,
+      "n_flipped": 8
+    },
+    {
+      "criterion": "corridor_clearance",
+      "delta_far": 0.03584229390681004,
+      "delta_frr": -0.0029673590504450953,
+      "delta_precision": -0.01623393316195365,
+      "n_flipped": 11
+    },
+    {
+      "criterion": "segmentation_consistency",
+      "delta_far": 0.06810035842293904,
+      "delta_frr": -0.12462908011869435,
+      "delta_precision": 0.000988289060268488,
+      "n_flipped": 61
+    },
+    {
+      "criterion": "force_estimate",
+      "delta_far": 0.0,
+      "delta_frr": -0.029673590504451036,
+      "delta_precision": 0.007989124482156607,
+      "n_flipped": 10
+    }
+  ],
+  "table_checks": [
+    {
+      "check": "existence",
+      "n_rejects": 0,
+      "unique_catches": 0,
+      "delta_far": 0.0,
+      "highest_overlap_with": "bbox_coverage",
+      "highest_overlap_jaccard": 1.0,
+      "inert": true,
+      "sensor_artifact_target": false
+    },
+    {
+      "check": "top_height_match",
+      "n_rejects": 28,
+      "unique_catches": 1,
+      "delta_far": 0.0035842293906810374,
+      "highest_overlap_with": "normal_angle",
+      "highest_overlap_jaccard": 0.4727272727272727,
+      "inert": false,
+      "sensor_artifact_target": false
+    },
+    {
+      "check": "bbox_extent",
+      "n_rejects": 73,
+      "unique_catches": 12,
+      "delta_far": 0.04301075268817206,
+      "highest_overlap_with": "bbox_inlier",
+      "highest_overlap_jaccard": 0.2962962962962963,
+      "inert": false,
+      "sensor_artifact_target": false
+    },
+    {
+      "check": "bbox_inlier",
+      "n_rejects": 32,
+      "unique_catches": 2,
+      "delta_far": 0.007168458781362019,
+      "highest_overlap_with": "bbox_extent",
+      "highest_overlap_jaccard": 0.2962962962962963,
+      "inert": false,
+      "sensor_artifact_target": false
+    },
+    {
+      "check": "bbox_surface_dist",
+      "n_rejects": 0,
+      "unique_catches": 0,
+      "delta_far": 0.0,
+      "highest_overlap_with": "bbox_coverage",
+      "highest_overlap_jaccard": 1.0,
+      "inert": true,
+      "sensor_artifact_target": false
+    },
+    {
+      "check": "bbox_top_normal",
+      "n_rejects": 2,
+      "unique_catches": 0,
+      "delta_far": 0.0,
+      "highest_overlap_with": "planarity",
+      "highest_overlap_jaccard": 0.25,
+      "inert": false,
+      "sensor_artifact_target": false
+    },
+    {
+      "check": "bbox_coverage",
+      "n_rejects": 0,
+      "unique_catches": 0,
+      "delta_far": 0.0,
+      "highest_overlap_with": "bbox_surface_dist",
+      "highest_overlap_jaccard": 1.0,
+      "inert": true,
+      "sensor_artifact_target": false
+    },
+    {
+      "check": "planarity",
+      "n_rejects": 20,
+      "unique_catches": 0,
+      "delta_far": 0.0,
+      "highest_overlap_with": "normal_scatter",
+      "highest_overlap_jaccard": 0.4594594594594595,
+      "inert": false,
+      "sensor_artifact_target": false
+    },
+    {
+      "check": "normal_angle",
+      "n_rejects": 53,
+      "unique_catches": 2,
+      "delta_far": 0.007168458781362019,
+      "highest_overlap_with": "top_height_match",
+      "highest_overlap_jaccard": 0.4727272727272727,
+      "inert": false,
+      "sensor_artifact_target": false
+    },
+    {
+      "check": "normal_scatter",
+      "n_rejects": 34,
+      "unique_catches": 0,
+      "delta_far": 0.0,
+      "highest_overlap_with": "planarity",
+      "highest_overlap_jaccard": 0.4594594594594595,
+      "inert": false,
+      "sensor_artifact_target": false
+    },
+    {
+      "check": "suction_area",
+      "n_rejects": 67,
+      "unique_catches": 3,
+      "delta_far": 0.010752688172043057,
+      "highest_overlap_with": "edge_clearance",
+      "highest_overlap_jaccard": 0.4925373134328358,
+      "inert": false,
+      "sensor_artifact_target": false
+    },
+    {
+      "check": "edge_clearance",
+      "n_rejects": 33,
+      "unique_catches": 0,
+      "delta_far": 0.0,
+      "highest_overlap_with": "suction_area",
+      "highest_overlap_jaccard": 0.4925373134328358,
+      "inert": false,
+      "sensor_artifact_target": false
+    },
+    {
+      "check": "data_gaps",
+      "n_rejects": 52,
+      "unique_catches": 1,
+      "delta_far": 0.0035842293906810374,
+      "highest_overlap_with": "suction_area",
+      "highest_overlap_jaccard": 0.45121951219512196,
+      "inert": false,
+      "sensor_artifact_target": true
+    },
+    {
+      "check": "depth_seam",
+      "n_rejects": 12,
+      "unique_catches": 0,
+      "delta_far": 0.0,
+      "highest_overlap_with": "normal_alignment",
+      "highest_overlap_jaccard": 0.3181818181818182,
+      "inert": false,
+      "sensor_artifact_target": true
+    },
+    {
+      "check": "surface_warp",
+      "n_rejects": 80,
+      "unique_catches": 2,
+      "delta_far": 0.007168458781362019,
+      "highest_overlap_with": "surface_warp_robust",
+      "highest_overlap_jaccard": 0.9,
+      "inert": false,
+      "sensor_artifact_target": false
+    },
+    {
+      "check": "normal_alignment",
+      "n_rejects": 17,
+      "unique_catches": 0,
+      "delta_far": 0.0,
+      "highest_overlap_with": "planarity",
+      "highest_overlap_jaccard": 0.32142857142857145,
+      "inert": false,
+      "sensor_artifact_target": false
+    },
+    {
+      "check": "surface_warp_robust",
+      "n_rejects": 72,
+      "unique_catches": 0,
+      "delta_far": 0.0,
+      "highest_overlap_with": "surface_warp",
+      "highest_overlap_jaccard": 0.9,
+      "inert": false,
+      "sensor_artifact_target": false
+    },
+    {
+      "check": "suction_force",
+      "n_rejects": 32,
+      "unique_catches": 0,
+      "delta_far": 0.0,
+      "highest_overlap_with": "wrench_lever",
+      "highest_overlap_jaccard": 0.6428571428571429,
+      "inert": false,
+      "sensor_artifact_target": false
+    },
+    {
+      "check": "wrench_lever",
+      "n_rejects": 37,
+      "unique_catches": 0,
+      "delta_far": 0.0,
+      "highest_overlap_with": "suction_force",
+      "highest_overlap_jaccard": 0.6428571428571429,
+      "inert": false,
+      "sensor_artifact_target": false
+    },
+    {
+      "check": "corridor_clear",
+      "n_rejects": 92,
+      "unique_catches": 10,
+      "delta_far": 0.03584229390681004,
+      "highest_overlap_with": "normal_angle",
+      "highest_overlap_jaccard": 0.46464646464646464,
+      "inert": false,
+      "sensor_artifact_target": false
+    }
+  ],
+  "redundancy_matrix": {
+    "checks": [
+      "existence",
+      "top_height_match",
+      "bbox_extent",
+      "bbox_inlier",
+      "bbox_surface_dist",
+      "bbox_top_normal",
+      "bbox_coverage",
+      "planarity",
+      "normal_angle",
+      "normal_scatter",
+      "suction_area",
+      "edge_clearance",
+      "data_gaps",
+      "depth_seam",
+      "surface_warp",
+      "normal_alignment",
+      "surface_warp_robust",
+      "suction_force",
+      "wrench_lever",
+      "corridor_clear"
+    ],
+    "jaccard": [
+      [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0,
+        0.0136986301369863,
+        0.03125,
+        0.0,
+        0.0,
+        0.0,
+        0.2,
+        0.4727272727272727,
+        0.24,
+        0.10465116279069768,
+        0.07017543859649122,
+        0.14285714285714285,
+        0.21212121212121213,
+        0.16129032258064516,
+        0.21621621621621623,
+        0.16279069767441862,
+        0.3953488372093023,
+        0.25,
+        0.25
+      ],
+      [
+        0.0,
+        0.0136986301369863,
+        1.0,
+        0.2962962962962963,
+        0.0,
+        0.013513513513513514,
+        0.0,
+        0.02702702702702703,
+        0.04054054054054054,
+        0.06493506493506493,
+        0.0761904761904762,
+        0.05555555555555555,
+        0.0898876404494382,
+        0.0,
+        0.10377358490566038,
+        0.0136986301369863,
+        0.09803921568627451,
+        0.0,
+        0.0,
+        0.08823529411764706
+      ],
+      [
+        0.0,
+        0.03125,
+        0.2962962962962963,
+        1.0,
+        0.0,
+        0.0625,
+        0.0,
+        0.09375,
+        0.125,
+        0.10810810810810811,
+        0.1076923076923077,
+        0.10204081632653061,
+        0.16666666666666666,
+        0.0,
+        0.10144927536231885,
+        0.03125,
+        0.09230769230769231,
+        0.0,
+        0.022727272727272728,
+        0.14754098360655737
+      ],
+      [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.013513513513513514,
+        0.0625,
+        0.0,
+        1.0,
+        0.0,
+        0.25,
+        0.0,
+        0.1,
+        0.024390243902439025,
+        0.043478260869565216,
+        0.04,
+        0.0,
+        0.022222222222222223,
+        0.0,
+        0.025,
+        0.0,
+        0.0,
+        0.05263157894736842
+      ],
+      [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.2,
+        0.02702702702702703,
+        0.09375,
+        0.0,
+        0.25,
+        0.0,
+        1.0,
+        0.23728813559322035,
+        0.4594594594594595,
+        0.11538461538461539,
+        0.15217391304347827,
+        0.16129032258064516,
+        0.23076923076923078,
+        0.25,
+        0.32142857142857145,
+        0.2777777777777778,
+        0.13043478260869565,
+        0.11764705882352941,
+        0.17894736842105263
+      ],
+      [
+        0.0,
+        0.4727272727272727,
+        0.04054054054054054,
+        0.125,
+        0.0,
+        0.0,
+        0.0,
+        0.23728813559322035,
+        1.0,
+        0.2608695652173913,
+        0.25,
+        0.16216216216216217,
+        0.3125,
+        0.2037037037037037,
+        0.24299065420560748,
+        0.2962962962962963,
+        0.2376237623762376,
+        0.3709677419354839,
+        0.30434782608695654,
+        0.46464646464646464
+      ],
+      [
+        0.0,
+        0.24,
+        0.06493506493506493,
+        0.10810810810810811,
+        0.0,
+        0.1,
+        0.0,
+        0.4594594594594595,
+        0.2608695652173913,
+        1.0,
+        0.1744186046511628,
+        0.13559322033898305,
+        0.16216216216216217,
+        0.24324324324324326,
+        0.425,
+        0.275,
+        0.43243243243243246,
+        0.13793103448275862,
+        0.16393442622950818,
+        0.22330097087378642
+      ],
+      [
+        0.0,
+        0.10465116279069768,
+        0.0761904761904762,
+        0.1076923076923077,
+        0.0,
+        0.024390243902439025,
+        0.0,
+        0.11538461538461539,
+        0.25,
+        0.1744186046511628,
+        1.0,
+        0.4925373134328358,
+        0.45121951219512196,
+        0.0821917808219178,
+        0.2782608695652174,
+        0.13513513513513514,
+        0.28703703703703703,
+        0.125,
+        0.16853932584269662,
+        0.2619047619047619
+      ],
+      [
+        0.0,
+        0.07017543859649122,
+        0.05555555555555555,
+        0.10204081632653061,
+        0.0,
+        0.043478260869565216,
+        0.0,
+        0.15217391304347827,
+        0.16216216216216217,
+        0.13559322033898305,
+        0.4925373134328358,
+        1.0,
+        0.4406779661016949,
+        0.125,
+        0.16494845360824742,
+        0.1111111111111111,
+        0.1797752808988764,
+        0.06557377049180328,
+        0.1111111111111111,
+        0.1574074074074074
+      ],
+      [
+        0.0,
+        0.14285714285714285,
+        0.0898876404494382,
+        0.16666666666666666,
+        0.0,
+        0.04,
+        0.0,
+        0.16129032258064516,
+        0.3125,
+        0.16216216216216217,
+        0.45121951219512196,
+        0.4406779661016949,
+        1.0,
+        0.12280701754385964,
+        0.17857142857142858,
+        0.1694915254237288,
+        0.18095238095238095,
+        0.1506849315068493,
+        0.14102564102564102,
+        0.2413793103448276
+      ],
+      [
+        0.0,
+        0.21212121212121213,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.23076923076923078,
+        0.2037037037037037,
+        0.24324324324324326,
+        0.0821917808219178,
+        0.125,
+        0.12280701754385964,
+        1.0,
+        0.12195121951219512,
+        0.3181818181818182,
+        0.12,
+        0.1282051282051282,
+        0.11363636363636363,
+        0.09473684210526316
+      ],
+      [
+        0.0,
+        0.16129032258064516,
+        0.10377358490566038,
+        0.10144927536231885,
+        0.0,
+        0.022222222222222223,
+        0.0,
+        0.25,
+        0.24299065420560748,
+        0.425,
+        0.2782608695652174,
+        0.16494845360824742,
+        0.17857142857142858,
+        0.12195121951219512,
+        1.0,
+        0.15476190476190477,
+        0.9,
+        0.12,
+        0.125,
+        0.3983739837398374
+      ],
+      [
+        0.0,
+        0.21621621621621623,
+        0.0136986301369863,
+        0.03125,
+        0.0,
+        0.0,
+        0.0,
+        0.32142857142857145,
+        0.2962962962962963,
+        0.275,
+        0.13513513513513514,
+        0.1111111111111111,
+        0.1694915254237288,
+        0.3181818181818182,
+        0.15476190476190477,
+        1.0,
+        0.17105263157894737,
+        0.11363636363636363,
+        0.08,
+        0.14736842105263157
+      ],
+      [
+        0.0,
+        0.16279069767441862,
+        0.09803921568627451,
+        0.09230769230769231,
+        0.0,
+        0.025,
+        0.0,
+        0.2777777777777778,
+        0.2376237623762376,
+        0.43243243243243246,
+        0.28703703703703703,
+        0.1797752808988764,
+        0.18095238095238095,
+        0.12,
+        0.9,
+        0.17105263157894737,
+        1.0,
+        0.11827956989247312,
+        0.12371134020618557,
+        0.37815126050420167
+      ],
+      [
+        0.0,
+        0.3953488372093023,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.13043478260869565,
+        0.3709677419354839,
+        0.13793103448275862,
+        0.125,
+        0.06557377049180328,
+        0.1506849315068493,
+        0.1282051282051282,
+        0.12,
+        0.11363636363636363,
+        0.11827956989247312,
+        1.0,
+        0.6428571428571429,
+        0.25252525252525254
+      ],
+      [
+        0.0,
+        0.25,
+        0.0,
+        0.022727272727272728,
+        0.0,
+        0.0,
+        0.0,
+        0.11764705882352941,
+        0.30434782608695654,
+        0.16393442622950818,
+        0.16853932584269662,
+        0.1111111111111111,
+        0.14102564102564102,
+        0.11363636363636363,
+        0.125,
+        0.08,
+        0.12371134020618557,
+        0.6428571428571429,
+        1.0,
+        0.2403846153846154
+      ],
+      [
+        0.0,
+        0.25,
+        0.08823529411764706,
+        0.14754098360655737,
+        0.0,
+        0.05263157894736842,
+        0.0,
+        0.17894736842105263,
+        0.46464646464646464,
+        0.22330097087378642,
+        0.2619047619047619,
+        0.1574074074074074,
+        0.2413793103448276,
+        0.09473684210526316,
+        0.3983739837398374,
+        0.14736842105263157,
+        0.37815126050420167,
+        0.25252525252525254,
+        0.2403846153846154,
+        1.0
+      ]
+    ]
+  },
+  "greedy_path": [
+    {
+      "step": 1,
+      "added_check": "corridor_clear",
+      "far": 0.6738351254480287,
+      "frr": 0.002967359050445104,
+      "accept_precision": 0.6412213740458015
+    },
+    {
+      "step": 2,
+      "added_check": "surface_warp",
+      "far": 0.5913978494623656,
+      "frr": 0.026706231454005934,
+      "accept_precision": 0.665314401622718
+    },
+    {
+      "step": 3,
+      "added_check": "bbox_extent",
+      "far": 0.5304659498207885,
+      "frr": 0.1513353115727003,
+      "accept_precision": 0.6589861751152074
+    },
+    {
+      "step": 4,
+      "added_check": "suction_area",
+      "far": 0.4767025089605735,
+      "frr": 0.17210682492581603,
+      "accept_precision": 0.6771844660194175
+    },
+    {
+      "step": 5,
+      "added_check": "normal_angle",
+      "far": 0.45878136200716846,
+      "frr": 0.17210682492581603,
+      "accept_precision": 0.6855036855036855
+    },
+    {
+      "step": 6,
+      "added_check": "bbox_inlier",
+      "far": 0.45161290322580644,
+      "frr": 0.17804154302670624,
+      "accept_precision": 0.6873449131513648
+    },
+    {
+      "step": 7,
+      "added_check": "top_height_match",
+      "far": 0.44802867383512546,
+      "frr": 0.17804154302670624,
+      "accept_precision": 0.6890547263681592
+    },
+    {
+      "step": 8,
+      "added_check": "data_gaps",
+      "far": 0.4444444444444444,
+      "frr": 0.18397626112759644,
+      "accept_precision": 0.6892230576441103
+    },
+    {
+      "step": 9,
+      "added_check": "bbox_coverage",
+      "far": 0.4444444444444444,
+      "frr": 0.18397626112759644,
+      "accept_precision": 0.6892230576441103
+    },
+    {
+      "step": 10,
+      "added_check": "bbox_surface_dist",
+      "far": 0.4444444444444444,
+      "frr": 0.18397626112759644,
+      "accept_precision": 0.6892230576441103
+    },
+    {
+      "step": 11,
+      "added_check": "bbox_top_normal",
+      "far": 0.4444444444444444,
+      "frr": 0.18397626112759644,
+      "accept_precision": 0.6892230576441103
+    },
+    {
+      "step": 12,
+      "added_check": "depth_seam",
+      "far": 0.4444444444444444,
+      "frr": 0.18397626112759644,
+      "accept_precision": 0.6892230576441103
+    },
+    {
+      "step": 13,
+      "added_check": "edge_clearance",
+      "far": 0.4444444444444444,
+      "frr": 0.18397626112759644,
+      "accept_precision": 0.6892230576441103
+    },
+    {
+      "step": 14,
+      "added_check": "existence",
+      "far": 0.4444444444444444,
+      "frr": 0.18397626112759644,
+      "accept_precision": 0.6892230576441103
+    },
+    {
+      "step": 15,
+      "added_check": "normal_alignment",
+      "far": 0.4444444444444444,
+      "frr": 0.18397626112759644,
+      "accept_precision": 0.6892230576441103
+    },
+    {
+      "step": 16,
+      "added_check": "normal_scatter",
+      "far": 0.4444444444444444,
+      "frr": 0.18397626112759644,
+      "accept_precision": 0.6892230576441103
+    },
+    {
+      "step": 17,
+      "added_check": "planarity",
+      "far": 0.4444444444444444,
+      "frr": 0.18397626112759644,
+      "accept_precision": 0.6892230576441103
+    },
+    {
+      "step": 18,
+      "added_check": "surface_warp_robust",
+      "far": 0.4444444444444444,
+      "frr": 0.18397626112759644,
+      "accept_precision": 0.6892230576441103
+    },
+    {
+      "step": 19,
+      "added_check": "suction_force",
+      "far": 0.4444444444444444,
+      "frr": 0.20474777448071216,
+      "accept_precision": 0.6836734693877551
+    },
+    {
+      "step": 20,
+      "added_check": "wrench_lever",
+      "far": 0.4444444444444444,
+      "frr": 0.21364985163204747,
+      "accept_precision": 0.6812339331619537
+    }
+  ],
+  "greedy_sufficient_size": 8,
+  "soft_score_loo": [
+    {
+      "check": "existence",
+      "delta_auc": 0.0
+    },
+    {
+      "check": "top_height_match",
+      "delta_auc": 0.0018506110207077153
+    },
+    {
+      "check": "bbox_extent",
+      "delta_auc": -0.004934962721887204
+    },
+    {
+      "check": "bbox_inlier",
+      "delta_auc": 0.00741307977835215
+    },
+    {
+      "check": "bbox_surface_dist",
+      "delta_auc": 0.002339853014687976
+    },
+    {
+      "check": "bbox_top_normal",
+      "delta_auc": 0.004466992118949631
+    },
+    {
+      "check": "bbox_coverage",
+      "delta_auc": 0.0025206598385502377
+    },
+    {
+      "check": "planarity",
+      "delta_auc": 0.002988630441487783
+    },
+    {
+      "check": "normal_angle",
+      "delta_auc": 0.000765770077534228
+    },
+    {
+      "check": "normal_scatter",
+      "delta_auc": 0.0009359412058752015
+    },
+    {
+      "check": "suction_area",
+      "delta_auc": 0.0006381417312785187
+    },
+    {
+      "check": "edge_clearance",
+      "delta_auc": -0.0001914425193834668
+    },
+    {
+      "check": "data_gaps",
+      "delta_auc": 0.004956234112929836
+    },
+    {
+      "check": "depth_seam",
+      "delta_auc": 2.1271391042604337e-05
+    },
+    {
+      "check": "surface_warp",
+      "delta_auc": 0.0073173585186603884
+    },
+    {
+      "check": "normal_alignment",
+      "delta_auc": 0.00017017112834100123
+    },
+    {
+      "check": "surface_warp_robust",
+      "delta_auc": 0.005817725450155853
+    },
+    {
+      "check": "suction_force",
+      "delta_auc": -0.01954840836816521
+    },
+    {
+      "check": "wrench_lever",
+      "delta_auc": -0.009338140667708966
+    },
+    {
+      "check": "corridor_clear",
+      "delta_auc": -0.003509779522031742
+    }
+  ]
+}

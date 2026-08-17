@@ -1,0 +1,142 @@
+{
+  "scene_id": "scene_120",
+  "category": "mixed",
+  "viewpoint": "top_down",
+  "status": "ok",
+  "visibility": {
+    "mode": "absolute",
+    "absolute_min": 1,
+    "relative_fraction": 0.01,
+    "threshold_px": 1
+  },
+  "gt_counts": {
+    "eval": 16,
+    "invisible": 0,
+    "out_of_scope": 0,
+    "total_instances": 16
+  },
+  "stages": {
+    "D": {
+      "point": "D",
+      "ap": 0.0,
+      "ap50": 0.0,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.0,
+      "mean_iou": 0.0,
+      "pq": 0.0,
+      "sq": 0.0,
+      "rq": 0.0,
+      "precision": 0.0,
+      "recall": 0.125,
+      "f1": 0.0,
+      "tp": 2,
+      "fp": 0,
+      "fn": 14,
+      "n_pred": 2,
+      "n_gt_eval": 16,
+      "over_segmentation_rate": 0.125,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.875,
+      "box_recall": 0.125
+    },
+    "S": {
+      "point": "S",
+      "ap": 0.125,
+      "ap50": 0.125,
+      "ap75": 0.125,
+      "ap_small": 0.0,
+      "ap_medium": 0.1,
+      "ap_large": 0.5,
+      "mean_iou": 0.9597040150673297,
+      "pq": 0.21326755890385105,
+      "sq": 0.9597040150673297,
+      "rq": 0.2222222222222222,
+      "precision": 1.0,
+      "recall": 0.125,
+      "f1": 0.2222222222222222,
+      "tp": 2,
+      "fp": 0,
+      "fn": 14,
+      "n_pred": 2,
+      "n_gt_eval": 16,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.875,
+      "box_recall": null
+    },
+    "M": {
+      "point": "M",
+      "ap": 0.125,
+      "ap50": 0.125,
+      "ap75": 0.125,
+      "ap_small": 0.0,
+      "ap_medium": 0.1,
+      "ap_large": 0.5,
+      "mean_iou": 0.9597040150673297,
+      "pq": 0.21326755890385105,
+      "sq": 0.9597040150673297,
+      "rq": 0.2222222222222222,
+      "precision": 1.0,
+      "recall": 0.125,
+      "f1": 0.2222222222222222,
+      "tp": 2,
+      "fp": 0,
+      "fn": 14,
+      "n_pred": 2,
+      "n_gt_eval": 16,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.875,
+      "box_recall": null
+    },
+    "F": {
+      "point": "F",
+      "ap": 0.06875,
+      "ap50": 0.125,
+      "ap75": 0.0625,
+      "ap_small": 0.0,
+      "ap_medium": 0.1,
+      "ap_large": 0.5,
+      "mean_iou": 0.7426652401411373,
+      "pq": 0.1563505768718184,
+      "sq": 0.7426652401411373,
+      "rq": 0.21052631578947367,
+      "precision": 0.6666666666666666,
+      "recall": 0.125,
+      "f1": 0.21052631578947367,
+      "tp": 2,
+      "fp": 1,
+      "fn": 14,
+      "n_pred": 3,
+      "n_gt_eval": 16,
+      "over_segmentation_rate": 0.0625,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.875,
+      "box_recall": null
+    }
+  },
+  "class_recall_F": {
+    "SM_Little_Package": {
+      "tp": 0,
+      "fn": 7
+    },
+    "ML_Box": {
+      "tp": 1,
+      "fn": 0
+    },
+    "Black Package": {
+      "tp": 0,
+      "fn": 5
+    },
+    "Amazon_A2_Package": {
+      "tp": 1,
+      "fn": 2
+    }
+  }
+}

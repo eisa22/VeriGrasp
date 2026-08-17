@@ -1,0 +1,194 @@
+{
+  "scene_id": "scene_691",
+  "category": "angled_occluded",
+  "viewpoint": "angled",
+  "status": "ok",
+  "visibility": {
+    "mode": "absolute",
+    "absolute_min": 1,
+    "relative_fraction": 0.01,
+    "threshold_px": 1
+  },
+  "gt_counts": {
+    "eval": 32,
+    "invisible": 6,
+    "out_of_scope": 0,
+    "total_instances": 38
+  },
+  "stages": {
+    "D": {
+      "point": "D",
+      "ap": 0.0,
+      "ap50": 0.0,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.0,
+      "mean_iou": 0.0,
+      "pq": 0.0,
+      "sq": 0.0,
+      "rq": 0.0,
+      "precision": 0.0,
+      "recall": 0.09375,
+      "f1": 0.0,
+      "tp": 3,
+      "fp": 0,
+      "fn": 29,
+      "n_pred": 3,
+      "n_gt_eval": 32,
+      "over_segmentation_rate": 0.125,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.90625,
+      "box_recall": 0.09375
+    },
+    "S": {
+      "point": "S",
+      "ap": 0.08333333333333334,
+      "ap50": 0.09375,
+      "ap75": 0.09375,
+      "ap_small": 0.0,
+      "ap_medium": 0.1111111111111111,
+      "ap_large": 1.0,
+      "mean_iou": 0.9340266024716696,
+      "pq": 0.1601188461380005,
+      "sq": 0.9340266024716696,
+      "rq": 0.17142857142857143,
+      "precision": 1.0,
+      "recall": 0.09375,
+      "f1": 0.17142857142857143,
+      "tp": 3,
+      "fp": 0,
+      "fn": 29,
+      "n_pred": 3,
+      "n_gt_eval": 32,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.90625,
+      "box_recall": null
+    },
+    "M": {
+      "point": "M",
+      "ap": 0.08333333333333334,
+      "ap50": 0.09375,
+      "ap75": 0.09375,
+      "ap_small": 0.0,
+      "ap_medium": 0.1111111111111111,
+      "ap_large": 1.0,
+      "mean_iou": 0.9340266024716696,
+      "pq": 0.1601188461380005,
+      "sq": 0.9340266024716696,
+      "rq": 0.17142857142857143,
+      "precision": 1.0,
+      "recall": 0.09375,
+      "f1": 0.17142857142857143,
+      "tp": 3,
+      "fp": 0,
+      "fn": 29,
+      "n_pred": 3,
+      "n_gt_eval": 32,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.90625,
+      "box_recall": null
+    },
+    "F": {
+      "point": "F",
+      "ap": 0.084375,
+      "ap50": 0.09375,
+      "ap75": 0.09375,
+      "ap_small": 0.0,
+      "ap_medium": 0.1111111111111111,
+      "ap_large": 1.0,
+      "mean_iou": 0.9186491597873784,
+      "pq": 0.1574827131064077,
+      "sq": 0.9186491597873784,
+      "rq": 0.17142857142857143,
+      "precision": 1.0,
+      "recall": 0.09375,
+      "f1": 0.17142857142857143,
+      "tp": 3,
+      "fp": 0,
+      "fn": 29,
+      "n_pred": 3,
+      "n_gt_eval": 32,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.90625,
+      "box_recall": null
+    }
+  },
+  "class_recall_F": {
+    "Small_Shipping_Bag": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Colis VistaPrint": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Amazon_A2_Package": {
+      "tp": 0,
+      "fn": 2
+    },
+    "\u041a\u0443\u0431": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Carton Magdeleine": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Small Packet": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Food_Packaging_Bag": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Powder_Blush": {
+      "tp": 0,
+      "fn": 2
+    },
+    "SM_Little_Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Packaging_Tube": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Vegetable_Crate": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Space_Food_Bag": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Vintage_Envelope": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Paper_Coffee_Bag": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Sachets_Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Black Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Ikea Cardboard Package": {
+      "tp": 3,
+      "fn": 3
+    }
+  }
+}

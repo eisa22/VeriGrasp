@@ -1,0 +1,192 @@
+{
+  "scene_id": "scene_308",
+  "category": "dense",
+  "viewpoint": "top_down",
+  "status": "ok",
+  "gt_counts": {
+    "eval": 32,
+    "invisible": 0,
+    "out_of_scope": 0,
+    "total_instances": 32
+  },
+  "stages": {
+    "D": {
+      "point": "D",
+      "ap": 0.0,
+      "ap50": 0.0,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.0,
+      "mean_iou": 0.0,
+      "pq": 0.0,
+      "sq": 0.0,
+      "rq": 0.0,
+      "precision": 0.0,
+      "recall": 0.09375,
+      "f1": 0.0,
+      "tp": 3,
+      "fp": 0,
+      "fn": 29,
+      "n_pred": 3,
+      "n_gt_eval": 32,
+      "over_segmentation_rate": 0.03125,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.875,
+      "box_recall": 0.09375
+    },
+    "S": {
+      "point": "S",
+      "ap": 0.06875,
+      "ap50": 0.09375,
+      "ap75": 0.09375,
+      "ap_small": 0.0,
+      "ap_medium": 0.09803921568627451,
+      "ap_large": 0.16666666666666666,
+      "mean_iou": 0.8371423751169842,
+      "pq": 0.14351012144862588,
+      "sq": 0.8371423751169842,
+      "rq": 0.17142857142857143,
+      "precision": 1.0,
+      "recall": 0.09375,
+      "f1": 0.17142857142857143,
+      "tp": 3,
+      "fp": 0,
+      "fn": 29,
+      "n_pred": 3,
+      "n_gt_eval": 32,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.90625,
+      "box_recall": null
+    },
+    "M": {
+      "point": "M",
+      "ap": 0.0453125,
+      "ap50": 0.0625,
+      "ap75": 0.0625,
+      "ap_small": 0.0,
+      "ap_medium": 0.058823529411764705,
+      "ap_large": 0.16666666666666666,
+      "mean_iou": 0.8572100446731291,
+      "pq": 0.1008482405497799,
+      "sq": 0.8572100446731291,
+      "rq": 0.11764705882352941,
+      "precision": 1.0,
+      "recall": 0.0625,
+      "f1": 0.11764705882352941,
+      "tp": 2,
+      "fp": 0,
+      "fn": 30,
+      "n_pred": 2,
+      "n_gt_eval": 32,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9375,
+      "box_recall": null
+    },
+    "F": {
+      "point": "F",
+      "ap": 0.0453125,
+      "ap50": 0.0625,
+      "ap75": 0.0625,
+      "ap_small": 0.0,
+      "ap_medium": 0.058823529411764705,
+      "ap_large": 0.16666666666666666,
+      "mean_iou": 0.8572100446731291,
+      "pq": 0.1008482405497799,
+      "sq": 0.8572100446731291,
+      "rq": 0.11764705882352941,
+      "precision": 1.0,
+      "recall": 0.0625,
+      "f1": 0.11764705882352941,
+      "tp": 2,
+      "fp": 0,
+      "fn": 30,
+      "n_pred": 2,
+      "n_gt_eval": 32,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9375,
+      "box_recall": null
+    }
+  },
+  "class_recall_F": {
+    "Big Package cardboard": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Black Package": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Asset_Deformed_Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Louis_Vuitton_Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Asset_Package_in_paper_with_rope": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Small Packet": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Amazon_A2_Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Colis VistaPrint": {
+      "tp": 1,
+      "fn": 1
+    },
+    "Small_Shipping_Bag": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Powder_Blush": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Food_Packaging_Bag": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Packaging_Tube": {
+      "tp": 0,
+      "fn": 4
+    },
+    "Carton Magdeleine": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Small_Pouch": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Vegetable_Crate": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Envelope_Stack": {
+      "tp": 0,
+      "fn": 5
+    },
+    "Paper_Coffee_Bag": {
+      "tp": 0,
+      "fn": 1
+    },
+    "\u041a\u0443\u0431": {
+      "tp": 1,
+      "fn": 0
+    }
+  }
+}

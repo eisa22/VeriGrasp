@@ -1,0 +1,196 @@
+{
+  "scene_id": "scene_205",
+  "category": "dense",
+  "viewpoint": "top_down",
+  "status": "ok",
+  "gt_counts": {
+    "eval": 34,
+    "invisible": 0,
+    "out_of_scope": 0,
+    "total_instances": 34
+  },
+  "stages": {
+    "D": {
+      "point": "D",
+      "ap": 0.0,
+      "ap50": 0.0,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.0,
+      "mean_iou": 0.0,
+      "pq": 0.0,
+      "sq": 0.0,
+      "rq": 0.0,
+      "precision": 0.0,
+      "recall": 0.14705882352941177,
+      "f1": 0.0,
+      "tp": 5,
+      "fp": 0,
+      "fn": 29,
+      "n_pred": 5,
+      "n_gt_eval": 34,
+      "over_segmentation_rate": 0.058823529411764705,
+      "merge_rate": 0.8,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.7647058823529411,
+      "box_recall": 0.14705882352941177
+    },
+    "S": {
+      "point": "S",
+      "ap": 0.051960784313725486,
+      "ap50": 0.14705882352941177,
+      "ap75": 0.00980392156862745,
+      "ap_small": 0.0,
+      "ap_medium": 0.18823529411764706,
+      "ap_large": 0.5,
+      "mean_iou": 0.6568944962920819,
+      "pq": 0.1684344862287389,
+      "sq": 0.6568944962920819,
+      "rq": 0.2564102564102564,
+      "precision": 1.0,
+      "recall": 0.14705882352941177,
+      "f1": 0.25641025641025644,
+      "tp": 5,
+      "fp": 0,
+      "fn": 29,
+      "n_pred": 5,
+      "n_gt_eval": 34,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.4,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.8529411764705882,
+      "box_recall": null
+    },
+    "M": {
+      "point": "M",
+      "ap": 0.04607843137254902,
+      "ap50": 0.08823529411764706,
+      "ap75": 0.00980392156862745,
+      "ap_small": 0.0,
+      "ap_medium": 0.0784313725490196,
+      "ap_large": 0.5,
+      "mean_iou": 0.7470654616063587,
+      "pq": 0.12114575053076088,
+      "sq": 0.7470654616063587,
+      "rq": 0.16216216216216217,
+      "precision": 1.0,
+      "recall": 0.08823529411764706,
+      "f1": 0.1621621621621622,
+      "tp": 3,
+      "fp": 0,
+      "fn": 31,
+      "n_pred": 3,
+      "n_gt_eval": 34,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.3333333333333333,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9117647058823529,
+      "box_recall": null
+    },
+    "F": {
+      "point": "F",
+      "ap": 0.04607843137254902,
+      "ap50": 0.08823529411764706,
+      "ap75": 0.00980392156862745,
+      "ap_small": 0.0,
+      "ap_medium": 0.0784313725490196,
+      "ap_large": 0.5,
+      "mean_iou": 0.7470654616063587,
+      "pq": 0.12114575053076088,
+      "sq": 0.7470654616063587,
+      "rq": 0.16216216216216217,
+      "precision": 1.0,
+      "recall": 0.08823529411764706,
+      "f1": 0.1621621621621622,
+      "tp": 3,
+      "fp": 0,
+      "fn": 31,
+      "n_pred": 3,
+      "n_gt_eval": 34,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.3333333333333333,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9117647058823529,
+      "box_recall": null
+    }
+  },
+  "class_recall_F": {
+    "Big Package cardboard": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Asset_Deformed_Package": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Small_Pouch": {
+      "tp": 0,
+      "fn": 6
+    },
+    "POP_Drinks_Pack": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Ikea Cardboard Package": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Storage_Box_with_Lid": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Envelope_Stack": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Louis_Vuitton_Package": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Paper_Shopping_Bag": {
+      "tp": 1,
+      "fn": 0
+    },
+    "Amazon_A2_Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Amazon_Book_Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Small Packet": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Vintage_Envelope": {
+      "tp": 1,
+      "fn": 2
+    },
+    "Sachets_Package": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Small_Shipping_Bag": {
+      "tp": 1,
+      "fn": 0
+    },
+    "Packaging_Tube": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Powder_Blush": {
+      "tp": 0,
+      "fn": 1
+    },
+    "\u041a\u0443\u0431": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Paper_Coffee_Bag": {
+      "tp": 0,
+      "fn": 1
+    }
+  }
+}

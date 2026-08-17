@@ -1,0 +1,192 @@
+{
+  "scene_id": "scene_601",
+  "category": "angled_occluded",
+  "viewpoint": "angled",
+  "status": "ok",
+  "gt_counts": {
+    "eval": 31,
+    "invisible": 0,
+    "out_of_scope": 0,
+    "total_instances": 31
+  },
+  "stages": {
+    "D": {
+      "point": "D",
+      "ap": 0.0,
+      "ap50": 0.0,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.0,
+      "mean_iou": 0.0,
+      "pq": 0.0,
+      "sq": 0.0,
+      "rq": 0.0,
+      "precision": 0.0,
+      "recall": 0.03225806451612903,
+      "f1": 0.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 30,
+      "n_pred": 1,
+      "n_gt_eval": 31,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.967741935483871,
+      "box_recall": 0.03225806451612903
+    },
+    "S": {
+      "point": "S",
+      "ap": 0.025806451612903226,
+      "ap50": 0.03225806451612903,
+      "ap75": 0.03225806451612903,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 1.0,
+      "mean_iou": 0.875411496581413,
+      "pq": 0.054713218536338315,
+      "sq": 0.875411496581413,
+      "rq": 0.0625,
+      "precision": 1.0,
+      "recall": 0.03225806451612903,
+      "f1": 0.0625,
+      "tp": 1,
+      "fp": 0,
+      "fn": 30,
+      "n_pred": 1,
+      "n_gt_eval": 31,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.967741935483871,
+      "box_recall": null
+    },
+    "M": {
+      "point": "M",
+      "ap": 0.025806451612903226,
+      "ap50": 0.03225806451612903,
+      "ap75": 0.03225806451612903,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 1.0,
+      "mean_iou": 0.8710221997130075,
+      "pq": 0.05443888748206297,
+      "sq": 0.8710221997130075,
+      "rq": 0.0625,
+      "precision": 1.0,
+      "recall": 0.03225806451612903,
+      "f1": 0.0625,
+      "tp": 1,
+      "fp": 0,
+      "fn": 30,
+      "n_pred": 1,
+      "n_gt_eval": 31,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.967741935483871,
+      "box_recall": null
+    },
+    "F": {
+      "point": "F",
+      "ap": 0.02258064516129032,
+      "ap50": 0.03225806451612903,
+      "ap75": 0.03225806451612903,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 1.0,
+      "mean_iou": 0.8393686165273909,
+      "pq": 0.05246053853296193,
+      "sq": 0.8393686165273909,
+      "rq": 0.0625,
+      "precision": 1.0,
+      "recall": 0.03225806451612903,
+      "f1": 0.0625,
+      "tp": 1,
+      "fp": 0,
+      "fn": 30,
+      "n_pred": 1,
+      "n_gt_eval": 31,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.967741935483871,
+      "box_recall": null
+    }
+  },
+  "class_recall_F": {
+    "Space_Food_Bag": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Amazon_A2_Package": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Food_Packaging_Bag": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Ikea Cardboard Package": {
+      "tp": 1,
+      "fn": 5
+    },
+    "Envelope_Stack": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Black Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Colis VistaPrint": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Small Packet": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Vintage_Envelope": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Small_Shipping_Bag": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Paper_Coffee_Bag": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Storage_Box_with_Lid": {
+      "tp": 0,
+      "fn": 1
+    },
+    "SM_Little_Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Vegetable_Crate": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Amazon_Book_Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Sachets_Package": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Packaging_Tube": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Small_Pouch": {
+      "tp": 0,
+      "fn": 1
+    }
+  }
+}

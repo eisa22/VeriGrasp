@@ -1,0 +1,22 @@
+\begin{table}[t]
+\centering
+\caption{Segmentation at stage~F by dataset category ($n$ scenes, objects/scene).}
+\label{tab:exp1-per-category}
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+Category & $n$ & obj/sc & AP & AP$_{50}$ & AP$_{75}$ & mIoU & PQ & R & F1 \\
+\midrule
+baseline & 56 & 10.2 & 0.326 & 0.373 & 0.351 & 0.925 & 0.440 & 0.330 & 0.476 \\
+mixed & 144 & 11.3 & 0.160 & 0.191 & 0.164 & 0.909 & 0.256 & 0.173 & 0.281 \\
+dense & 150 & 35.5 & 0.065 & 0.090 & 0.066 & 0.857 & 0.143 & 0.092 & 0.167 \\
+chaotic & 80 & 25.4 & 0.055 & 0.078 & 0.055 & 0.841 & 0.123 & 0.082 & 0.146 \\
+lighting & 50 & 28.7 & 0.072 & 0.106 & 0.069 & 0.834 & 0.173 & 0.120 & 0.207 \\
+occlusion & 50 & 26.1 & 0.093 & 0.107 & 0.093 & 0.924 & 0.175 & 0.106 & 0.190 \\
+edge\footnotemark & 30 & 17.5 & 0.133 & 0.185 & 0.126 & 0.872 & 0.273 & 0.191 & 0.313 \\
+tilted\footnotemark & 18 & 25.4 & 0.089 & 0.124 & 0.084 & 0.856 & 0.179 & 0.120 & 0.210 \\
+angled_dense & 50 & 26.9 & 0.053 & 0.087 & 0.045 & 0.802 & 0.136 & 0.095 & 0.169 \\
+angled_chaotic & 50 & 25.3 & 0.059 & 0.093 & 0.059 & 0.805 & 0.134 & 0.093 & 0.166 \\
+angled_occluded & 50 & 30.0 & 0.057 & 0.068 & 0.060 & 0.900 & 0.116 & 0.069 & 0.129 \\
+\bottomrule
+\end{tabular}
+\end{table}

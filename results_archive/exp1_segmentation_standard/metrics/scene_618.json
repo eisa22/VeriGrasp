@@ -1,0 +1,180 @@
+{
+  "scene_id": "scene_618",
+  "category": "angled_chaotic",
+  "viewpoint": "angled",
+  "status": "ok",
+  "gt_counts": {
+    "eval": 20,
+    "invisible": 0,
+    "out_of_scope": 0,
+    "total_instances": 20
+  },
+  "stages": {
+    "D": {
+      "point": "D",
+      "ap": 0.0,
+      "ap50": 0.0,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.0,
+      "mean_iou": 0.0,
+      "pq": 0.0,
+      "sq": 0.0,
+      "rq": 0.0,
+      "precision": 0.0,
+      "recall": 0.15,
+      "f1": 0.0,
+      "tp": 3,
+      "fp": 0,
+      "fn": 17,
+      "n_pred": 3,
+      "n_gt_eval": 20,
+      "over_segmentation_rate": 0.2,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.8,
+      "box_recall": 0.15
+    },
+    "S": {
+      "point": "S",
+      "ap": 0.04833333333333333,
+      "ap50": 0.06666666666666667,
+      "ap75": 0.06666666666666667,
+      "ap_small": 0.0,
+      "ap_medium": 0.13333333333333333,
+      "ap_large": 0.0,
+      "mean_iou": 0.8596810243588286,
+      "pq": 0.1495097433667528,
+      "sq": 0.8596810243588286,
+      "rq": 0.17391304347826086,
+      "precision": 0.6666666666666666,
+      "recall": 0.1,
+      "f1": 0.1739130434782609,
+      "tp": 2,
+      "fp": 1,
+      "fn": 18,
+      "n_pred": 3,
+      "n_gt_eval": 20,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.3333333333333333,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9,
+      "box_recall": null
+    },
+    "M": {
+      "point": "M",
+      "ap": 0.005,
+      "ap50": 0.05,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.1,
+      "ap_large": 0.0,
+      "mean_iou": 0.5201590005678591,
+      "pq": 0.0495389524350342,
+      "sq": 0.5201590005678591,
+      "rq": 0.09523809523809523,
+      "precision": 1.0,
+      "recall": 0.05,
+      "f1": 0.09523809523809523,
+      "tp": 1,
+      "fp": 0,
+      "fn": 19,
+      "n_pred": 1,
+      "n_gt_eval": 20,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.95,
+      "box_recall": null
+    },
+    "F": {
+      "point": "F",
+      "ap": 0.005,
+      "ap50": 0.05,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.1,
+      "ap_large": 0.0,
+      "mean_iou": 0.5344463634619075,
+      "pq": 0.050899653663038814,
+      "sq": 0.5344463634619075,
+      "rq": 0.09523809523809523,
+      "precision": 1.0,
+      "recall": 0.05,
+      "f1": 0.09523809523809523,
+      "tp": 1,
+      "fp": 0,
+      "fn": 19,
+      "n_pred": 1,
+      "n_gt_eval": 20,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.95,
+      "box_recall": null
+    }
+  },
+  "class_recall_F": {
+    "ML_Box": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Small Packet": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Storage_Box_with_Lid": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Amazon_Book_Package": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Asset_Large_cartoon_Box": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Small_Pouch": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Ikea Cardboard Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Carton Magdeleine": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Space_Food_Bag": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Envelope_Stack": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Packaging_Tube": {
+      "tp": 0,
+      "fn": 1
+    },
+    "SM_Little_Package": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Small_Shipping_Bag": {
+      "tp": 1,
+      "fn": 0
+    },
+    "Paper_Coffee_Bag": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Amazon_A2_Package": {
+      "tp": 0,
+      "fn": 1
+    }
+  }
+}

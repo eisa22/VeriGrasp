@@ -1,0 +1,214 @@
+{
+  "scene_id": "scene_245",
+  "category": "dense",
+  "viewpoint": "top_down",
+  "status": "ok",
+  "visibility": {
+    "mode": "absolute",
+    "absolute_min": 1,
+    "relative_fraction": 0.01,
+    "threshold_px": 1
+  },
+  "gt_counts": {
+    "eval": 32,
+    "invisible": 1,
+    "out_of_scope": 0,
+    "total_instances": 33
+  },
+  "stages": {
+    "D": {
+      "point": "D",
+      "ap": 0.0,
+      "ap50": 0.0,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.0,
+      "mean_iou": 0.0,
+      "pq": 0.0,
+      "sq": 0.0,
+      "rq": 0.0,
+      "precision": 0.0,
+      "recall": 0.09375,
+      "f1": 0.0,
+      "tp": 3,
+      "fp": 0,
+      "fn": 29,
+      "n_pred": 3,
+      "n_gt_eval": 32,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.84375,
+      "box_recall": 0.09375
+    },
+    "S": {
+      "point": "S",
+      "ap": 0.01875,
+      "ap50": 0.041666666666666664,
+      "ap75": 0.010416666666666666,
+      "ap_small": 0.0,
+      "ap_medium": 0.10256410256410256,
+      "ap_large": 0.0,
+      "mean_iou": 0.7156064703127347,
+      "pq": 0.08178359660716968,
+      "sq": 0.7156064703127347,
+      "rq": 0.11428571428571428,
+      "precision": 0.6666666666666666,
+      "recall": 0.0625,
+      "f1": 0.11428571428571428,
+      "tp": 2,
+      "fp": 1,
+      "fn": 30,
+      "n_pred": 3,
+      "n_gt_eval": 32,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9375,
+      "box_recall": null
+    },
+    "M": {
+      "point": "M",
+      "ap": 0.01875,
+      "ap50": 0.041666666666666664,
+      "ap75": 0.010416666666666666,
+      "ap_small": 0.0,
+      "ap_medium": 0.10256410256410256,
+      "ap_large": 0.0,
+      "mean_iou": 0.7156064703127347,
+      "pq": 0.08178359660716968,
+      "sq": 0.7156064703127347,
+      "rq": 0.11428571428571428,
+      "precision": 0.6666666666666666,
+      "recall": 0.0625,
+      "f1": 0.11428571428571428,
+      "tp": 2,
+      "fp": 1,
+      "fn": 30,
+      "n_pred": 3,
+      "n_gt_eval": 32,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9375,
+      "box_recall": null
+    },
+    "F": {
+      "point": "F",
+      "ap": 0.075,
+      "ap50": 0.15625,
+      "ap75": 0.1,
+      "ap_small": 0.0,
+      "ap_medium": 0.24615384615384617,
+      "ap_large": 0.5,
+      "mean_iou": 0.7768792399524639,
+      "pq": 0.20996736214931458,
+      "sq": 0.7768792399524639,
+      "rq": 0.2702702702702703,
+      "precision": 1.0,
+      "recall": 0.15625,
+      "f1": 0.2702702702702703,
+      "tp": 5,
+      "fp": 0,
+      "fn": 27,
+      "n_pred": 5,
+      "n_gt_eval": 32,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.4,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.84375,
+      "box_recall": null
+    }
+  },
+  "class_recall_F": {
+    "Big Package cardboard": {
+      "tp": 1,
+      "fn": 0
+    },
+    "Asset_Package_in_paper_with_rope": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Paper_Coffee_Bag": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Asset_Deformed_Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Storage_Box_with_Lid": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Colis VistaPrint": {
+      "tp": 0,
+      "fn": 2
+    },
+    "ML_Box": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Black Package": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Powder_Blush": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Amazon_Book_Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Ikea Cardboard Package": {
+      "tp": 2,
+      "fn": 0
+    },
+    "Small Packet": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Small_Pouch": {
+      "tp": 0,
+      "fn": 2
+    },
+    "SM_Little_Package": {
+      "tp": 1,
+      "fn": 1
+    },
+    "\u041a\u0443\u0431": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Space_Food_Bag": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Packaging_Tube": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Sachets_Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Carton Magdeleine": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Envelope_Stack": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Vegetable_Crate": {
+      "tp": 1,
+      "fn": 0
+    },
+    "Food_Packaging_Bag": {
+      "tp": 0,
+      "fn": 1
+    }
+  }
+}

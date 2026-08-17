@@ -1,0 +1,188 @@
+{
+  "scene_id": "scene_276",
+  "category": "dense",
+  "viewpoint": "top_down",
+  "status": "ok",
+  "gt_counts": {
+    "eval": 29,
+    "invisible": 0,
+    "out_of_scope": 0,
+    "total_instances": 29
+  },
+  "stages": {
+    "D": {
+      "point": "D",
+      "ap": 0.0,
+      "ap50": 0.0,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.0,
+      "mean_iou": 0.0,
+      "pq": 0.0,
+      "sq": 0.0,
+      "rq": 0.0,
+      "precision": 0.0,
+      "recall": 0.13793103448275862,
+      "f1": 0.0,
+      "tp": 4,
+      "fp": 0,
+      "fn": 25,
+      "n_pred": 4,
+      "n_gt_eval": 29,
+      "over_segmentation_rate": 0.06896551724137931,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.8620689655172413,
+      "box_recall": 0.13793103448275862
+    },
+    "S": {
+      "point": "S",
+      "ap": 0.0793103448275862,
+      "ap50": 0.09482758620689655,
+      "ap75": 0.09482758620689655,
+      "ap_small": 0.0,
+      "ap_medium": 0.019230769230769232,
+      "ap_large": 0.6666666666666666,
+      "mean_iou": 0.9024162471947154,
+      "pq": 0.16407568130813008,
+      "sq": 0.9024162471947154,
+      "rq": 0.18181818181818182,
+      "precision": 0.75,
+      "recall": 0.10344827586206896,
+      "f1": 0.18181818181818182,
+      "tp": 3,
+      "fp": 1,
+      "fn": 26,
+      "n_pred": 4,
+      "n_gt_eval": 29,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.25,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.896551724137931,
+      "box_recall": null
+    },
+    "M": {
+      "point": "M",
+      "ap": 0.07873563218390806,
+      "ap50": 0.10344827586206896,
+      "ap75": 0.10344827586206896,
+      "ap_small": 0.0,
+      "ap_medium": 0.038461538461538464,
+      "ap_large": 0.5555555555555556,
+      "mean_iou": 0.8769334574557136,
+      "pq": 0.1644250232729463,
+      "sq": 0.8769334574557136,
+      "rq": 0.1875,
+      "precision": 1.0,
+      "recall": 0.10344827586206896,
+      "f1": 0.1875,
+      "tp": 3,
+      "fp": 0,
+      "fn": 26,
+      "n_pred": 3,
+      "n_gt_eval": 29,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.896551724137931,
+      "box_recall": null
+    },
+    "F": {
+      "point": "F",
+      "ap": 0.07873563218390806,
+      "ap50": 0.10344827586206896,
+      "ap75": 0.10344827586206896,
+      "ap_small": 0.0,
+      "ap_medium": 0.038461538461538464,
+      "ap_large": 0.5555555555555556,
+      "mean_iou": 0.8769334574557136,
+      "pq": 0.1644250232729463,
+      "sq": 0.8769334574557136,
+      "rq": 0.1875,
+      "precision": 1.0,
+      "recall": 0.10344827586206896,
+      "f1": 0.1875,
+      "tp": 3,
+      "fp": 0,
+      "fn": 26,
+      "n_pred": 3,
+      "n_gt_eval": 29,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.896551724137931,
+      "box_recall": null
+    }
+  },
+  "class_recall_F": {
+    "Colis VistaPrint": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Storage_Box_with_Lid": {
+      "tp": 0,
+      "fn": 4
+    },
+    "POP_Drinks_Pack": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Carton Magdeleine": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Asset_Package_in_paper_with_rope": {
+      "tp": 1,
+      "fn": 1
+    },
+    "Black Package": {
+      "tp": 1,
+      "fn": 1
+    },
+    "Asset_Large_cartoon_Box": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Louis_Vuitton_Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Envelope_Stack": {
+      "tp": 0,
+      "fn": 2
+    },
+    "\u041a\u0443\u0431": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Small Packet": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Powder_Blush": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Sachets_Package": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Vegetable_Crate": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Paper_Coffee_Bag": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Small_Shipping_Bag": {
+      "tp": 1,
+      "fn": 0
+    },
+    "Packaging_Tube": {
+      "tp": 0,
+      "fn": 1
+    }
+  }
+}

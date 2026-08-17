@@ -1,0 +1,150 @@
+{
+  "scene_id": "scene_065",
+  "category": "mixed",
+  "viewpoint": "top_down",
+  "status": "ok",
+  "visibility": {
+    "mode": "absolute",
+    "absolute_min": 1,
+    "relative_fraction": 0.01,
+    "threshold_px": 1
+  },
+  "gt_counts": {
+    "eval": 8,
+    "invisible": 0,
+    "out_of_scope": 0,
+    "total_instances": 8
+  },
+  "stages": {
+    "D": {
+      "point": "D",
+      "ap": 0.0,
+      "ap50": 0.0,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.0,
+      "mean_iou": 0.0,
+      "pq": 0.0,
+      "sq": 0.0,
+      "rq": 0.0,
+      "precision": 0.0,
+      "recall": 0.5,
+      "f1": 0.0,
+      "tp": 4,
+      "fp": 0,
+      "fn": 4,
+      "n_pred": 4,
+      "n_gt_eval": 8,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.5,
+      "box_recall": 0.5
+    },
+    "S": {
+      "point": "S",
+      "ap": 0.453125,
+      "ap50": 0.5,
+      "ap75": 0.5,
+      "ap_small": 0.0,
+      "ap_medium": 0.75,
+      "ap_large": 0.25,
+      "mean_iou": 0.9190529212470793,
+      "pq": 0.6127019474980528,
+      "sq": 0.9190529212470793,
+      "rq": 0.6666666666666666,
+      "precision": 1.0,
+      "recall": 0.5,
+      "f1": 0.6666666666666666,
+      "tp": 4,
+      "fp": 0,
+      "fn": 4,
+      "n_pred": 4,
+      "n_gt_eval": 8,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.5,
+      "box_recall": null
+    },
+    "M": {
+      "point": "M",
+      "ap": 0.2625,
+      "ap50": 0.375,
+      "ap75": 0.25,
+      "ap_small": 0.0,
+      "ap_medium": 0.3333333333333333,
+      "ap_large": 1.0,
+      "mean_iou": 0.8175772311857866,
+      "pq": 0.44595121701042906,
+      "sq": 0.8175772311857866,
+      "rq": 0.5454545454545454,
+      "precision": 1.0,
+      "recall": 0.375,
+      "f1": 0.5454545454545454,
+      "tp": 3,
+      "fp": 0,
+      "fn": 5,
+      "n_pred": 3,
+      "n_gt_eval": 8,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.625,
+      "box_recall": null
+    },
+    "F": {
+      "point": "F",
+      "ap": 0.2625,
+      "ap50": 0.375,
+      "ap75": 0.25,
+      "ap_small": 0.0,
+      "ap_medium": 0.3333333333333333,
+      "ap_large": 1.0,
+      "mean_iou": 0.8175772311857866,
+      "pq": 0.44595121701042906,
+      "sq": 0.8175772311857866,
+      "rq": 0.5454545454545454,
+      "precision": 1.0,
+      "recall": 0.375,
+      "f1": 0.5454545454545454,
+      "tp": 3,
+      "fp": 0,
+      "fn": 5,
+      "n_pred": 3,
+      "n_gt_eval": 8,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.625,
+      "box_recall": null
+    }
+  },
+  "class_recall_F": {
+    "Asset_Large_cartoon_Box": {
+      "tp": 1,
+      "fn": 0
+    },
+    "Sachets_Package": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Small Packet": {
+      "tp": 2,
+      "fn": 0
+    },
+    "Food_Packaging_Bag": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Vintage_Envelope": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Colis VistaPrint": {
+      "tp": 0,
+      "fn": 1
+    }
+  }
+}

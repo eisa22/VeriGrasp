@@ -1,0 +1,140 @@
+{
+  "scene_id": "scene_173",
+  "category": "mixed",
+  "viewpoint": "top_down",
+  "status": "ok",
+  "gt_counts": {
+    "eval": 14,
+    "invisible": 0,
+    "out_of_scope": 0,
+    "total_instances": 14
+  },
+  "stages": {
+    "D": {
+      "point": "D",
+      "ap": 0.0,
+      "ap50": 0.0,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.0,
+      "mean_iou": 0.0,
+      "pq": 0.0,
+      "sq": 0.0,
+      "rq": 0.0,
+      "precision": 0.0,
+      "recall": 0.07142857142857142,
+      "f1": 0.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 13,
+      "n_pred": 1,
+      "n_gt_eval": 14,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9285714285714286,
+      "box_recall": 0.07142857142857142
+    },
+    "S": {
+      "point": "S",
+      "ap": 0.06428571428571428,
+      "ap50": 0.07142857142857142,
+      "ap75": 0.07142857142857142,
+      "ap_small": 0.0,
+      "ap_medium": 0.16666666666666666,
+      "ap_large": 0.0,
+      "mean_iou": 0.9348650927487352,
+      "pq": 0.12464867903316469,
+      "sq": 0.9348650927487352,
+      "rq": 0.13333333333333333,
+      "precision": 1.0,
+      "recall": 0.07142857142857142,
+      "f1": 0.13333333333333333,
+      "tp": 1,
+      "fp": 0,
+      "fn": 13,
+      "n_pred": 1,
+      "n_gt_eval": 14,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9285714285714286,
+      "box_recall": null
+    },
+    "M": {
+      "point": "M",
+      "ap": 0.06428571428571428,
+      "ap50": 0.07142857142857142,
+      "ap75": 0.07142857142857142,
+      "ap_small": 0.0,
+      "ap_medium": 0.16666666666666666,
+      "ap_large": 0.0,
+      "mean_iou": 0.9005947323704333,
+      "pq": 0.12007929764939111,
+      "sq": 0.9005947323704333,
+      "rq": 0.13333333333333333,
+      "precision": 1.0,
+      "recall": 0.07142857142857142,
+      "f1": 0.13333333333333333,
+      "tp": 1,
+      "fp": 0,
+      "fn": 13,
+      "n_pred": 1,
+      "n_gt_eval": 14,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9285714285714286,
+      "box_recall": null
+    },
+    "F": {
+      "point": "F",
+      "ap": 0.06428571428571428,
+      "ap50": 0.07142857142857142,
+      "ap75": 0.07142857142857142,
+      "ap_small": 0.0,
+      "ap_medium": 0.16666666666666666,
+      "ap_large": 0.0,
+      "mean_iou": 0.9005947323704333,
+      "pq": 0.12007929764939111,
+      "sq": 0.9005947323704333,
+      "rq": 0.13333333333333333,
+      "precision": 1.0,
+      "recall": 0.07142857142857142,
+      "f1": 0.13333333333333333,
+      "tp": 1,
+      "fp": 0,
+      "fn": 13,
+      "n_pred": 1,
+      "n_gt_eval": 14,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9285714285714286,
+      "box_recall": null
+    }
+  },
+  "class_recall_F": {
+    "ML_Box": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Small Packet": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Small_Shipping_Bag": {
+      "tp": 0,
+      "fn": 5
+    },
+    "\u041a\u0443\u0431": {
+      "tp": 0,
+      "fn": 4
+    },
+    "Amazon_A2_Package": {
+      "tp": 1,
+      "fn": 0
+    }
+  }
+}

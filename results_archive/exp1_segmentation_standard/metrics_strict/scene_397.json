@@ -1,0 +1,178 @@
+{
+  "scene_id": "scene_397",
+  "category": "chaotic",
+  "viewpoint": "top_down",
+  "status": "ok",
+  "visibility": {
+    "mode": "relative_median",
+    "absolute_min": 1,
+    "relative_fraction": 0.01,
+    "threshold_px": 6
+  },
+  "gt_counts": {
+    "eval": 23,
+    "invisible": 1,
+    "out_of_scope": 0,
+    "total_instances": 24
+  },
+  "stages": {
+    "D": {
+      "point": "D",
+      "ap": 0.0,
+      "ap50": 0.0,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.0,
+      "mean_iou": 0.0,
+      "pq": 0.0,
+      "sq": 0.0,
+      "rq": 0.0,
+      "precision": 0.0,
+      "recall": 0.17391304347826086,
+      "f1": 0.0,
+      "tp": 4,
+      "fp": 0,
+      "fn": 19,
+      "n_pred": 4,
+      "n_gt_eval": 23,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.7391304347826086,
+      "box_recall": 0.17391304347826086
+    },
+    "S": {
+      "point": "S",
+      "ap": 0.0927536231884058,
+      "ap50": 0.13043478260869565,
+      "ap75": 0.13043478260869565,
+      "ap_small": 0.0,
+      "ap_medium": 0.3333333333333333,
+      "ap_large": 0.0,
+      "mean_iou": 0.8506932978531733,
+      "pq": 0.19631383796611693,
+      "sq": 0.8506932978531733,
+      "rq": 0.23076923076923078,
+      "precision": 1.0,
+      "recall": 0.13043478260869565,
+      "f1": 0.23076923076923078,
+      "tp": 3,
+      "fp": 0,
+      "fn": 20,
+      "n_pred": 3,
+      "n_gt_eval": 23,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.8695652173913043,
+      "box_recall": null
+    },
+    "M": {
+      "point": "M",
+      "ap": 0.06304347826086956,
+      "ap50": 0.08695652173913043,
+      "ap75": 0.08695652173913043,
+      "ap_small": 0.0,
+      "ap_medium": 0.2222222222222222,
+      "ap_large": 0.0,
+      "mean_iou": 0.860535675612641,
+      "pq": 0.13768570809802255,
+      "sq": 0.860535675612641,
+      "rq": 0.16,
+      "precision": 1.0,
+      "recall": 0.08695652173913043,
+      "f1": 0.16,
+      "tp": 2,
+      "fp": 0,
+      "fn": 21,
+      "n_pred": 2,
+      "n_gt_eval": 23,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9130434782608695,
+      "box_recall": null
+    },
+    "F": {
+      "point": "F",
+      "ap": 0.06304347826086956,
+      "ap50": 0.08695652173913043,
+      "ap75": 0.08695652173913043,
+      "ap_small": 0.0,
+      "ap_medium": 0.2222222222222222,
+      "ap_large": 0.0,
+      "mean_iou": 0.860535675612641,
+      "pq": 0.13768570809802255,
+      "sq": 0.860535675612641,
+      "rq": 0.16,
+      "precision": 1.0,
+      "recall": 0.08695652173913043,
+      "f1": 0.16,
+      "tp": 2,
+      "fp": 0,
+      "fn": 21,
+      "n_pred": 2,
+      "n_gt_eval": 23,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9130434782608695,
+      "box_recall": null
+    }
+  },
+  "class_recall_F": {
+    "Small_Pouch": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Small_Shipping_Bag": {
+      "tp": 0,
+      "fn": 1
+    },
+    "POP_Drinks_Pack": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Carton Magdeleine": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Food_Packaging_Bag": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Amazon_Book_Package": {
+      "tp": 1,
+      "fn": 2
+    },
+    "China Package": {
+      "tp": 1,
+      "fn": 0
+    },
+    "SM_Little_Package": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Storage_Box_with_Lid": {
+      "tp": 0,
+      "fn": 2
+    },
+    "\u041a\u0443\u0431": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Envelope_Stack": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Amazon_A2_Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Packaging_Tube": {
+      "tp": 0,
+      "fn": 2
+    }
+  }
+}

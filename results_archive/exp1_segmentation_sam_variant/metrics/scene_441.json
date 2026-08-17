@@ -1,0 +1,186 @@
+{
+  "scene_id": "scene_441",
+  "category": "lighting",
+  "viewpoint": "top_down",
+  "status": "ok",
+  "visibility": {
+    "mode": "absolute",
+    "absolute_min": 1,
+    "relative_fraction": 0.01,
+    "threshold_px": 1
+  },
+  "gt_counts": {
+    "eval": 23,
+    "invisible": 5,
+    "out_of_scope": 0,
+    "total_instances": 28
+  },
+  "stages": {
+    "D": {
+      "point": "D",
+      "ap": 0.0,
+      "ap50": 0.0,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.0,
+      "mean_iou": 0.0,
+      "pq": 0.0,
+      "sq": 0.0,
+      "rq": 0.0,
+      "precision": 0.0,
+      "recall": 0.08695652173913043,
+      "f1": 0.0,
+      "tp": 2,
+      "fp": 0,
+      "fn": 21,
+      "n_pred": 2,
+      "n_gt_eval": 23,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.5,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.8260869565217391,
+      "box_recall": 0.08695652173913043
+    },
+    "S": {
+      "point": "S",
+      "ap": 0.06739130434782607,
+      "ap50": 0.08695652173913043,
+      "ap75": 0.08695652173913043,
+      "ap_small": 0.0,
+      "ap_medium": 0.15384615384615385,
+      "ap_large": 0.0,
+      "mean_iou": 0.9152222981642919,
+      "pq": 0.1464355677062867,
+      "sq": 0.9152222981642919,
+      "rq": 0.16,
+      "precision": 1.0,
+      "recall": 0.08695652173913043,
+      "f1": 0.16,
+      "tp": 2,
+      "fp": 0,
+      "fn": 21,
+      "n_pred": 2,
+      "n_gt_eval": 23,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.5,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9130434782608695,
+      "box_recall": null
+    },
+    "M": {
+      "point": "M",
+      "ap": 0.06739130434782607,
+      "ap50": 0.08695652173913043,
+      "ap75": 0.08695652173913043,
+      "ap_small": 0.0,
+      "ap_medium": 0.15384615384615385,
+      "ap_large": 0.0,
+      "mean_iou": 0.9152222981642919,
+      "pq": 0.1464355677062867,
+      "sq": 0.9152222981642919,
+      "rq": 0.16,
+      "precision": 1.0,
+      "recall": 0.08695652173913043,
+      "f1": 0.16,
+      "tp": 2,
+      "fp": 0,
+      "fn": 21,
+      "n_pred": 2,
+      "n_gt_eval": 23,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.5,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9130434782608695,
+      "box_recall": null
+    },
+    "F": {
+      "point": "F",
+      "ap": 0.06739130434782607,
+      "ap50": 0.08695652173913043,
+      "ap75": 0.08695652173913043,
+      "ap_small": 0.0,
+      "ap_medium": 0.15384615384615385,
+      "ap_large": 0.0,
+      "mean_iou": 0.917615873845863,
+      "pq": 0.14681853981533807,
+      "sq": 0.917615873845863,
+      "rq": 0.16,
+      "precision": 1.0,
+      "recall": 0.08695652173913043,
+      "f1": 0.16,
+      "tp": 2,
+      "fp": 0,
+      "fn": 21,
+      "n_pred": 2,
+      "n_gt_eval": 23,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 0.5,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9130434782608695,
+      "box_recall": null
+    }
+  },
+  "class_recall_F": {
+    "Burlap_Sack": {
+      "tp": 0,
+      "fn": 1
+    },
+    "China Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Gros Carton": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Small_Shipping_Bag": {
+      "tp": 1,
+      "fn": 1
+    },
+    "Ikea Cardboard Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Vegetable_Crate": {
+      "tp": 1,
+      "fn": 1
+    },
+    "Space_Food_Bag": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Envelope_Stack": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Vintage_Envelope": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Packaging_Tube": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Paper_Coffee_Bag": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Sachets_Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Louis_Vuitton_Package": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Amazon_Book_Package": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Small Packet": {
+      "tp": 0,
+      "fn": 1
+    }
+  }
+}

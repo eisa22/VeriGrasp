@@ -1,0 +1,11 @@
+{
+  "data_root": "/Users/samueleinspieler/Documents/workspace_thesis/master_thesis/Data/blender_dataset",
+  "test_set": null,
+  "variant": "sam3d",
+  "gui": false,
+  "n_sessions": 728,
+  "n_ok": 728,
+  "n_skip": 0,
+  "n_error": 0,
+  "device": "cpu"
+}

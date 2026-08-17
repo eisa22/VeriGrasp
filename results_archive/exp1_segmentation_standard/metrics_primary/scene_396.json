@@ -1,0 +1,190 @@
+{
+  "scene_id": "scene_396",
+  "category": "chaotic",
+  "viewpoint": "top_down",
+  "status": "ok",
+  "visibility": {
+    "mode": "absolute",
+    "absolute_min": 1,
+    "relative_fraction": 0.01,
+    "threshold_px": 1
+  },
+  "gt_counts": {
+    "eval": 22,
+    "invisible": 2,
+    "out_of_scope": 0,
+    "total_instances": 24
+  },
+  "stages": {
+    "D": {
+      "point": "D",
+      "ap": 0.0,
+      "ap50": 0.0,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.0,
+      "ap_large": 0.0,
+      "mean_iou": 0.0,
+      "pq": 0.0,
+      "sq": 0.0,
+      "rq": 0.0,
+      "precision": 0.0,
+      "recall": 0.045454545454545456,
+      "f1": 0.0,
+      "tp": 1,
+      "fp": 0,
+      "fn": 21,
+      "n_pred": 1,
+      "n_gt_eval": 22,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9090909090909091,
+      "box_recall": 0.045454545454545456
+    },
+    "S": {
+      "point": "S",
+      "ap": 0.022727272727272728,
+      "ap50": 0.045454545454545456,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.1,
+      "ap_large": 0.0,
+      "mean_iou": 0.7012501796235091,
+      "pq": 0.06097827648900079,
+      "sq": 0.7012501796235091,
+      "rq": 0.08695652173913043,
+      "precision": 1.0,
+      "recall": 0.045454545454545456,
+      "f1": 0.08695652173913045,
+      "tp": 1,
+      "fp": 0,
+      "fn": 21,
+      "n_pred": 1,
+      "n_gt_eval": 22,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9545454545454546,
+      "box_recall": null
+    },
+    "M": {
+      "point": "M",
+      "ap": 0.022727272727272728,
+      "ap50": 0.045454545454545456,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.1,
+      "ap_large": 0.0,
+      "mean_iou": 0.700493612078978,
+      "pq": 0.060912488006867646,
+      "sq": 0.700493612078978,
+      "rq": 0.08695652173913043,
+      "precision": 1.0,
+      "recall": 0.045454545454545456,
+      "f1": 0.08695652173913045,
+      "tp": 1,
+      "fp": 0,
+      "fn": 21,
+      "n_pred": 1,
+      "n_gt_eval": 22,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9545454545454546,
+      "box_recall": null
+    },
+    "F": {
+      "point": "F",
+      "ap": 0.022727272727272728,
+      "ap50": 0.045454545454545456,
+      "ap75": 0.0,
+      "ap_small": 0.0,
+      "ap_medium": 0.1,
+      "ap_large": 0.0,
+      "mean_iou": 0.700493612078978,
+      "pq": 0.060912488006867646,
+      "sq": 0.700493612078978,
+      "rq": 0.08695652173913043,
+      "precision": 1.0,
+      "recall": 0.045454545454545456,
+      "f1": 0.08695652173913045,
+      "tp": 1,
+      "fp": 0,
+      "fn": 21,
+      "n_pred": 1,
+      "n_gt_eval": 22,
+      "over_segmentation_rate": 0.0,
+      "merge_rate": 1.0,
+      "hallucination_rate": 0.0,
+      "miss_rate": 0.9545454545454546,
+      "box_recall": null
+    }
+  },
+  "class_recall_F": {
+    "ML_Box": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Ikea Cardboard Package": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Envelope_Stack": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Amazon_A2_Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Black Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Colis VistaPrint": {
+      "tp": 0,
+      "fn": 3
+    },
+    "Vintage_Envelope": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Vegetable_Crate": {
+      "tp": 0,
+      "fn": 1
+    },
+    "China Package": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Paper_Coffee_Bag": {
+      "tp": 0,
+      "fn": 1
+    },
+    "\u041a\u0443\u0431": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Packaging_Tube": {
+      "tp": 0,
+      "fn": 2
+    },
+    "Small_Shipping_Bag": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Small Packet": {
+      "tp": 0,
+      "fn": 1
+    },
+    "Amazon_Book_Package": {
+      "tp": 1,
+      "fn": 0
+    },
+    "Powder_Blush": {
+      "tp": 0,
+      "fn": 1
+    }
+  }
+}
