@@ -1,0 +1,7 @@
+exp3_dir: Results/exp3/full_2026-07-05
+out_dir: Results/exp6/full_2026-07-05
+
+reference:
+  far: 0.4444444444444444
+  frr: 0.21364985163204747
+  n_grasps: 616
