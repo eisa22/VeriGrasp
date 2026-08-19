@@ -102,6 +102,7 @@ der Thesis (Kapitel *Experimental Setup*).
 - SAM3D (konzeptuelle Inspiration der 3D-Verfeinerung; nicht ausgeführt) — Yang et al., 2023, [arXiv:2306.03908](https://arxiv.org/abs/2306.03908)
 - DBSCAN — Ester et al., KDD 1996
 
-## Autor
+## Autor und Lizenz
 
-Samuel Einspieler — Masterarbeit, TU Wien (ACIN). Für Forschungszwecke.
+Samuel Einspieler — Masterarbeit, TU Wien (ACIN). Code und Ergebnisarchiv
+stehen unter der MIT-Lizenz (siehe [LICENSE](LICENSE)).
