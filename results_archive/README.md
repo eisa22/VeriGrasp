@@ -20,7 +20,7 @@ cd results_archive && shasum -a 256 -c MANIFEST.sha256
 ## Run identity
 
 The configuration hashes and code revisions below are the ones printed in
-the thesis (reproducibility table, chapter *Experimental Setup*).
+the thesis (reproducibility table, chapter *Experiments*).
 
 | Archive directory | Thesis run | Config hash | Git commit | Run date |
 |---|---|---|---|---|
