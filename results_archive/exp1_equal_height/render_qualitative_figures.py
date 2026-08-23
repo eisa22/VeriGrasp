@@ -74,3 +74,72 @@ panel(axes[1], "scene_327", "exp1_segmentation_sam_variant", "(b) SAM variant")
 plt.tight_layout()
 plt.savefig(OUT / "exp1_std_vs_sam_dense.pdf", bbox_inches="tight", dpi=200)
 print("saved", OUT)
+
+# ---------------------------------------------------------------------------
+# Additional figures: stage progression (scene_020) and invisible seam
+# (scene_408, pair 3/9). Same data sources as above.
+# ---------------------------------------------------------------------------
+import cv2
+import matplotlib.patches as mpatches
+
+sid = "scene_020"
+z = np.load(ARCH / "exp1_segmentation_standard/preds" / f"{sid}.npz", allow_pickle=True)
+H, W = int(z["height"]), int(z["width"])
+ws = z["workspace_mask"].astype(bool)
+rgb = plt.imread(DATA / sid / "rgb.png")
+stages = {k: [m.astype(bool) & ws for m in decode_masks_rle(z[f"masks_{k}_rle"], H, W)]
+          for k in ("S", "M", "F")}
+fig, axes = plt.subplots(1, 4, figsize=(13, 3.6))
+axes[0].imshow(rgb[..., :3])
+for i, b in enumerate(z["boxes_D"]):
+    x0, y0, x1, y1 = b
+    axes[0].add_patch(mpatches.Rectangle((x0, y0), x1 - x0, y1 - y0, fill=False,
+                                         edgecolor=CMAP(i % 10), linewidth=1.8))
+axes[0].set_title(f"(a) D: detection\n{len(z['boxes_D'])} boxes", fontsize=10)
+for ax, (name, label) in zip(axes[1:], [("S", "gradient segments"),
+                                        ("M", "matched masks"), ("F", "refined masks")]):
+    ms = [m for m in stages[name] if m.any()]
+    ax.imshow(composite(rgb, ms))
+    for m in ms:
+        ax.contour(m, levels=[0.5], colors=["black"], linewidths=0.6)
+    lett = {"S": "b", "M": "c", "F": "d"}[name]
+    ax.set_title(f"({lett}) {name}: {label}\n{len(ms)} masks", fontsize=10)
+ys, xs = np.where(ws)
+for ax in axes:
+    ax.set_xticks([]); ax.set_yticks([])
+    ax.set_xlim(xs.min(), xs.max()); ax.set_ylim(ys.max(), ys.min())
+plt.tight_layout()
+plt.savefig(OUT / "exp1_stage_progression.pdf", bbox_inches="tight", dpi=200)
+
+sid, PAIR = "scene_408", (3, 9)
+rgb = plt.imread(DATA / sid / "rgb.png")
+inst = np.load(DATA / sid / "instance_mask.npy")
+depth = np.load(DATA / sid / "depth.npy").astype(float)
+gx = cv2.Sobel(depth, cv2.CV_64F, 1, 0, ksize=3)
+gy = cv2.Sobel(depth, cv2.CV_64F, 0, 1, ksize=3)
+grad = np.sqrt(gx ** 2 + gy ** 2)
+ys, xs = np.where((inst == PAIR[0]) | (inst == PAIR[1]))
+y0, y1 = max(ys.min() - 40, 0), min(ys.max() + 40, depth.shape[0])
+x0, x1 = max(xs.min() - 40, 0), min(xs.max() + 40, depth.shape[1])
+fig, axes = plt.subplots(1, 3, figsize=(12, 3.6))
+axes[0].imshow(rgb[y0:y1, x0:x1, :3])
+for k, oid in enumerate(PAIR):
+    axes[0].contour((inst == oid)[y0:y1, x0:x1], levels=[0.5],
+                    colors=[["#2166ac", "#b2182b"][k]], linewidths=2)
+axes[0].set_title("(a) RGB: two parcels, visible seam", fontsize=10)
+im1 = axes[1].imshow(depth[y0:y1, x0:x1], cmap="viridis")
+axes[1].set_title("(b) depth: no step at the seam", fontsize=10)
+plt.colorbar(im1, ax=axes[1], fraction=0.046, label="depth [m]")
+gcrop = grad[y0:y1, x0:x1]
+im2 = axes[2].imshow(np.clip(gcrop, 0, np.percentile(gcrop, 99)), cmap="magma")
+axes[2].set_title("(c) depth gradient: seam invisible", fontsize=10)
+plt.colorbar(im2, ax=axes[2], fraction=0.046, label="|grad z|")
+for k, oid in enumerate(PAIR):
+    for ax in axes[1:]:
+        ax.contour((inst == oid)[y0:y1, x0:x1], levels=[0.5], colors=["white"],
+                   linewidths=0.8, linestyles="dashed")
+for ax in axes:
+    ax.set_xticks([]); ax.set_yticks([])
+plt.tight_layout()
+plt.savefig(OUT / "exp1_invisible_seam.pdf", bbox_inches="tight", dpi=200)
+print("saved additional figures", OUT)
