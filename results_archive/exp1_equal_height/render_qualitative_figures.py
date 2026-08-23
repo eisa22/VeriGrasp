@@ -143,3 +143,102 @@ for ax in axes:
 plt.tight_layout()
 plt.savefig(OUT / "exp1_invisible_seam.pdf", bbox_inches="tight", dpi=200)
 print("saved additional figures", OUT)
+
+# ---------------------------------------------------------------------------
+# Additional figures: intro scene example (scene_020), SAM-specific failures
+# (scene_200 bleed / scene_089 hallucination), and one grasp per verification
+# outcome (scenes 007/204/073/009, from exp3_per_grasp.csv). Grasp pixels are
+# read from the persisted stage11_suction_grasps.json of each scene; scene
+# selection for the verdict figure requires the grasp pixel to lie inside a
+# stage-F mask of the archived standard run.
+# ---------------------------------------------------------------------------
+import json
+
+def _std(sid):
+    z = np.load(ARCH / "exp1_segmentation_standard/preds" / f"{sid}.npz", allow_pickle=True)
+    H, W = int(z["height"]), int(z["width"])
+    preds = [p.astype(bool) for p in decode_masks_rle(z["masks_F_rle"], H, W)]
+    ws = z["workspace_mask"].astype(bool)
+    return [p & ws for p in preds if (p & ws).any()], ws
+
+def _grasp_px(sid):
+    return json.load(open(DATA / sid / "stage11_suction_grasps.json"))["primary_grasp"]["pixel"]
+
+# Intro: input vs output (scene_020; ACCEPT and oracle-valid per exp3 CSV)
+sid = "scene_020"
+rgb = plt.imread(DATA / sid / "rgb.png")
+preds, ws = _std(sid)
+u, v = _grasp_px(sid)
+fig, axes = plt.subplots(1, 2, figsize=(10, 4.2))
+axes[0].imshow(rgb[..., :3])
+axes[0].set_title("(a) input: RGB-D view of an unknown parcel stack", fontsize=10)
+axes[1].imshow(composite(rgb, preds))
+for m in preds:
+    axes[1].contour(m, levels=[0.5], colors=["black"], linewidths=0.6)
+axes[1].scatter([u], [v], s=380, facecolors="none", edgecolors="#1a9641", linewidths=3)
+axes[1].scatter([u], [v], s=28, c="#1a9641", marker="x", linewidths=2.5)
+axes[1].set_title("(b) output: parcel masks and the verified grasp", fontsize=10)
+ys, xs = np.where(ws)
+for ax in axes:
+    ax.set_xlim(xs.min(), xs.max()); ax.set_ylim(ys.max(), ys.min())
+    ax.set_xticks([]); ax.set_yticks([])
+plt.tight_layout()
+plt.savefig(OUT / "intro_scene_example.pdf", bbox_inches="tight", dpi=200)
+
+# SAM-specific failures (variant run): bleed and hallucination
+fig, axes = plt.subplots(1, 2, figsize=(10, 4.2))
+for ax, (sid, title, pick) in zip(axes, [
+        ("scene_200", "(a) one SAM mask over two parcels", "bleed"),
+        ("scene_089", "(b) hallucinated SAM mask", "hal")]):
+    rgb = plt.imread(DATA / sid / "rgb.png")
+    inst = np.load(DATA / sid / "instance_mask.npy")
+    z = np.load(ARCH / "exp1_segmentation_sam_variant/preds" / f"{sid}.npz", allow_pickle=True)
+    H, W = int(z["height"]), int(z["width"])
+    ws = z["workspace_mask"].astype(bool)
+    preds = [p.astype(bool) & ws for p in decode_masks_rle(z["masks_F_rle"], H, W)]
+    gts = [(inst == g) & ws for g in np.unique(inst) if g >= 0 and ((inst == g) & ws).sum() >= 300]
+    def iou(a, b):
+        u_ = (a | b).sum(); return (a & b).sum() / u_ if u_ else 0.0
+    pm = None
+    for p in preds:
+        io = sorted((iou(p, gm) for gm in gts), reverse=True)
+        if pick == "bleed" and len(io) >= 2 and io[0] >= 0.25 and io[1] >= 0.15:
+            pm = p; break
+        if pick == "hal" and p.sum() >= 2000 and (not io or io[0] < 0.05):
+            pm = p; break
+    ax.imshow(composite(rgb, [pm]))
+    ax.contour(pm, levels=[0.5], colors=["#b2182b"], linewidths=2)
+    for g in np.unique(inst):
+        if g >= 0 and ((inst == g) & ws).sum() >= 100:
+            ax.contour((inst == g) & ws, levels=[0.5], colors=["white"],
+                       linewidths=0.7, linestyles="dashed")
+    ys, xs = np.where(pm)
+    ax.set_xlim(max(xs.min() - 70, 0), min(xs.max() + 70, rgb.shape[1]))
+    ax.set_ylim(min(ys.max() + 70, rgb.shape[0]), max(ys.min() - 70, 0))
+    ax.set_title(f"{title} ({sid.replace('_', ' ')})", fontsize=10)
+    ax.set_xticks([]); ax.set_yticks([])
+plt.tight_layout()
+plt.savefig(OUT / "exp1_sam_failures.pdf", bbox_inches="tight", dpi=200)
+
+# One grasp per verification outcome (Experiment 3)
+cases = [("scene_007", "(a) correct accept", "valid grasp, accepted", "#1a9641", None),
+         ("scene_204", "(b) false accept", "invalid grasp, accepted", "#d7191c", None),
+         ("scene_073", "(c) correct reject", "invalid grasp, rejected", "#1a9641", "suction_area"),
+         ("scene_009", "(d) false reject", "valid grasp, rejected", "#c51b8a", "bbox_extent")]
+fig, axes = plt.subplots(2, 2, figsize=(10, 7.6))
+for ax, (sid, lab, sub, col, check) in zip(axes.ravel(), cases):
+    rgb = plt.imread(DATA / sid / "rgb.png")
+    preds, ws = _std(sid)
+    u, v = _grasp_px(sid)
+    ax.imshow(composite(rgb, preds))
+    for m in preds:
+        ax.contour(m, levels=[0.5], colors=["black"], linewidths=0.5)
+    ax.scatter([u], [v], s=340, facecolors="none", edgecolors=col, linewidths=3.2)
+    ax.scatter([u], [v], s=25, c=col, marker="x", linewidths=2.5)
+    ax.set_title(f"{lab}: {sub}" + (f"\ndecisive check: {check}" if check else ""), fontsize=9.5)
+    ys, xs = np.where(ws)
+    ax.set_xlim(xs.min(), xs.max()); ax.set_ylim(ys.max(), ys.min())
+    ax.set_xticks([]); ax.set_yticks([])
+plt.tight_layout()
+plt.savefig(OUT / "exp3_decision_examples.pdf", bbox_inches="tight", dpi=200)
+print("saved intro/sam-failure/decision figures", OUT)
