@@ -1,0 +1,100 @@
+{
+  "candidate_id": "5107ac4299b7",
+  "backend": "normal_std",
+  "n_grasps": 1,
+  "grasps": [
+    {
+      "score": 0.3258967697620392,
+      "normal": [
+        0.020054133608937263,
+        -0.06159461662173271,
+        -0.9978997707366943
+      ],
+      "position": [
+        0.09966883808374405,
+        -0.25913897156715393,
+        1.9845173358917236
+      ],
+      "pixel": [
+        175,
+        345
+      ],
+      "rank": 0
+    }
+  ],
+  "primary_grasp": {
+    "score": 0.3258967697620392,
+    "normal": [
+      0.020054133608937263,
+      -0.06159461662173271,
+      -0.9978997707366943
+    ],
+    "position": [
+      0.09966883808374405,
+      -0.25913897156715393,
+      1.9845173358917236
+    ],
+    "pixel": [
+      175,
+      345
+    ],
+    "rank": 0
+  },
+  "config": {
+    "backend": "normal_std",
+    "max_grasps": 20,
+    "min_score": 0.3,
+    "grid_down_rate": 10,
+    "grid_topk": 1024,
+    "heatmap_kernel_size": 15,
+    "min_separation_m": 0.04,
+    "normal_knn": 224,
+    "normal_std_filter_size": 25,
+    "fx": 497.77777777777777,
+    "fy": 497.77777777777777,
+    "model": "deeplabv3plus_resnet101",
+    "checkpoint_path": null,
+    "depth_clamp_max_m": 3.0,
+    "centroid_constraint": {
+      "enabled": true,
+      "pick_nearest_for_primary": true,
+      "distance_percentile": 70,
+      "radius_scale": 0.85,
+      "min_radius_m": 0.03,
+      "max_radius_m": 0.15,
+      "anchor_window_px": 7,
+      "use_xy_distance": true,
+      "relax_on_empty": true
+    }
+  },
+  "debug": {
+    "heatmap_max": 0.3258967697620392,
+    "heatmap_mean_in_mask": 0.0910153016448021,
+    "candidates_after_mask": 2,
+    "n_selected": 1,
+    "heatmap_pixels_inside_zone": 2132,
+    "centroid_zone_relaxed": false,
+    "centroid_constraint_enabled": true,
+    "anchor_3d": [
+      -0.04782326562064035,
+      -0.26302796091352193,
+      1.9837799072265625
+    ],
+    "radius_m": 0.14946211289944375,
+    "anchor_source": "mask_centroid",
+    "anchor_pixel": [
+      174,
+      308
+    ],
+    "anchor_depth_m": 1.9837799072265625,
+    "radius_source": "mask_percentile",
+    "radius_percentile_raw_m": 0.17583777988169852,
+    "distance_percentile": 70.0,
+    "n_mask_pixels": 2026,
+    "dist_median_m": 0.12645718044743665,
+    "dist_max_m": 0.28704095834564924,
+    "primary_grasp_selection": "nearest_centroid",
+    "primary_grasp_index": 0,
+    "primary_grasp_dist_xy_m": 0.14754336614460525
+  }
+}

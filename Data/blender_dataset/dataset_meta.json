@@ -1,0 +1,260 @@
+{
+  "description": "Synthetic RGB-D depalletizing dataset, birds-eye camera over EUR pallet",
+  "blender_version": "5.1.2",
+  "camera": {
+    "model": "pinhole",
+    "fx": 497.77777777777777,
+    "fy": 497.77777777777777,
+    "cx": 320.0,
+    "cy": 240.0,
+    "width": 640,
+    "height": 480,
+    "height_above_pallet_top_m": 2.5,
+    "view": "top-down, optical axis = -Z world, image x = world x, image y = -world y"
+  },
+  "depth": {
+    "file": "depth.npy",
+    "dtype": "float32",
+    "unit": "m",
+    "definition": "perpendicular z-depth in camera frame (OpenCV convention)"
+  },
+  "pointcloud": {
+    "file": "pointcloud.ply",
+    "frame": "camera (OpenCV: x right, y down, z forward)"
+  },
+  "instance_mask": {
+    "file": "instance_mask.npy",
+    "values": "-1 background/ground, -2 pallet, >=0 box id matching ground_truth.json"
+  },
+  "ground_truth": {
+    "file": "ground_truth.json",
+    "frame": "camera (OpenCV)",
+    "bbox": "oriented 3D bounding box: center, dimensions (w,l,h in canonical asset frame), yaw, 8 corners"
+  },
+  "pallet_dimensions_m": [
+    0.8013,
+    1.2003,
+    0.1441
+  ],
+  "assets_used": [
+    "Amazon_A2_Package",
+    "Amazon_Book_Package",
+    "Asset_Deformed_Package",
+    "Asset_Large_cartoon_Box",
+    "Asset_Package_in_paper_with_rope",
+    "Big Package cardboard",
+    "Black Package",
+    "Burlap_Sack",
+    "Cardboard Box SQ01.001",
+    "Cardboard Box.001",
+    "Cardboard box",
+    "Carton Magdeleine",
+    "China Package",
+    "Colis VistaPrint",
+    "Envelope_Stack",
+    "Food_Packaging_Bag",
+    "Gros Carton",
+    "Ikea Cardboard Package",
+    "Louis_Vuitton_Package",
+    "ML_Box",
+    "POP_Drinks_Pack",
+    "Packaging_Tube",
+    "Paper_Coffee_Bag",
+    "Paper_Shopping_Bag",
+    "Powder_Blush",
+    "SM_Little_Package",
+    "Sachets_Package",
+    "Small Packet",
+    "Small_Pouch",
+    "Small_Shipping_Bag",
+    "Space_Food_Bag",
+    "Storage_Box_with_Lid",
+    "Vegetable_Crate",
+    "Vintage_Envelope",
+    "\u041a\u0443\u0431"
+  ],
+  "asset_dimensions": {
+    "Amazon_A2_Package": [
+      0.335,
+      0.235,
+      0.0083
+    ],
+    "Amazon_Book_Package": [
+      0.2216,
+      0.3317,
+      0.015
+    ],
+    "Asset_Deformed_Package": [
+      0.387,
+      0.5159,
+      0.3418
+    ],
+    "Asset_Large_cartoon_Box": [
+      0.42,
+      0.6048,
+      0.3411
+    ],
+    "Asset_Package_in_paper_with_rope": [
+      0.2527,
+      0.3245,
+      0.138
+    ],
+    "Big Package cardboard": [
+      0.7204,
+      0.2602,
+      0.68
+    ],
+    "Black Package": [
+      0.198,
+      0.304,
+      0.155
+    ],
+    "Burlap_Sack": [
+      0.8732,
+      0.5618,
+      0.3454
+    ],
+    "Cardboard Box SQ01.001": [
+      0.7534,
+      0.3925,
+      0.3073
+    ],
+    "Cardboard Box.001": [
+      0.529,
+      0.7408,
+      0.4117
+    ],
+    "Cardboard box": [
+      0.6135,
+      0.8567,
+      0.5318
+    ],
+    "Carton Magdeleine": [
+      0.23,
+      0.195,
+      0.127
+    ],
+    "China Package": [
+      0.2248,
+      0.3751,
+      0.38
+    ],
+    "Colis VistaPrint": [
+      0.32,
+      0.22,
+      0.135
+    ],
+    "Envelope_Stack": [
+      0.3652,
+      0.3233,
+      0.0078
+    ],
+    "Food_Packaging_Bag": [
+      0.0802,
+      0.0531,
+      0.0153
+    ],
+    "Gros Carton": [
+      0.665,
+      0.4651,
+      0.1132
+    ],
+    "Ikea Cardboard Package": [
+      0.39,
+      0.3053,
+      0.11
+    ],
+    "Louis_Vuitton_Package": [
+      0.247,
+      0.1378,
+      0.045
+    ],
+    "ML_Box": [
+      0.4717,
+      0.358,
+      0.4734
+    ],
+    "POP_Drinks_Pack": [
+      0.4091,
+      0.2767,
+      0.129
+    ],
+    "Packaging_Tube": [
+      0.1968,
+      0.0558,
+      0.0558
+    ],
+    "Paper_Coffee_Bag": [
+      0.1063,
+      0.2126,
+      0.0748
+    ],
+    "Paper_Shopping_Bag": [
+      0.2997,
+      0.2225,
+      0.0844
+    ],
+    "Powder_Blush": [
+      0.0598,
+      0.0601,
+      0.0142
+    ],
+    "SM_Little_Package": [
+      0.1407,
+      0.2289,
+      0.1023
+    ],
+    "Sachets_Package": [
+      0.0961,
+      0.1498,
+      0.0097
+    ],
+    "Small Packet": [
+      0.2396,
+      0.1988,
+      0.035
+    ],
+    "Small_Pouch": [
+      0.13,
+      0.1446,
+      0.0271
+    ],
+    "Small_Shipping_Bag": [
+      0.2396,
+      0.1988,
+      0.035
+    ],
+    "Space_Food_Bag": [
+      0.2217,
+      0.1431,
+      0.0279
+    ],
+    "Storage_Box_with_Lid": [
+      0.2544,
+      0.3497,
+      0.1932
+    ],
+    "Vegetable_Crate": [
+      0.1955,
+      0.1517,
+      0.1277
+    ],
+    "Vintage_Envelope": [
+      0.2165,
+      0.1344,
+      0.0148
+    ],
+    "\u041a\u0443\u0431": [
+      0.2795,
+      0.1556,
+      0.0899
+    ]
+  },
+  "num_scenes": 350,
+  "notes": "scenes 000-055: 13 rigid box assets only; scenes 056-199: all 35 package assets (incl. soft/deformed items - their visible surface can lie below the GT bounding box top). Unstable tall-standing items were baked lying on their largest face. LG cardboard box excluded: 1.34m length exceeds pallet footprint.",
+  "scene_groups": {
+    "000-055": "13 rigid box assets, sparse to medium stacks",
+    "056-199": "all 35 assets, mixed density",
+    "200-349": "all 35 assets, dense full pallets, high stacks (~0.8-1.2m), large boxes prioritized"
+  }
+}

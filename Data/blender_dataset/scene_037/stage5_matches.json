@@ -1,0 +1,116 @@
+{
+  "kept": [
+    {
+      "label": "small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        245,
+        187,
+        306,
+        268
+      ],
+      "dino_box": [
+        241,
+        187,
+        310,
+        269
+      ],
+      "z_plane_m": 0.110081747174263,
+      "z_plane_mm": 110.081747174263,
+      "closure": 1.0,
+      "border_ratio": 0.025680933852140077,
+      "segment_pixels": 4761,
+      "occluded_by": null
+    },
+    {
+      "label": "small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        250,
+        277,
+        310,
+        357
+      ],
+      "dino_box": [
+        244,
+        273,
+        314,
+        358
+      ],
+      "z_plane_m": 0.11000416427850723,
+      "z_plane_mm": 110.00416427850723,
+      "closure": 1.0,
+      "border_ratio": 0.031081566654689183,
+      "segment_pixels": 4774,
+      "occluded_by": null
+    },
+    {
+      "label": "small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        322,
+        279,
+        383,
+        358
+      ],
+      "dino_box": [
+        318,
+        275,
+        387,
+        359
+      ],
+      "z_plane_m": 0.10967983305454254,
+      "z_plane_mm": 109.67983305454254,
+      "closure": 1.0,
+      "border_ratio": 0.04013740734044476,
+      "segment_pixels": 4809,
+      "occluded_by": null
+    },
+    {
+      "label": "small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        307,
+        126,
+        386,
+        189
+      ],
+      "dino_box": [
+        301,
+        122,
+        390,
+        190
+      ],
+      "z_plane_m": 0.1094682365655899,
+      "z_plane_mm": 109.4682365655899,
+      "closure": 1.0,
+      "border_ratio": 0.035277680754453374,
+      "segment_pixels": 4845,
+      "occluded_by": null
+    },
+    {
+      "label": "small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        321,
+        193,
+        384,
+        272
+      ],
+      "dino_box": [
+        317,
+        190,
+        385,
+        273
+      ],
+      "z_plane_m": 0.1094033271074295,
+      "z_plane_mm": 109.4033271074295,
+      "closure": 1.0,
+      "border_ratio": 0.028327512611563833,
+      "segment_pixels": 4753,
+      "occluded_by": null
+    }
+  ],
+  "excluded": [],
+  "n_total": 5
+}

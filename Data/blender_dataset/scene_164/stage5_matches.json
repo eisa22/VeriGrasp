@@ -1,0 +1,95 @@
+{
+  "kept": [
+    {
+      "label": "shipping box parcel",
+      "status": "kept",
+      "matched_box": [
+        220,
+        119,
+        362,
+        220
+      ],
+      "dino_box": [
+        216,
+        116,
+        417,
+        225
+      ],
+      "z_plane_m": 0.8271751999855042,
+      "z_plane_mm": 827.1751999855042,
+      "closure": 1.0,
+      "border_ratio": 0.024722735674676526,
+      "segment_pixels": 11566,
+      "occluded_by": null
+    },
+    {
+      "label": "cardboard box small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        211,
+        341,
+        302,
+        408
+      ],
+      "dino_box": [
+        207,
+        332,
+        306,
+        409
+      ],
+      "z_plane_m": 0.8230827450752258,
+      "z_plane_mm": 823.0827450752258,
+      "closure": 1.0,
+      "border_ratio": 0.026148409893992933,
+      "segment_pixels": 5827,
+      "occluded_by": null
+    },
+    {
+      "label": "small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        348,
+        281,
+        406,
+        356
+      ],
+      "dino_box": [
+        348,
+        277,
+        411,
+        357
+      ],
+      "z_plane_m": 0.2785489559173584,
+      "z_plane_mm": 278.5489559173584,
+      "closure": 1.0,
+      "border_ratio": 0.0414669722858929,
+      "segment_pixels": 4245,
+      "occluded_by": null
+    }
+  ],
+  "excluded": [
+    {
+      "label": "cardboard box",
+      "status": "excluded_by_dedup",
+      "matched_box": [
+        232,
+        215,
+        347,
+        398
+      ],
+      "dino_box": [
+        227,
+        215,
+        405,
+        399
+      ],
+      "z_plane_m": 0.6856871247291565,
+      "z_plane_mm": 686.4034533500671,
+      "closure": 1.0,
+      "border_ratio": 0.01954387368809824,
+      "segment_pixels": 14036,
+      "occluded_by": "shipping box parcel"
+    }
+  ],
+  "n_total": 4
+}

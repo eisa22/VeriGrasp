@@ -1,0 +1,72 @@
+{
+  "kept": [
+    {
+      "label": "small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        243,
+        133,
+        324,
+        196
+      ],
+      "dino_box": [
+        239,
+        129,
+        325,
+        200
+      ],
+      "z_plane_m": 0.11106701195240021,
+      "z_plane_mm": 111.06701195240021,
+      "closure": 1.0,
+      "border_ratio": 0.03439888811674774,
+      "segment_pixels": 4796,
+      "occluded_by": null
+    },
+    {
+      "label": "small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        330,
+        153,
+        389,
+        232
+      ],
+      "dino_box": [
+        326,
+        149,
+        393,
+        233
+      ],
+      "z_plane_m": 0.11076895147562027,
+      "z_plane_mm": 110.76895147562027,
+      "closure": 1.0,
+      "border_ratio": 0.02972972972972973,
+      "segment_pixels": 4797,
+      "occluded_by": null
+    },
+    {
+      "label": "small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        279,
+        253,
+        358,
+        314
+      ],
+      "dino_box": [
+        273,
+        249,
+        363,
+        319
+      ],
+      "z_plane_m": 0.10975530743598938,
+      "z_plane_mm": 109.75530743598938,
+      "closure": 1.0,
+      "border_ratio": 0.04183135704874835,
+      "segment_pixels": 4814,
+      "occluded_by": null
+    }
+  ],
+  "excluded": [],
+  "n_total": 3
+}
