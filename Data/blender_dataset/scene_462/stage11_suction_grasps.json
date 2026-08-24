@@ -1,0 +1,226 @@
+{
+  "candidate_id": "715b810ebd64",
+  "backend": "normal_std",
+  "n_grasps": 8,
+  "grasps": [
+    {
+      "score": 0.9222005605697632,
+      "normal": [
+        1.4042133500424825e-07,
+        -8.533858704140584e-07,
+        -1.0
+      ],
+      "position": [
+        -0.28251394629478455,
+        0.46291443705558777,
+        1.6943273544311523
+      ],
+      "pixel": [
+        376,
+        237
+      ],
+      "rank": 0
+    },
+    {
+      "score": 0.8734058737754822,
+      "normal": [
+        -2.95198901767435e-07,
+        1.1420336676337683e-07,
+        -1.0
+      ],
+      "position": [
+        -0.1785479635000229,
+        0.4601043462753296,
+        1.709177017211914
+      ],
+      "pixel": [
+        374,
+        268
+      ],
+      "rank": 1
+    },
+    {
+      "score": 0.872567355632782,
+      "normal": [
+        -6.378332955137012e-07,
+        -2.664191640633362e-07,
+        -1.0
+      ],
+      "position": [
+        -0.285917729139328,
+        0.4050500988960266,
+        1.6943272352218628
+      ],
+      "pixel": [
+        359,
+        236
+      ],
+      "rank": 2
+    },
+    {
+      "score": 0.832169234752655,
+      "normal": [
+        0.21276481449604034,
+        -0.01762523502111435,
+        -0.9769445061683655
+      ],
+      "position": [
+        -0.23826473951339722,
+        0.4629143476486206,
+        1.6943269968032837
+      ],
+      "pixel": [
+        376,
+        250
+      ],
+      "rank": 3
+    },
+    {
+      "score": 0.7968503832817078,
+      "normal": [
+        4.055367526234477e-07,
+        1.0166496622332488e-06,
+        -1.0
+      ],
+      "position": [
+        -0.18198156356811523,
+        0.5150421261787415,
+        1.7091768980026245
+      ],
+      "pixel": [
+        390,
+        267
+      ],
+      "rank": 4
+    },
+    {
+      "score": 0.7850950360298157,
+      "normal": [
+        4.595566167608922e-07,
+        2.01253314457972e-07,
+        -1.0
+      ],
+      "position": [
+        -0.28251394629478455,
+        0.5105673670768738,
+        1.6943272352218628
+      ],
+      "pixel": [
+        390,
+        237
+      ],
+      "rank": 5
+    },
+    {
+      "score": 0.6278688311576843,
+      "normal": [
+        0.2820548117160797,
+        -0.022852834314107895,
+        -0.9591261148452759
+      ],
+      "position": [
+        -0.2383888065814972,
+        0.40526095032691956,
+        1.695209264755249
+      ],
+      "pixel": [
+        359,
+        250
+      ],
+      "rank": 6
+    },
+    {
+      "score": 0.46407586336135864,
+      "normal": [
+        4.9292430048808455e-05,
+        -0.0007808715454302728,
+        -0.9999997019767761
+      ],
+      "position": [
+        -0.17168071866035461,
+        0.4086000919342041,
+        1.7091768980026245
+      ],
+      "pixel": [
+        359,
+        270
+      ],
+      "rank": 7
+    }
+  ],
+  "primary_grasp": {
+    "score": 0.832169234752655,
+    "normal": [
+      0.21276481449604034,
+      -0.01762523502111435,
+      -0.9769445061683655
+    ],
+    "position": [
+      -0.23826473951339722,
+      0.4629143476486206,
+      1.6943269968032837
+    ],
+    "pixel": [
+      376,
+      250
+    ],
+    "rank": 3
+  },
+  "config": {
+    "backend": "normal_std",
+    "max_grasps": 20,
+    "min_score": 0.3,
+    "grid_down_rate": 10,
+    "grid_topk": 1024,
+    "heatmap_kernel_size": 15,
+    "min_separation_m": 0.04,
+    "normal_knn": 224,
+    "normal_std_filter_size": 25,
+    "fx": 497.77777777777777,
+    "fy": 497.77777777777777,
+    "model": "deeplabv3plus_resnet101",
+    "checkpoint_path": null,
+    "depth_clamp_max_m": 3.0,
+    "centroid_constraint": {
+      "enabled": true,
+      "pick_nearest_for_primary": true,
+      "distance_percentile": 70,
+      "radius_scale": 0.85,
+      "min_radius_m": 0.03,
+      "max_radius_m": 0.15,
+      "anchor_window_px": 7,
+      "use_xy_distance": true,
+      "relax_on_empty": true
+    }
+  },
+  "debug": {
+    "heatmap_max": 0.9222005605697632,
+    "heatmap_mean_in_mask": 0.3824499845504761,
+    "candidates_after_mask": 29,
+    "n_selected": 8,
+    "heatmap_pixels_inside_zone": 2196,
+    "centroid_zone_relaxed": false,
+    "centroid_constraint_enabled": true,
+    "anchor_3d": [
+      -0.2350010947989566,
+      0.4563789377255099,
+      1.6953380107879639
+    ],
+    "radius_m": 0.08652495548159947,
+    "anchor_source": "mask_centroid",
+    "anchor_pixel": [
+      374,
+      251
+    ],
+    "anchor_depth_m": 1.6953380107879639,
+    "radius_source": "mask_percentile",
+    "radius_percentile_raw_m": 0.10179406527246997,
+    "distance_percentile": 70.0,
+    "n_mask_pixels": 3926,
+    "dist_median_m": 0.08484739442460207,
+    "dist_max_m": 0.15911024185896436,
+    "primary_grasp_selection": "nearest_centroid",
+    "primary_grasp_index": 3,
+    "primary_grasp_dist_xy_m": 0.007304995529443529
+  }
+}

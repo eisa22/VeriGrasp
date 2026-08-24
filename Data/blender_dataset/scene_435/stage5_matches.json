@@ -1,0 +1,28 @@
+{
+  "kept": [
+    {
+      "label": "parcel",
+      "status": "kept",
+      "matched_box": [
+        227,
+        102,
+        402,
+        253
+      ],
+      "dino_box": [
+        224,
+        102,
+        405,
+        255
+      ],
+      "z_plane_m": 0.41481998562812805,
+      "z_plane_mm": 450.3254294395447,
+      "closure": 1.0,
+      "border_ratio": 0.01979870702321481,
+      "segment_pixels": 5168,
+      "occluded_by": null
+    }
+  ],
+  "excluded": [],
+  "n_total": 1
+}
