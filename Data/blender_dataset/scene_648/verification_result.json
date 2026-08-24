@@ -1,0 +1,135 @@
+{
+  "verdict": "REJECT",
+  "mode": "cascade",
+  "decisive_stage": 1,
+  "decisive_check": "top_height_match",
+  "soft_score": null,
+  "candidate_id": "603a6536ca61",
+  "grasp_rank": 3,
+  "unverifiable": true,
+  "stages": [
+    {
+      "stage": 1,
+      "name": "segmentation_consistent",
+      "passed": false,
+      "checks": [
+        {
+          "name": "existence",
+          "stage": 1,
+          "raw_value": 1.0,
+          "threshold": 0.6,
+          "margin": 0.4,
+          "passed": true,
+          "detail": {
+            "n_valid": 3063,
+            "n_mask_px": 3063
+          }
+        },
+        {
+          "name": "top_height_match",
+          "stage": 1,
+          "raw_value": 0.20099986791590574,
+          "threshold": 0.03,
+          "margin": -0.17099986791590574,
+          "passed": false,
+          "detail": {
+            "z_top_meas_m": -2.7056355595561623,
+            "claimed_top_m": -2.5046356916402566,
+            "n_window_points": 82,
+            "window_radius_m": 0.03
+          }
+        },
+        {
+          "name": "bbox_extent",
+          "stage": 1,
+          "raw_value": 0.0,
+          "threshold": 0.15,
+          "margin": 0.15,
+          "passed": true,
+          "detail": {
+            "box_verdict": "UNVERIFIABLE",
+            "unverifiable": true,
+            "reasons": [
+              "extent axis x unconstrained (no visible face spans it) - supported only by the prior",
+              "extent axis y unconstrained (no visible face spans it) - supported only by the prior",
+              "extent axis z unconstrained (no visible face spans it) - supported only by the prior",
+              "no expected-visible face (cannot judge)"
+            ]
+          }
+        },
+        {
+          "name": "bbox_inlier",
+          "stage": 1,
+          "raw_value": 0.7802726543704892,
+          "threshold": 0.8,
+          "margin": -0.01972734562951084,
+          "passed": true,
+          "detail": {
+            "box_verdict": "UNVERIFIABLE",
+            "unverifiable": true,
+            "reasons": [
+              "extent axis x unconstrained (no visible face spans it) - supported only by the prior",
+              "extent axis y unconstrained (no visible face spans it) - supported only by the prior",
+              "extent axis z unconstrained (no visible face spans it) - supported only by the prior",
+              "no expected-visible face (cannot judge)"
+            ]
+          }
+        },
+        {
+          "name": "bbox_surface_dist",
+          "stage": 1,
+          "raw_value": 0.015181072162734427,
+          "threshold": 0.02,
+          "margin": 0.0048189278372655735,
+          "passed": true,
+          "detail": {
+            "box_verdict": "UNVERIFIABLE",
+            "unverifiable": true,
+            "reasons": [
+              "extent axis x unconstrained (no visible face spans it) - supported only by the prior",
+              "extent axis y unconstrained (no visible face spans it) - supported only by the prior",
+              "extent axis z unconstrained (no visible face spans it) - supported only by the prior",
+              "no expected-visible face (cannot judge)"
+            ]
+          }
+        },
+        {
+          "name": "bbox_top_normal",
+          "stage": 1,
+          "raw_value": 0.0,
+          "threshold": 12.0,
+          "margin": 12.0,
+          "passed": true,
+          "detail": {
+            "box_verdict": "UNVERIFIABLE",
+            "unverifiable": true,
+            "reasons": [
+              "extent axis x unconstrained (no visible face spans it) - supported only by the prior",
+              "extent axis y unconstrained (no visible face spans it) - supported only by the prior",
+              "extent axis z unconstrained (no visible face spans it) - supported only by the prior",
+              "no expected-visible face (cannot judge)"
+            ]
+          }
+        },
+        {
+          "name": "bbox_coverage",
+          "stage": 1,
+          "raw_value": 1.0,
+          "threshold": 0.6,
+          "margin": 0.4,
+          "passed": true,
+          "detail": {
+            "box_verdict": "UNVERIFIABLE",
+            "unverifiable": true,
+            "reasons": [
+              "extent axis x unconstrained (no visible face spans it) - supported only by the prior",
+              "extent axis y unconstrained (no visible face spans it) - supported only by the prior",
+              "extent axis z unconstrained (no visible face spans it) - supported only by the prior",
+              "no expected-visible face (cannot judge)"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

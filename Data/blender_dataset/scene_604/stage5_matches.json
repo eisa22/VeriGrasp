@@ -1,0 +1,50 @@
+{
+  "kept": [
+    {
+      "label": "parcel",
+      "status": "kept",
+      "matched_box": [
+        212,
+        263,
+        439,
+        382
+      ],
+      "dino_box": [
+        210,
+        263,
+        443,
+        383
+      ],
+      "z_plane_m": 2.693774700164795,
+      "z_plane_mm": 2689.43190574646,
+      "closure": 1.0,
+      "border_ratio": 0.027116481237787614,
+      "segment_pixels": 10014,
+      "occluded_by": null
+    },
+    {
+      "label": "small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        356,
+        147,
+        435,
+        225
+      ],
+      "dino_box": [
+        352,
+        144,
+        439,
+        226
+      ],
+      "z_plane_m": 2.512871742248535,
+      "z_plane_mm": 2512.871742248535,
+      "closure": 1.0,
+      "border_ratio": 0.04173331394503417,
+      "segment_pixels": 2836,
+      "occluded_by": null
+    }
+  ],
+  "excluded": [],
+  "n_total": 2
+}

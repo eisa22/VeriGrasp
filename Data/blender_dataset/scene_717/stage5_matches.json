@@ -1,0 +1,50 @@
+{
+  "kept": [
+    {
+      "label": "cardboard box small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        216,
+        74,
+        296,
+        152
+      ],
+      "dino_box": [
+        211,
+        70,
+        301,
+        173
+      ],
+      "z_plane_m": 0.9216238856315613,
+      "z_plane_mm": 921.6238856315613,
+      "closure": 1.0,
+      "border_ratio": 0.03830159772379076,
+      "segment_pixels": 3970,
+      "occluded_by": null
+    },
+    {
+      "label": "small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        249,
+        221,
+        317,
+        275
+      ],
+      "dino_box": [
+        245,
+        216,
+        322,
+        287
+      ],
+      "z_plane_m": 0.3204147517681122,
+      "z_plane_mm": 320.4147517681122,
+      "closure": 1.0,
+      "border_ratio": 0.04894973743435859,
+      "segment_pixels": 2321,
+      "occluded_by": null
+    }
+  ],
+  "excluded": [],
+  "n_total": 2
+}

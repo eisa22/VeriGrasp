@@ -1,0 +1,28 @@
+{
+  "kept": [
+    {
+      "label": "cardboard box small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        229,
+        268,
+        367,
+        385
+      ],
+      "dino_box": [
+        220,
+        264,
+        374,
+        390
+      ],
+      "z_plane_m": 0.9861612319946289,
+      "z_plane_mm": 986.1612319946289,
+      "closure": 1.0,
+      "border_ratio": 0.027586206896551724,
+      "segment_pixels": 12515,
+      "occluded_by": null
+    }
+  ],
+  "excluded": [],
+  "n_total": 1
+}

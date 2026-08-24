@@ -1,0 +1,100 @@
+{
+  "verdict": "REJECT",
+  "mode": "cascade",
+  "decisive_stage": 1,
+  "decisive_check": "bbox_inlier",
+  "soft_score": null,
+  "candidate_id": "9ec47b3e3477",
+  "grasp_rank": 2,
+  "unverifiable": false,
+  "stages": [
+    {
+      "stage": 1,
+      "name": "segmentation_consistent",
+      "passed": false,
+      "checks": [
+        {
+          "name": "existence",
+          "stage": 1,
+          "raw_value": 0.998978288633461,
+          "threshold": 0.6,
+          "margin": 0.3989782886334611,
+          "passed": true,
+          "detail": {
+            "n_valid": 3911,
+            "n_mask_px": 3915
+          }
+        },
+        {
+          "name": "top_height_match",
+          "stage": 1,
+          "raw_value": 0.001972436904905228,
+          "threshold": 0.03,
+          "margin": 0.02802756309509477,
+          "passed": true,
+          "detail": {
+            "z_top_meas_m": -1.9902405738810662,
+            "claimed_top_m": -1.988268136976161,
+            "n_window_points": 172,
+            "window_radius_m": 0.03
+          }
+        },
+        {
+          "name": "bbox_extent",
+          "stage": 1,
+          "raw_value": 0.09393875858237855,
+          "threshold": 0.15,
+          "margin": 0.05606124141762145,
+          "passed": true,
+          "detail": {
+            "box_verdict": "FAIL"
+          }
+        },
+        {
+          "name": "bbox_inlier",
+          "stage": 1,
+          "raw_value": 0.7198404785643071,
+          "threshold": 0.8,
+          "margin": -0.08015952143569294,
+          "passed": false,
+          "detail": {
+            "box_verdict": "FAIL"
+          }
+        },
+        {
+          "name": "bbox_surface_dist",
+          "stage": 1,
+          "raw_value": 0.013890981676182634,
+          "threshold": 0.02,
+          "margin": 0.006109018323817366,
+          "passed": true,
+          "detail": {
+            "box_verdict": "FAIL"
+          }
+        },
+        {
+          "name": "bbox_top_normal",
+          "stage": 1,
+          "raw_value": 7.566717128325853,
+          "threshold": 12.0,
+          "margin": 4.433282871674147,
+          "passed": true,
+          "detail": {
+            "box_verdict": "FAIL"
+          }
+        },
+        {
+          "name": "bbox_coverage",
+          "stage": 1,
+          "raw_value": 0.65,
+          "threshold": 0.6,
+          "margin": 0.050000000000000044,
+          "passed": true,
+          "detail": {
+            "box_verdict": "FAIL"
+          }
+        }
+      ]
+    }
+  ]
+}

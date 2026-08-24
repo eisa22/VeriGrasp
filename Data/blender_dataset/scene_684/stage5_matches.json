@@ -1,0 +1,51 @@
+{
+  "kept": [
+    {
+      "label": "cardboard box",
+      "status": "kept",
+      "matched_box": [
+        203,
+        244,
+        417,
+        373
+      ],
+      "dino_box": [
+        200,
+        236,
+        433,
+        374
+      ],
+      "z_plane_m": 2.8348827362060547,
+      "z_plane_mm": 2839.263439178467,
+      "closure": 1.0,
+      "border_ratio": 0.02420403400566761,
+      "segment_pixels": 6857,
+      "occluded_by": null
+    }
+  ],
+  "excluded": [
+    {
+      "label": "shipping box parcel",
+      "status": "excluded_by_dedup",
+      "matched_box": [
+        310,
+        161,
+        446,
+        302
+      ],
+      "dino_box": [
+        310,
+        155,
+        447,
+        303
+      ],
+      "z_plane_m": 2.4440805912017822,
+      "z_plane_mm": 2448.5697746276855,
+      "closure": 1.0,
+      "border_ratio": 0.024643584521384928,
+      "segment_pixels": 8944,
+      "occluded_by": "cardboard box"
+    }
+  ],
+  "n_total": 2
+}

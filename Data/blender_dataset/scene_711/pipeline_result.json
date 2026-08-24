@@ -1,0 +1,333 @@
+{
+  "scene": "scene_711",
+  "session_path": "/Users/samueleinspieler/Documents/workspace_thesis/master_thesis/Data/blender_dataset/scene_711",
+  "status": "success",
+  "bounding_box": {
+    "candidate_id": "1aaafdf644db",
+    "label": "cardboard box_obj1",
+    "bbox_2d": [
+      337,
+      257,
+      424,
+      342
+    ],
+    "top_surface_height_m": -2.833294260499028,
+    "centroid_3d": [
+      0.40328603052520445,
+      0.3496808310375505,
+      2.9865452640669474
+    ],
+    "bottom_z_m": 0.0,
+    "height_m": 0.0,
+    "bottom_method": "from_pallet",
+    "bottom_confidence": 0.7,
+    "parcel_obb": {
+      "center": [
+        0.37985513782318814,
+        0.34827305323241603,
+        1.416647130249514
+      ],
+      "extents": [
+        0.4897651759636613,
+        0.5666716171688987,
+        2.833294260499028
+      ],
+      "R": [
+        [
+          0.0,
+          -0.999999999999,
+          0.0
+        ],
+        [
+          0.9999999999989999,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "corners_3d": [
+        [
+          0.6631909464073542,
+          0.10339046525083029,
+          0.0
+        ],
+        [
+          0.6631909464073542,
+          0.5931556412140018,
+          0.0
+        ],
+        [
+          0.09651932923902212,
+          0.5931556412140018,
+          0.0
+        ],
+        [
+          0.09651932923902212,
+          0.10339046525083029,
+          0.0
+        ],
+        [
+          0.6631909464073542,
+          0.10339046525083029,
+          2.833294260499028
+        ],
+        [
+          0.6631909464073542,
+          0.5931556412140018,
+          2.833294260499028
+        ],
+        [
+          0.09651932923902212,
+          0.5931556412140018,
+          2.833294260499028
+        ],
+        [
+          0.09651932923902212,
+          0.10339046525083029,
+          2.833294260499028
+        ]
+      ]
+    }
+  },
+  "grasp_candidate": {
+    "score": 0.324084997177124,
+    "normal": [
+      0.35170748829841614,
+      0.2886803150177002,
+      -0.8904861211776733
+    ],
+    "position": [
+      0.3029688596725464,
+      0.46610593795776367,
+      2.900214672088623
+    ],
+    "pixel": [
+      320,
+      372
+    ],
+    "rank": 0
+  },
+  "extraction_corridor": {
+    "z_bottom_m": -2.833294260499028,
+    "corridor_z_top_m": -2.5332942604990283,
+    "half_long_m": 0.28333580858444934,
+    "half_short_m": 0.24488258798183066,
+    "safety_corridor_height_m": 0.3,
+    "corners_bottom_3d": [
+      [
+        0.6631909464063112,
+        0.5931556412130603,
+        2.833294260499028
+      ],
+      [
+        0.0965193292385458,
+        0.5931556412130603,
+        2.833294260499028
+      ],
+      [
+        0.0965193292385458,
+        0.10339046525037861,
+        2.833294260499028
+      ],
+      [
+        0.6631909464063112,
+        0.10339046525037861,
+        2.833294260499028
+      ]
+    ],
+    "corners_top_3d": [
+      [
+        0.6631909464063112,
+        0.5931556412130603,
+        2.5332942604990283
+      ],
+      [
+        0.0965193292385458,
+        0.5931556412130603,
+        2.5332942604990283
+      ],
+      [
+        0.0965193292385458,
+        0.10339046525037861,
+        2.5332942604990283
+      ],
+      [
+        0.6631909464063112,
+        0.10339046525037861,
+        2.5332942604990283
+      ]
+    ],
+    "long_dir_xy": [
+      0.0,
+      1.0
+    ],
+    "center_3d": [
+      0.37985513782318814,
+      0.34827305323241603,
+      1.416647130249514
+    ],
+    "corridor_half_long_m": 0.28333580858444934,
+    "corridor_half_short_m": 0.24488258798183066,
+    "package_top_m": -2.833294260499028,
+    "source": "parcel_obb"
+  },
+  "verification": {
+    "verdict": "REJECT",
+    "mode": "cascade",
+    "decisive_stage": 1,
+    "decisive_check": "top_height_match",
+    "soft_score": null,
+    "candidate_id": "1aaafdf644db",
+    "grasp_rank": 0,
+    "unverifiable": true,
+    "stages": [
+      {
+        "stage": 1,
+        "name": "segmentation_consistent",
+        "passed": false,
+        "checks": [
+          {
+            "name": "existence",
+            "stage": 1,
+            "raw_value": 0.9648393194706995,
+            "threshold": 0.6,
+            "margin": 0.3648393194706995,
+            "passed": true,
+            "detail": {
+              "n_valid": 2552,
+              "n_mask_px": 2645
+            }
+          },
+          {
+            "name": "top_height_match",
+            "stage": 1,
+            "raw_value": 0.035131335258448804,
+            "threshold": 0.03,
+            "margin": -0.005131335258448805,
+            "passed": false,
+            "detail": {
+              "z_top_meas_m": -2.868425595757477,
+              "claimed_top_m": -2.833294260499028,
+              "n_window_points": 72,
+              "window_radius_m": 0.03
+            }
+          },
+          {
+            "name": "bbox_extent",
+            "stage": 1,
+            "raw_value": 0.0,
+            "threshold": 0.15,
+            "margin": 0.15,
+            "passed": true,
+            "detail": {
+              "box_verdict": "UNVERIFIABLE",
+              "unverifiable": true,
+              "reasons": [
+                "extent axis x unconstrained (no visible face spans it) - supported only by the prior",
+                "extent axis y unconstrained (no visible face spans it) - supported only by the prior",
+                "extent axis z unconstrained (no visible face spans it) - supported only by the prior",
+                "no expected-visible face (cannot judge)"
+              ]
+            }
+          },
+          {
+            "name": "bbox_inlier",
+            "stage": 1,
+            "raw_value": 0.7825071372956138,
+            "threshold": 0.8,
+            "margin": -0.017492862704386214,
+            "passed": true,
+            "detail": {
+              "box_verdict": "UNVERIFIABLE",
+              "unverifiable": true,
+              "reasons": [
+                "extent axis x unconstrained (no visible face spans it) - supported only by the prior",
+                "extent axis y unconstrained (no visible face spans it) - supported only by the prior",
+                "extent axis z unconstrained (no visible face spans it) - supported only by the prior",
+                "no expected-visible face (cannot judge)"
+              ]
+            }
+          },
+          {
+            "name": "bbox_surface_dist",
+            "stage": 1,
+            "raw_value": 0.01375952772864436,
+            "threshold": 0.02,
+            "margin": 0.00624047227135564,
+            "passed": true,
+            "detail": {
+              "box_verdict": "UNVERIFIABLE",
+              "unverifiable": true,
+              "reasons": [
+                "extent axis x unconstrained (no visible face spans it) - supported only by the prior",
+                "extent axis y unconstrained (no visible face spans it) - supported only by the prior",
+                "extent axis z unconstrained (no visible face spans it) - supported only by the prior",
+                "no expected-visible face (cannot judge)"
+              ]
+            }
+          },
+          {
+            "name": "bbox_top_normal",
+            "stage": 1,
+            "raw_value": 0.0,
+            "threshold": 12.0,
+            "margin": 12.0,
+            "passed": true,
+            "detail": {
+              "box_verdict": "UNVERIFIABLE",
+              "unverifiable": true,
+              "reasons": [
+                "extent axis x unconstrained (no visible face spans it) - supported only by the prior",
+                "extent axis y unconstrained (no visible face spans it) - supported only by the prior",
+                "extent axis z unconstrained (no visible face spans it) - supported only by the prior",
+                "no expected-visible face (cannot judge)"
+              ]
+            }
+          },
+          {
+            "name": "bbox_coverage",
+            "stage": 1,
+            "raw_value": 1.0,
+            "threshold": 0.6,
+            "margin": 0.4,
+            "passed": true,
+            "detail": {
+              "box_verdict": "UNVERIFIABLE",
+              "unverifiable": true,
+              "reasons": [
+                "extent axis x unconstrained (no visible face spans it) - supported only by the prior",
+                "extent axis y unconstrained (no visible face spans it) - supported only by the prior",
+                "extent axis z unconstrained (no visible face spans it) - supported only by the prior",
+                "no expected-visible face (cannot judge)"
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "grasp_candidates": [
+    {
+      "score": 0.324084997177124,
+      "normal": [
+        0.35170748829841614,
+        0.2886803150177002,
+        -0.8904861211776733
+      ],
+      "position": [
+        0.3029688596725464,
+        0.46610593795776367,
+        2.900214672088623
+      ],
+      "pixel": [
+        320,
+        372
+      ],
+      "rank": 0
+    }
+  ]
+}

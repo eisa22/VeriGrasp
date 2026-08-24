@@ -1,0 +1,477 @@
+{
+  "scene": "scene_604",
+  "session_path": "/Users/samueleinspieler/Documents/workspace_thesis/master_thesis/Data/blender_dataset/scene_604",
+  "status": "success",
+  "bounding_box": {
+    "candidate_id": "7253efb9803f",
+    "label": "small cardboard box_obj1",
+    "bbox_2d": [
+      356,
+      148,
+      427,
+      187
+    ],
+    "top_surface_height_m": -2.3989157676672788,
+    "centroid_3d": [
+      0.3511254129033064,
+      -0.35216968864419806,
+      2.46111332463236
+    ],
+    "bottom_z_m": -2.546197175977068,
+    "height_m": 0.14728140830978909,
+    "bottom_method": "from_neighbor",
+    "bottom_confidence": 0.92,
+    "parcel_obb": {
+      "center": [
+        0.35074361200773396,
+        -0.3622303375967052,
+        2.4725564718221733
+      ],
+      "extents": [
+        0.21436254536445504,
+        0.34086102247204075,
+        0.14728140830978909
+      ],
+      "R": [
+        [
+          0.0,
+          -0.999999999999,
+          0.0
+        ],
+        [
+          0.9999999999989999,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          1.0
+        ]
+      ],
+      "corners_3d": [
+        [
+          0.5211741232435839,
+          -0.4694116102788255,
+          2.3989157676672788
+        ],
+        [
+          0.5211741232435839,
+          -0.2550490649145849,
+          2.3989157676672788
+        ],
+        [
+          0.180313100771884,
+          -0.2550490649145849,
+          2.3989157676672788
+        ],
+        [
+          0.180313100771884,
+          -0.4694116102788255,
+          2.3989157676672788
+        ],
+        [
+          0.5211741232435839,
+          -0.4694116102788255,
+          2.546197175977068
+        ],
+        [
+          0.5211741232435839,
+          -0.2550490649145849,
+          2.546197175977068
+        ],
+        [
+          0.180313100771884,
+          -0.2550490649145849,
+          2.546197175977068
+        ],
+        [
+          0.180313100771884,
+          -0.4694116102788255,
+          2.546197175977068
+        ]
+      ]
+    }
+  },
+  "grasp_candidate": {
+    "score": 0.9892178177833557,
+    "normal": [
+      8.514389264746569e-07,
+      -0.557532012462616,
+      -0.8301554322242737
+    ],
+    "position": [
+      0.37116608023643494,
+      -0.3563194274902344,
+      2.4634430408477783
+    ],
+    "pixel": [
+      168,
+      395
+    ],
+    "rank": 0
+  },
+  "extraction_corridor": {
+    "z_bottom_m": -2.3989157676672788,
+    "corridor_z_top_m": -2.098915767667279,
+    "half_long_m": 0.17043051123602038,
+    "half_short_m": 0.10718127268222752,
+    "safety_corridor_height_m": 0.3,
+    "corners_bottom_3d": [
+      [
+        0.5211741232427121,
+        -0.25504906491396756,
+        2.3989157676672788
+      ],
+      [
+        0.180313100771353,
+        -0.25504906491396756,
+        2.3989157676672788
+      ],
+      [
+        0.180313100771353,
+        -0.4694116102779938,
+        2.3989157676672788
+      ],
+      [
+        0.5211741232427121,
+        -0.4694116102779938,
+        2.3989157676672788
+      ]
+    ],
+    "corners_top_3d": [
+      [
+        0.5211741232427121,
+        -0.25504906491396756,
+        2.098915767667279
+      ],
+      [
+        0.180313100771353,
+        -0.25504906491396756,
+        2.098915767667279
+      ],
+      [
+        0.180313100771353,
+        -0.4694116102779938,
+        2.098915767667279
+      ],
+      [
+        0.5211741232427121,
+        -0.4694116102779938,
+        2.098915767667279
+      ]
+    ],
+    "long_dir_xy": [
+      0.0,
+      1.0
+    ],
+    "center_3d": [
+      0.35074361200773396,
+      -0.3622303375967052,
+      2.4725564718221733
+    ],
+    "corridor_half_long_m": 0.17043051123602038,
+    "corridor_half_short_m": 0.10718127268222752,
+    "package_top_m": -2.3989157676672788,
+    "source": "parcel_obb"
+  },
+  "verification": {
+    "verdict": "REJECT",
+    "mode": "cascade",
+    "decisive_stage": 1,
+    "decisive_check": "top_height_match",
+    "soft_score": null,
+    "candidate_id": "7253efb9803f",
+    "grasp_rank": 0,
+    "unverifiable": true,
+    "stages": [
+      {
+        "stage": 1,
+        "name": "segmentation_consistent",
+        "passed": false,
+        "checks": [
+          {
+            "name": "existence",
+            "stage": 1,
+            "raw_value": 1.0,
+            "threshold": 0.6,
+            "margin": 0.4,
+            "passed": true,
+            "detail": {
+              "n_valid": 2379,
+              "n_mask_px": 2379
+            }
+          },
+          {
+            "name": "top_height_match",
+            "stage": 1,
+            "raw_value": 0.04698362350459151,
+            "threshold": 0.03,
+            "margin": -0.01698362350459151,
+            "passed": false,
+            "detail": {
+              "z_top_meas_m": -2.4458993911718703,
+              "claimed_top_m": -2.3989157676672788,
+              "n_window_points": 105,
+              "window_radius_m": 0.03
+            }
+          },
+          {
+            "name": "bbox_extent",
+            "stage": 1,
+            "raw_value": 0.0,
+            "threshold": 0.15,
+            "margin": 0.15,
+            "passed": true,
+            "detail": {
+              "box_verdict": "UNVERIFIABLE",
+              "unverifiable": true,
+              "reasons": [
+                "extent axis x unconstrained (no visible face spans it) - supported only by the prior",
+                "extent axis y unconstrained (no visible face spans it) - supported only by the prior",
+                "extent axis z unconstrained (no visible face spans it) - supported only by the prior",
+                "expected-visible face(s) below min_coverage: -z=0.30"
+              ]
+            }
+          },
+          {
+            "name": "bbox_inlier",
+            "stage": 1,
+            "raw_value": 0.8948092127878996,
+            "threshold": 0.8,
+            "margin": 0.09480921278789955,
+            "passed": true,
+            "detail": {
+              "box_verdict": "UNVERIFIABLE",
+              "unverifiable": true,
+              "reasons": [
+                "extent axis x unconstrained (no visible face spans it) - supported only by the prior",
+                "extent axis y unconstrained (no visible face spans it) - supported only by the prior",
+                "extent axis z unconstrained (no visible face spans it) - supported only by the prior",
+                "expected-visible face(s) below min_coverage: -z=0.30"
+              ]
+            }
+          },
+          {
+            "name": "bbox_surface_dist",
+            "stage": 1,
+            "raw_value": 0.01468188571712841,
+            "threshold": 0.02,
+            "margin": 0.005318114282871591,
+            "passed": true,
+            "detail": {
+              "box_verdict": "UNVERIFIABLE",
+              "unverifiable": true,
+              "reasons": [
+                "extent axis x unconstrained (no visible face spans it) - supported only by the prior",
+                "extent axis y unconstrained (no visible face spans it) - supported only by the prior",
+                "extent axis z unconstrained (no visible face spans it) - supported only by the prior",
+                "expected-visible face(s) below min_coverage: -z=0.30"
+              ]
+            }
+          },
+          {
+            "name": "bbox_top_normal",
+            "stage": 1,
+            "raw_value": 33.61646578503962,
+            "threshold": 12.0,
+            "margin": -21.616465785039622,
+            "passed": true,
+            "detail": {
+              "box_verdict": "UNVERIFIABLE",
+              "unverifiable": true,
+              "reasons": [
+                "extent axis x unconstrained (no visible face spans it) - supported only by the prior",
+                "extent axis y unconstrained (no visible face spans it) - supported only by the prior",
+                "extent axis z unconstrained (no visible face spans it) - supported only by the prior",
+                "expected-visible face(s) below min_coverage: -z=0.30"
+              ]
+            }
+          },
+          {
+            "name": "bbox_coverage",
+            "stage": 1,
+            "raw_value": 0.3,
+            "threshold": 0.6,
+            "margin": -0.3,
+            "passed": true,
+            "detail": {
+              "box_verdict": "UNVERIFIABLE",
+              "unverifiable": true,
+              "reasons": [
+                "extent axis x unconstrained (no visible face spans it) - supported only by the prior",
+                "extent axis y unconstrained (no visible face spans it) - supported only by the prior",
+                "extent axis z unconstrained (no visible face spans it) - supported only by the prior",
+                "expected-visible face(s) below min_coverage: -z=0.30"
+              ]
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "grasp_candidates": [
+    {
+      "score": 0.9892178177833557,
+      "normal": [
+        8.514389264746569e-07,
+        -0.557532012462616,
+        -0.8301554322242737
+      ],
+      "position": [
+        0.37116608023643494,
+        -0.3563194274902344,
+        2.4634430408477783
+      ],
+      "pixel": [
+        168,
+        395
+      ],
+      "rank": 0
+    },
+    {
+      "score": 0.8721716403961182,
+      "normal": [
+        -3.657570175619185e-07,
+        -0.5575316548347473,
+        -0.8301556706428528
+      ],
+      "position": [
+        0.2915482521057129,
+        -0.35084620118141174,
+        2.4597668647766113
+      ],
+      "pixel": [
+        169,
+        379
+      ],
+      "rank": 1
+    },
+    {
+      "score": 0.6850897669792175,
+      "normal": [
+        9.603941180102993e-07,
+        -0.5575323104858398,
+        -0.8301552534103394
+      ],
+      "position": [
+        0.38124239444732666,
+        -0.4063241183757782,
+        2.497026205062866
+      ],
+      "pixel": [
+        159,
+        396
+      ],
+      "rank": 2
+    },
+    {
+      "score": 0.6637306213378906,
+      "normal": [
+        3.509992154704378e-07,
+        -0.5575321912765503,
+        -0.8301553130149841
+      ],
+      "position": [
+        0.44407206773757935,
+        -0.34538939595222473,
+        2.4561023712158203
+      ],
+      "pixel": [
+        170,
+        410
+      ],
+      "rank": 3
+    },
+    {
+      "score": 0.5512782335281372,
+      "normal": [
+        1.6552057502394746e-07,
+        -0.5575317740440369,
+        -0.830155611038208
+      ],
+      "position": [
+        0.29596447944641113,
+        -0.4063241183757782,
+        2.497026205062866
+      ],
+      "pixel": [
+        159,
+        379
+      ],
+      "rank": 4
+    },
+    {
+      "score": 0.5415140986442566,
+      "normal": [
+        -4.0778752463666024e-07,
+        -0.557532012462616,
+        -0.8301554918289185
+      ],
+      "position": [
+        0.37921252846717834,
+        -0.29170194268226624,
+        2.420045852661133
+      ],
+      "pixel": [
+        180,
+        398
+      ],
+      "rank": 5
+    },
+    {
+      "score": 0.5381738543510437,
+      "normal": [
+        2.6833964739125804e-07,
+        -0.5575323104858398,
+        -0.8301553130149841
+      ],
+      "position": [
+        0.3354572355747223,
+        -0.29170194268226624,
+        2.420045852661133
+      ],
+      "pixel": [
+        180,
+        389
+      ],
+      "rank": 6
+    },
+    {
+      "score": 0.4773308336734772,
+      "normal": [
+        8.752435860515106e-07,
+        -0.5575319528579712,
+        -0.8301555514335632
+      ],
+      "position": [
+        0.4375528395175934,
+        -0.29170191287994385,
+        2.4200453758239746
+      ],
+      "pixel": [
+        180,
+        410
+      ],
+      "rank": 7
+    },
+    {
+      "score": 0.467021644115448,
+      "normal": [
+        3.6945269954458126e-08,
+        -0.557532548904419,
+        -0.830155074596405
+      ],
+      "position": [
+        0.2868402302265167,
+        -0.29170191287994385,
+        2.4200456142425537
+      ],
+      "pixel": [
+        180,
+        379
+      ],
+      "rank": 8
+    }
+  ]
+}
