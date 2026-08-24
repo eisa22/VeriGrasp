@@ -1,0 +1,552 @@
+{
+  "scene": "scene_343",
+  "session_path": "/Users/samueleinspieler/Documents/workspace_thesis/master_thesis/Data/blender_dataset/scene_343",
+  "status": "success",
+  "bounding_box": {
+    "candidate_id": "5f88eb57df3c",
+    "label": "small cardboard box",
+    "bbox_2d": [
+      211,
+      388,
+      283,
+      436
+    ],
+    "top_surface_height_m": 0.9964656156168864,
+    "centroid_3d": [
+      -0.22229037045531067,
+      0.5175362928472871,
+      1.5041480778419238
+    ],
+    "bottom_z_m": 0.9757427386485892,
+    "height_m": 0.02072287696829722,
+    "bottom_method": "from_neighbor",
+    "bottom_confidence": 0.92,
+    "parcel_obb": {
+      "center": [
+        -0.22092389990739658,
+        0.5220509052955682,
+        1.5129007516616002
+      ],
+      "extents": [
+        0.1402890598045874,
+        0.21829101233563783,
+        0.02072287696829722
+      ],
+      "R": [
+        [
+          0.0,
+          -0.9999995259120804,
+          0.0009737420677910723
+        ],
+        [
+          0.9999956113760433,
+          2.8848457015851473e-06,
+          0.0029626370569207
+        ],
+        [
+          -0.0029626384614658795,
+          0.0009737377944033061,
+          0.9999951372922042
+        ]
+      ],
+      "corners_3d": [
+        [
+          -0.11178853485267846,
+          0.4518756711816784,
+          1.5026408973398044
+        ],
+        [
+          -0.11178853485267846,
+          0.5921641153103371,
+          1.5022252715755045
+        ],
+        [
+          -0.3300794436991844,
+          0.5921647450462257,
+          1.502437829784394
+        ],
+        [
+          -0.3300794436991844,
+          0.45187630091756703,
+          1.502853455548694
+        ],
+        [
+          -0.11176835611560877,
+          0.4519370655449107,
+          1.5233636735388063
+        ],
+        [
+          -0.11176835611560877,
+          0.5922255096735694,
+          1.5229480477745063
+        ],
+        [
+          -0.3300592649621147,
+          0.592226139409458,
+          1.523160605983396
+        ],
+        [
+          -0.3300592649621147,
+          0.4519376952807993,
+          1.523576231747696
+        ]
+      ]
+    }
+  },
+  "grasp_candidate": {
+    "score": 0.4970628619194031,
+    "normal": [
+      -0.004419573582708836,
+      -0.021053815260529518,
+      -0.9997686147689819
+    ],
+    "position": [
+      -0.2145102322101593,
+      0.4803820848464966,
+      1.5039215087890625
+    ],
+    "pixel": [
+      399,
+      249
+    ],
+    "rank": 3
+  },
+  "extraction_corridor": {
+    "z_bottom_m": 0.9964656156168864,
+    "corridor_z_top_m": 1.2964656156168863,
+    "half_long_m": 0.10914550616781891,
+    "half_short_m": 0.0701445299022937,
+    "safety_corridor_height_m": 0.3,
+    "corners_bottom_3d": [
+      [
+        -0.11178853485234283,
+        0.5921641153092317,
+        1.5022252715755071
+      ],
+      [
+        -0.3300794436986305,
+        0.5921647450451204,
+        1.5024378297843968
+      ],
+      [
+        -0.3300794436986305,
+        0.451876300916602,
+        1.502853455548696
+      ],
+      [
+        -0.11178853485234283,
+        0.4518756711807134,
+        1.5026408973398064
+      ]
+    ],
+    "corners_top_3d": [
+      [
+        -0.11208065747268016,
+        0.5912753241921556,
+        1.202226730387846
+      ],
+      [
+        -0.3303715663189678,
+        0.5912759539280442,
+        1.2024392885967357
+      ],
+      [
+        -0.3303715663189678,
+        0.45098750979952584,
+        1.202854914361035
+      ],
+      [
+        -0.11208065747268016,
+        0.45098688006363724,
+        1.2026423561521453
+      ]
+    ],
+    "long_dir_xy": [
+      4.235164736279972e-22,
+      1.0
+    ],
+    "center_3d": [
+      -0.22092389990739658,
+      0.5220509052955682,
+      1.5129007516616002
+    ],
+    "corridor_half_long_m": 0.10914550616781891,
+    "corridor_half_short_m": 0.0701445299022937,
+    "package_top_m": 0.9964656156168864,
+    "source": "parcel_obb"
+  },
+  "verification": {
+    "verdict": "REJECT",
+    "mode": "cascade",
+    "decisive_stage": 2,
+    "decisive_check": "surface_warp",
+    "soft_score": null,
+    "candidate_id": "5f88eb57df3c",
+    "grasp_rank": 3,
+    "unverifiable": true,
+    "stages": [
+      {
+        "stage": 1,
+        "name": "segmentation_consistent",
+        "passed": true,
+        "checks": [
+          {
+            "name": "existence",
+            "stage": 1,
+            "raw_value": 1.0,
+            "threshold": 0.6,
+            "margin": 0.4,
+            "passed": true,
+            "detail": {
+              "n_valid": 3299,
+              "n_mask_px": 3299
+            }
+          },
+          {
+            "name": "top_height_match",
+            "stage": 1,
+            "raw_value": 0.0023711916920575726,
+            "threshold": 0.03,
+            "margin": 0.027628808307942426,
+            "passed": true,
+            "detail": {
+              "z_top_meas_m": 0.998836807308944,
+              "claimed_top_m": 0.9964656156168864,
+              "n_window_points": 316,
+              "window_radius_m": 0.03
+            }
+          },
+          {
+            "name": "bbox_extent",
+            "stage": 1,
+            "raw_value": 0.02628734127988331,
+            "threshold": 0.15,
+            "margin": 0.12371265872011669,
+            "passed": true,
+            "detail": {
+              "box_verdict": "UNVERIFIABLE",
+              "unverifiable": true,
+              "reasons": [
+                "extent axis z unconstrained (no visible face spans it) - supported only by the prior",
+                "expected-visible face(s) below min_coverage: -x=0.50"
+              ]
+            }
+          },
+          {
+            "name": "bbox_inlier",
+            "stage": 1,
+            "raw_value": 0.9566013071895425,
+            "threshold": 0.8,
+            "margin": 0.15660130718954246,
+            "passed": true,
+            "detail": {
+              "box_verdict": "UNVERIFIABLE",
+              "unverifiable": true,
+              "reasons": [
+                "extent axis z unconstrained (no visible face spans it) - supported only by the prior",
+                "expected-visible face(s) below min_coverage: -x=0.50"
+              ]
+            }
+          },
+          {
+            "name": "bbox_surface_dist",
+            "stage": 1,
+            "raw_value": 0.0013958564445165703,
+            "threshold": 0.02,
+            "margin": 0.01860414355548343,
+            "passed": true,
+            "detail": {
+              "box_verdict": "UNVERIFIABLE",
+              "unverifiable": true,
+              "reasons": [
+                "extent axis z unconstrained (no visible face spans it) - supported only by the prior",
+                "expected-visible face(s) below min_coverage: -x=0.50"
+              ]
+            }
+          },
+          {
+            "name": "bbox_top_normal",
+            "stage": 1,
+            "raw_value": 1.481929090116022,
+            "threshold": 12.0,
+            "margin": 10.518070909883978,
+            "passed": true,
+            "detail": {
+              "box_verdict": "UNVERIFIABLE",
+              "unverifiable": true,
+              "reasons": [
+                "extent axis z unconstrained (no visible face spans it) - supported only by the prior",
+                "expected-visible face(s) below min_coverage: -x=0.50"
+              ]
+            }
+          },
+          {
+            "name": "bbox_coverage",
+            "stage": 1,
+            "raw_value": 0.5,
+            "threshold": 0.6,
+            "margin": -0.09999999999999998,
+            "passed": true,
+            "detail": {
+              "box_verdict": "UNVERIFIABLE",
+              "unverifiable": true,
+              "reasons": [
+                "extent axis z unconstrained (no visible face spans it) - supported only by the prior",
+                "expected-visible face(s) below min_coverage: -x=0.50"
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "stage": 2,
+        "name": "grasp_suctionable",
+        "passed": false,
+        "checks": [
+          {
+            "name": "planarity",
+            "stage": 2,
+            "raw_value": 9.3021371690489e-08,
+            "threshold": 0.0025,
+            "margin": 0.0024999069786283096,
+            "passed": true,
+            "detail": {
+              "n_inliers": 639
+            }
+          },
+          {
+            "name": "normal_angle",
+            "stage": 2,
+            "raw_value": 6.3890569402604e-06,
+            "threshold": 30.0,
+            "margin": 29.99999361094306,
+            "passed": true,
+            "detail": {}
+          },
+          {
+            "name": "normal_scatter",
+            "stage": 2,
+            "raw_value": 0.1479715732111166,
+            "threshold": 0.2,
+            "margin": 0.05202842678888342,
+            "passed": true,
+            "detail": {}
+          },
+          {
+            "name": "suction_area",
+            "stage": 2,
+            "raw_value": 1.0,
+            "threshold": 0.95,
+            "margin": 0.050000000000000044,
+            "passed": true,
+            "detail": {}
+          },
+          {
+            "name": "edge_clearance",
+            "stage": 2,
+            "raw_value": 0.03,
+            "threshold": 0.03,
+            "margin": 0.0,
+            "passed": true,
+            "detail": {}
+          },
+          {
+            "name": "data_gaps",
+            "stage": 2,
+            "raw_value": 0.0,
+            "threshold": 0.08,
+            "margin": 0.08,
+            "passed": true,
+            "detail": {}
+          },
+          {
+            "name": "depth_seam",
+            "stage": 2,
+            "raw_value": 0.0,
+            "threshold": 0.4,
+            "margin": 0.4,
+            "passed": true,
+            "detail": {}
+          },
+          {
+            "name": "surface_warp",
+            "stage": 2,
+            "raw_value": 0.01880943193985494,
+            "threshold": 0.008,
+            "margin": -0.010809431939854938,
+            "passed": false,
+            "detail": {}
+          },
+          {
+            "name": "normal_alignment",
+            "stage": 2,
+            "raw_value": 1.2326780472259715,
+            "threshold": 30.0,
+            "margin": 28.76732195277403,
+            "passed": true,
+            "detail": {}
+          },
+          {
+            "name": "surface_warp_robust",
+            "stage": 2,
+            "raw_value": 0.014471987664432591,
+            "threshold": 0.006,
+            "margin": -0.00847198766443259,
+            "passed": false,
+            "detail": {}
+          },
+          {
+            "name": "suction_force",
+            "stage": 2,
+            "raw_value": 308.4057830751367,
+            "threshold": 2.0,
+            "margin": 306.4057830751367,
+            "passed": true,
+            "detail": {
+              "weight_n": 0.9338346289370156
+            }
+          },
+          {
+            "name": "wrench_lever",
+            "stage": 2,
+            "raw_value": 0.03934656525512102,
+            "threshold": 4.32,
+            "margin": 4.280653434744879,
+            "passed": true,
+            "detail": {
+              "resist_moment_nm": 8.64
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "grasp_candidates": [
+    {
+      "score": 0.9697427153587341,
+      "normal": [
+        -0.0025118933990597725,
+        0.00783505104482174,
+        -0.9999661445617676
+      ],
+      "position": [
+        -0.1691911667585373,
+        0.5317437052726746,
+        1.5039215087890625
+      ],
+      "pixel": [
+        416,
+        264
+      ],
+      "rank": 0
+    },
+    {
+      "score": 0.9686909317970276,
+      "normal": [
+        0.0027799394447356462,
+        0.0066063012927770615,
+        -0.9999743103981018
+      ],
+      "position": [
+        -0.27191439270973206,
+        0.5317437052726746,
+        1.503921627998352
+      ],
+      "pixel": [
+        416,
+        230
+      ],
+      "rank": 1
+    },
+    {
+      "score": 0.5445131659507751,
+      "normal": [
+        0.0055351839400827885,
+        4.733138484880328e-05,
+        -0.9999846816062927
+      ],
+      "position": [
+        -0.1691911518573761,
+        0.4803820252418518,
+        1.503921389579773
+      ],
+      "pixel": [
+        399,
+        264
+      ],
+      "rank": 2
+    },
+    {
+      "score": 0.4970628619194031,
+      "normal": [
+        -0.004419573582708836,
+        -0.021053815260529518,
+        -0.9997686147689819
+      ],
+      "position": [
+        -0.2145102322101593,
+        0.4803820848464966,
+        1.5039215087890625
+      ],
+      "pixel": [
+        399,
+        249
+      ],
+      "rank": 3
+    },
+    {
+      "score": 0.4436797499656677,
+      "normal": [
+        1.278888817068946e-07,
+        -4.217496041292179e-07,
+        -1.0
+      ],
+      "position": [
+        -0.27493566274642944,
+        0.4803820848464966,
+        1.5039215087890625
+      ],
+      "pixel": [
+        399,
+        229
+      ],
+      "rank": 4
+    },
+    {
+      "score": 0.4131854176521301,
+      "normal": [
+        6.923610271769576e-07,
+        -1.054473500516906e-06,
+        -1.0
+      ],
+      "position": [
+        -0.2688930928707123,
+        0.5740414261817932,
+        1.503921389579773
+      ],
+      "pixel": [
+        430,
+        231
+      ],
+      "rank": 5
+    },
+    {
+      "score": 0.3986663818359375,
+      "normal": [
+        3.58839031378011e-07,
+        -4.5309886331779126e-07,
+        -1.0
+      ],
+      "position": [
+        -0.17825497686862946,
+        0.574041485786438,
+        1.5039215087890625
+      ],
+      "pixel": [
+        430,
+        261
+      ],
+      "rank": 6
+    }
+  ]
+}

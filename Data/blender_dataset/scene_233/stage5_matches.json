@@ -1,0 +1,28 @@
+{
+  "kept": [
+    {
+      "label": "shipping parcel",
+      "status": "kept",
+      "matched_box": [
+        194,
+        161,
+        402,
+        256
+      ],
+      "dino_box": [
+        194,
+        116,
+        403,
+        257
+      ],
+      "z_plane_m": 0.8950708508491516,
+      "z_plane_mm": 895.0708508491516,
+      "closure": 1.0,
+      "border_ratio": 0.019176478688976106,
+      "segment_pixels": 11357,
+      "occluded_by": null
+    }
+  ],
+  "excluded": [],
+  "n_total": 1
+}

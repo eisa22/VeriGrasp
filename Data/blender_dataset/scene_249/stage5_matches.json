@@ -1,0 +1,116 @@
+{
+  "kept": [
+    {
+      "label": "cardboard box small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        292,
+        175,
+        407,
+        258
+      ],
+      "dino_box": [
+        292,
+        175,
+        412,
+        261
+      ],
+      "z_plane_m": 1.4744653701782227,
+      "z_plane_mm": 1474.5832681655884,
+      "closure": 1.0,
+      "border_ratio": 0.03557625606976514,
+      "segment_pixels": 4780,
+      "occluded_by": null
+    },
+    {
+      "label": "small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        188,
+        202,
+        274,
+        253
+      ],
+      "dino_box": [
+        184,
+        202,
+        275,
+        254
+      ],
+      "z_plane_m": 1.456742763519287,
+      "z_plane_mm": 1455.2208185195923,
+      "closure": 1.0,
+      "border_ratio": 0.04049217002237136,
+      "segment_pixels": 4252,
+      "occluded_by": null
+    },
+    {
+      "label": "cardboard box small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        185,
+        356,
+        299,
+        439
+      ],
+      "dino_box": [
+        181,
+        356,
+        300,
+        440
+      ],
+      "z_plane_m": 1.4409493207931519,
+      "z_plane_mm": 1440.9493207931519,
+      "closure": 1.0,
+      "border_ratio": 0.03699199351373265,
+      "segment_pixels": 9511,
+      "occluded_by": null
+    },
+    {
+      "label": "cardboard box small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        191,
+        272,
+        321,
+        356
+      ],
+      "dino_box": [
+        187,
+        268,
+        322,
+        357
+      ],
+      "z_plane_m": 1.433108925819397,
+      "z_plane_mm": 1446.4455842971802,
+      "closure": 1.0,
+      "border_ratio": 0.024298005105417415,
+      "segment_pixels": 3345,
+      "occluded_by": null
+    },
+    {
+      "label": "cardboard box small cardboard box",
+      "status": "kept",
+      "matched_box": [
+        323,
+        328,
+        408,
+        446
+      ],
+      "dino_box": [
+        323,
+        328,
+        409,
+        447
+      ],
+      "z_plane_m": 1.4330681562423706,
+      "z_plane_mm": 1433.0681562423706,
+      "closure": 1.0,
+      "border_ratio": 0.032724733113838174,
+      "segment_pixels": 9991,
+      "occluded_by": null
+    }
+  ],
+  "excluded": [],
+  "n_total": 5
+}
