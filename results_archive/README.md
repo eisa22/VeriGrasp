@@ -10,7 +10,7 @@ is given below.
 Integrity: `MANIFEST.sha256` lists a SHA-256 checksum for every file in
 this archive. One post-archiving redaction was applied: the
 `OPENAI_API_KEY` value in the two Exp.-1 `config_snapshot.yaml` files was
-replaced by `REDACTED` (a leaked secret; the key is not used by any of
+replaced by `REDACTED` (a redacted credential; the key is not used by any of
 the evaluated experiments, which never call the LLM orchestrator). Verify with:
 
 ```bash
@@ -81,7 +81,9 @@ renumbering.
   them on 2026-08-17 and identical to the counts in the thesis).
 - Exp. 2–6 are offline evaluations over recorded pipeline outputs; see
   `experiments/<exp>/README.md` for the exact commands.
-- The SynDePal ground truth (`Data/blender_dataset/`, ~728 scenes with
-  RGB, depth, instance masks, and exact 3D annotations) is distributed
-  alongside the thesis and is required for re-evaluation; it is not part
-  of this repository.
+- The SynDePal ground truth (`Data/blender_dataset/`, 728 scenes with
+  RGB, depth, instance masks, and exact 3D annotations) is versioned in
+  this repository and is required for re-evaluation. Only the derivable
+  per-scene point clouds are omitted; regenerate them with
+  `python scripts/regenerate_pointclouds.py` (verified to reproduce the
+  originals to float precision).

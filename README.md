@@ -69,8 +69,16 @@ Umgebungsvariable; für Pipeline und Experimente wird kein Key benötigt.
 
 ## Verwendung
 
-**Datensatz:** `Data/blender_dataset/scene_000` … `scene_727` (SynDePal;
-wird mit der Thesis verteilt, nicht Teil dieses Repos).
+**Datensatz:** `Data/blender_dataset/scene_000` … `scene_727` (SynDePal)
+ist in diesem Repo versioniert — RGB, Tiefe, Instanzmasken, exakte
+3D-Ground-Truth und die persistierten Pipeline-Records je Szene. Nur die
+ableitbaren `pointcloud.ply` sind ausgelassen; einmalig regenerieren mit:
+
+```bash
+python scripts/regenerate_pointclouds.py
+```
+
+(verifiziert bit-genau bis Float-Präzision gegen die Originale).
 
 ```bash
 # Gesamt-Pipeline, eine Szene mit Visualisierung

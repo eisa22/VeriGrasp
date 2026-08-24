@@ -20,7 +20,7 @@ examples/
 
 # --- SynDePal dataset is versioned in this repository ---
 # (derivable per-scene point clouds are omitted for size; regenerate from
-# depth.npy + camera intrinsics, see blender_visualisation/rgbd_to_pointcloud.py)
+# depth.npy + camera intrinsics, see scripts/regenerate_pointclouds.py)
 !Data/
 Data/*
 !Data/blender_dataset/
