@@ -1,60 +1,58 @@
-# VeriGrasp — Zero-Shot Perception mit deterministischer Grasp-Verifikation
+# VeriGrasp — Zero-Shot Perception with Deterministic Grasp Verification
 
-Code zur Masterarbeit *"Zero-Shot Foundation Models for Industrial
-Robotics"* (Samuel Einspieler, TU Wien, ACIN, 2026). VeriGrasp kombiniert
-einen Open-Vocabulary-Detektor mit einer deterministischen,
-geometriebasierten Verarbeitungskette für vakuumbasiertes Greifen in
-Top-down-Palettierszenen, evaluiert auf dem synthetischen Benchmark
-**SynDePal** (728 Szenen, 19.834 annotierte Pakete).
+Code accompanying the master's thesis *"Zero-Shot Foundation Models for
+Industrial Robotics"* (Samuel Einspieler, TU Wien, ACIN, 2026). VeriGrasp
+combines an open-vocabulary detector with a deterministic, geometry-based
+processing chain for vacuum-based grasping in top-down palletising scenes,
+evaluated on the synthetic benchmark **SynDePal** (728 scenes, 19,834
+annotated parcels).
 
 ## Pipeline
 
-1. **Detektion** — Grounding DINO (box-Prompts, Workspace-/Größenfilter,
+1. **Detection** — Grounding DINO (box prompts, workspace and size filters,
    relative NMS) — `GroundingSAM/grounding_sam.py`
-2. **Segmentierung** — deterministische Tiefengradienten-Segmentierung
-   (Sobel, per-Box-Otsu) — `Segmentation/`
-3. **Matching** — Closure-Matching der Gradienten-Segmente gegen die
-   DINO-Boxen — `Segmentation/` + `Visualization/`
-4. **3D-Verfeinerung** — DBSCAN-basiertes Splitting/Outlier-Removal —
-   `Sam3D/sam3d.py` (Modulname historisch; implementiert die
-   DBSCAN-Verfeinerung, nicht SAM3D von Yang et al.)
-5. **Grasp-Generierung** — Sauggreif-Kandidaten, Bottom-Plane-Inferenz,
-   Extraction-Corridor — `perception/`
-6. **Verifikation** — deterministische Kaskade aus zwanzig geometrischen
-   Prüfungen mit Audit-Record — `verification/`
+2. **Segmentation** — deterministic depth-gradient segmentation (Sobel,
+   per-box Otsu) — `Segmentation/`
+3. **Matching** — closure matching of the gradient segments against the
+   DINO boxes — `Segmentation/` + `Visualization/`
+4. **3D refinement** — DBSCAN-based splitting and outlier removal —
+   `Sam3D/sam3d.py` (the module name is historical; it implements the
+   DBSCAN refinement, not SAM3D by Yang et al.)
+5. **Grasp generation** — suction grasp candidates, bottom-plane inference,
+   extraction corridor — `perception/`
+6. **Verification** — deterministic cascade of twenty geometric checks with
+   an audit record — `verification/`
 
-**SAM-Vergleichsvariante** (Experiment 1): ersetzt Stufen 2–3 durch
-box-gepromptete SAM-Masken (ViT-B) + IoU-Dedup, Stufe 4 unverändert —
-`perception/pipeline_sam3d.py`, aktivierbar mit `--variant sam3d`.
+**SAM comparison variant** (Experiment 1): replaces stages 2–3 with
+box-prompted SAM masks (ViT-B) plus IoU deduplication, stage 4 unchanged —
+`perception/pipeline_sam3d.py`, enabled with `--variant sam3d`.
 
-## Projektstruktur
+## Project structure
 
 ```
-config.py               zentrale Konfiguration (Modelle, Schwellen)
-main.py                 Gesamt-Pipeline (eine Szene / --test Batch)
-GroundingSAM/           Grounding-DINO-Detektion + SAM-Maskengenerierung
-Segmentation/           Tiefengradienten-Segmentierung + Matching
-Sam3D/                  DBSCAN-3D-Verfeinerung + Masken-Dedup
-perception/             Exp1-Pipelines (D→S→M→F), Grasp-Generierung
-verification/           20-Check-Verifikationskaskade
-evaluation/             Metriken, GT-Handling, Aggregation (Exp1–6)
-experiments/            Runner der sechs Experimente (je mit README)
-scripts/                Hilfsskripte pro Experiment
-results_archive/        versionierte Messergebnisse aller Experimente
-Visualization/          Open3D-Visualisierung
-LLMOrchestrator/        optionaler LLM-Orchestrator (in den Experimenten
-                        nicht verwendet)
-tests/                  Unit-/Integrationstests
+config.py               central configuration (models, thresholds)
+main.py                 full pipeline (single scene / --test batch)
+GroundingSAM/           Grounding DINO detection + SAM mask generation
+Segmentation/           depth-gradient segmentation + matching
+Sam3D/                  DBSCAN 3D refinement + mask deduplication
+perception/             Exp. 1 pipelines (D→S→M→F), grasp generation
+verification/           20-check verification cascade
+evaluation/             metrics, ground-truth handling, aggregation (Exp. 1–6)
+experiments/            runners of the six experiments (each with a README)
+scripts/                helper scripts per experiment
+results_archive/        versioned measurement results of all experiments
+Visualization/          Open3D visualisation
+LLMOrchestrator/        optional LLM orchestrator (not used in the experiments)
+tests/                  unit and integration tests
 ```
 
-## Ergebnisse (results_archive/)
+## Results (results_archive/)
 
-Alle in der Thesis berichteten Messergebnisse liegen versioniert in
-[`results_archive/`](results_archive/README.md): ein Verzeichnis pro
-Lauf (Exp. 1 Standard + SAM-Variante inkl. per-Szene-Predictions,
-Equal-Height-Analyse, Exp. 2–6), ein README mit dem Mapping jeder
-Thesis-Tabelle/-Abbildung auf ihre Datei sowie `MANIFEST.sha256` über
-alle Dateien.
+All measurement results reported in the thesis are versioned in
+[`results_archive/`](results_archive/README.md): one directory per run
+(Exp. 1 standard and SAM variant including per-scene predictions, the
+equal-height analysis, Exp. 2–6), a README that maps every thesis table and
+figure to the file carrying it, and a `MANIFEST.sha256` covering all files.
 
 ## Installation
 
@@ -64,53 +62,53 @@ pip install torch torchvision transformers open3d numpy pillow \
     opencv-python scikit-learn scipy matplotlib pyyaml
 ```
 
-Der optionale LLM-Orchestrator liest `OPENAI_API_KEY` aus der
-Umgebungsvariable; für Pipeline und Experimente wird kein Key benötigt.
+The optional LLM orchestrator reads `OPENAI_API_KEY` from the environment;
+no key is required for the pipeline or the experiments.
 
-## Verwendung
+## Usage
 
-**Datensatz:** `Data/blender_dataset/scene_000` … `scene_727` (SynDePal)
-ist in diesem Repo versioniert — RGB, Tiefe, Instanzmasken, exakte
-3D-Ground-Truth und die persistierten Pipeline-Records je Szene. Nur die
-ableitbaren `pointcloud.ply` sind ausgelassen; einmalig regenerieren mit:
+**Dataset:** `Data/blender_dataset/scene_000` … `scene_727` (SynDePal) is
+versioned in this repository — RGB, depth, instance masks, exact 3D ground
+truth, and the persisted pipeline records per scene. Only the derivable
+`pointcloud.ply` files are omitted; regenerate them once with:
 
 ```bash
 python scripts/regenerate_pointclouds.py
 ```
 
-(verifiziert bit-genau bis Float-Präzision gegen die Originale).
+(verified to reproduce the originals to float precision).
 
 ```bash
-# Gesamt-Pipeline, eine Szene mit Visualisierung
+# Full pipeline, single scene with visualisation
 python main.py
 
-# Batch über alle Szenen (schreibt schlanke JSONs nach Results/)
+# Batch over all scenes (writes compact JSON records to Results/)
 python main.py --test
 
-# Experiment 1: Segmentierung (Standard-Pipeline)
+# Experiment 1: segmentation (standard pipeline)
 python -m experiments.exp1_seg.run_inference --test-set smoke
 python -m experiments.exp1_seg.evaluate --run-dir <run-dir> --test-set smoke
 
-# Experiment 1: SAM-Vergleichsvariante
+# Experiment 1: SAM comparison variant
 python -m experiments.exp1_seg.run_inference --variant sam3d
 
-# Equal-Height-Analyse aus den archivierten Predictions
+# Equal-height analysis from the archived predictions
 python results_archive/exp1_equal_height/equal_height_analysis.py
 ```
 
-Die Protokolle, Optionen und Ausgabeformate der sechs Experimente sind in
-`experiments/<exp>/README.md` dokumentiert; Reproduzierbarkeits-Identitäten
-(Config-Hash, Commit) je Lauf stehen in `results_archive/README.md` und in
-der Thesis (Kapitel *Experimental Setup*).
+The protocols, options, and output formats of the six experiments are
+documented in `experiments/<exp>/README.md`; the reproducibility identifiers
+(configuration hash, commit) per run are listed in
+`results_archive/README.md` and in the thesis (chapter *Experiments*).
 
-## Referenzen
+## References
 
 - Grounding DINO — Liu et al., ECCV 2024, [arXiv:2303.05499](https://arxiv.org/abs/2303.05499)
 - Segment Anything (SAM) — Kirillov et al., 2023, [arXiv:2304.02643](https://arxiv.org/abs/2304.02643)
-- SAM3D (konzeptuelle Inspiration der 3D-Verfeinerung; nicht ausgeführt) — Yang et al., 2023, [arXiv:2306.03908](https://arxiv.org/abs/2306.03908)
+- SAM3D (conceptual inspiration for the 3D refinement; not executed) — Yang et al., 2023, [arXiv:2306.03908](https://arxiv.org/abs/2306.03908)
 - DBSCAN — Ester et al., KDD 1996
 
-## Autor und Lizenz
+## Author and licence
 
-Samuel Einspieler — Masterarbeit, TU Wien (ACIN). Code und Ergebnisarchiv
-stehen unter der MIT-Lizenz (siehe [LICENSE](LICENSE)).
+Samuel Einspieler — master's thesis, TU Wien (ACIN). The code and the results
+archive are released under the MIT licence (see [LICENSE](LICENSE)).
