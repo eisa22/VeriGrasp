@@ -27,6 +27,16 @@ annotated parcels).
 box-prompted SAM masks (ViT-B) plus IoU deduplication, stage 4 unchanged —
 `perception/pipeline_sam3d.py`, enabled with `--variant sam3d`.
 
+> **Naming note.** Three similarly named things must not be confused.
+> **SAM** (Segment Anything, Kirillov et al.) is the model executed in the
+> comparison variant. **SAM3D** (Yang et al., arXiv:2306.03908) is a
+> different method that is *neither executed nor reimplemented* anywhere in
+> this repository. The module `Sam3D/sam3d.py`, the file
+> `pipeline_sam3d.py`, and the flag value `sam3d` carry that name only for
+> historical reasons — the early pipeline draft applied the DBSCAN
+> refinement to SAM masks. The thesis therefore calls this the
+> *SAM-based variant*, not SAM3D.
+
 ## Project structure
 
 ```

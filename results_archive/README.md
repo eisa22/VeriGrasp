@@ -71,7 +71,9 @@ renumbering.
 ## Reproduction
 
 - Exp. 1 inference: `python -m experiments.exp1_seg.run_inference`
-  (standard) or `... --variant sam3d` (variant); evaluation:
+  (standard) or `... --variant sam3d` (the SAM-based variant; the flag
+  value is historical and does *not* invoke SAM3D by Yang et al., which is
+  neither executed nor reimplemented here); evaluation:
   `python -m experiments.exp1_seg.evaluate --run-dir <dir>`. The archived
   `preds/*.npz` (run-length-encoded masks per scene) allow re-running the
   evaluation and the equal-height analysis without any GPU inference.
